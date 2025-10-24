@@ -1,0 +1,37 @@
+export const LEAD_STATUSES = [
+  "NEW_LEAD",
+  "LEAD_TAKEN",
+  "GET_INFO",
+  "WAITING_FOR_BANK",
+  "WAITING_FOR_APPROVAL",
+  "BANK_REJECTED",
+  "CLIENT_ACCEPTED",
+  "CLIENT_REJECTED",
+  "AGREEMENT_SIGNED",
+] as const;
+
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  NEW_LEAD: "New Lead",
+  LEAD_TAKEN: "Lead Taken",
+  GET_INFO: "Collecting Info",
+  WAITING_FOR_BANK: "Waiting for Bank",
+  WAITING_FOR_APPROVAL: "Waiting for Approval",
+  BANK_REJECTED: "Bank Rejected",
+  CLIENT_ACCEPTED: "Client Accepted",
+  CLIENT_REJECTED: "Client Rejected",
+  AGREEMENT_SIGNED: "Agreement Signed",
+};
+
+export const LEAD_STATUS_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
+  NEW_LEAD: ["LEAD_TAKEN", "BANK_REJECTED"],
+  LEAD_TAKEN: ["GET_INFO", "BANK_REJECTED", "NEW_LEAD"],
+  GET_INFO: ["WAITING_FOR_BANK", "BANK_REJECTED", "CLIENT_REJECTED"],
+  WAITING_FOR_BANK: ["WAITING_FOR_APPROVAL", "BANK_REJECTED"],
+  WAITING_FOR_APPROVAL: ["CLIENT_ACCEPTED", "CLIENT_REJECTED"],
+  BANK_REJECTED: ["GET_INFO", "NEW_LEAD"],
+  CLIENT_ACCEPTED: ["AGREEMENT_SIGNED", "CLIENT_REJECTED"],
+  CLIENT_REJECTED: ["GET_INFO"],
+  AGREEMENT_SIGNED: [],
+};

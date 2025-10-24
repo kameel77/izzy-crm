@@ -1,0 +1,150 @@
+import { LeadStatus } from "../constants/leadStatus";
+import { apiFetch } from "./client";
+
+export interface LeadUser {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface LeadPartner {
+  id: string;
+  name: string;
+}
+
+export interface LeadCustomerProfile {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface LeadSummary {
+  id: string;
+  status: LeadStatus;
+  partnerId: string;
+  leadCreatedAt: string;
+  claimedAt?: string | null;
+  lastContactAt?: string | null;
+  nextActionAt?: string | null;
+  assignedUser?: LeadUser | null;
+  partner?: LeadPartner | null;
+  customerProfile?: LeadCustomerProfile | null;
+}
+
+export interface LeadDetail extends LeadSummary {
+  customerProfile?: LeadCustomerProfile | null;
+  vehicleCurrent?: {
+    make?: string | null;
+    model?: string | null;
+    year?: number | null;
+    mileage?: number | null;
+    ownershipStatus?: string | null;
+  } | null;
+  vehicleDesired?: {
+    make?: string | null;
+    model?: string | null;
+    year?: number | null;
+    budget?: string | null;
+    preferences?: Record<string, unknown> | null;
+  } | null;
+  financingApps: Array<{
+    id: string;
+    bank: string;
+    loanAmount?: string | null;
+    decision?: string | null;
+    createdAt: string;
+  }>;
+  documents: Array<{
+    id: string;
+    type: string;
+    uploadedAt: string;
+  }>;
+  offers: Array<{
+    id: string;
+    title: string;
+    price?: string | null;
+    availabilityStatus: string;
+    createdAt: string;
+  }>;
+  agreement?: {
+    id: string;
+    signatureStatus: string;
+    signedAt?: string | null;
+  } | null;
+}
+
+export interface LeadListFilters {
+  page?: number;
+  perPage?: number;
+  status?: LeadStatus | "";
+  search?: string;
+  assigned?: "unassigned" | "";
+}
+
+export interface LeadListResponse {
+  data: LeadSummary[];
+  meta: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export const fetchLeads = (token: string, filters: LeadListFilters = {}) => {
+  const params = new URLSearchParams();
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.perPage) params.set("perPage", String(filters.perPage));
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.assigned) params.set("assigned", filters.assigned);
+
+  const query = params.toString();
+  const path = `/api/leads${query ? `?${query}` : ""}`;
+
+  return apiFetch<LeadListResponse>(path, { token });
+};
+
+export const fetchLeadDetail = (token: string, id: string) =>
+  apiFetch<LeadDetail>(`/api/leads/${id}`, { token });
+
+export interface CreateLeadPayload {
+  partnerId?: string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+  };
+  desiredVehicle?: {
+    make?: string;
+    model?: string;
+    year?: number;
+    budget?: number;
+  };
+}
+
+export const createLead = (token: string, payload: CreateLeadPayload) =>
+  apiFetch<LeadSummary>("/api/leads", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
+export interface UpdateLeadStatusPayload {
+  status: LeadStatus;
+  notes?: string;
+  lastContactAt?: string;
+}
+
+export const updateLeadStatus = (
+  token: string,
+  leadId: string,
+  payload: UpdateLeadStatusPayload,
+) =>
+  apiFetch<LeadSummary>(`/api/leads/${leadId}/status`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
