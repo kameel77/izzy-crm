@@ -1,0 +1,16 @@
+services:
+  backend:
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - DATABASE_URL=postgresql://izzy:izzy@postgres:5432/izzy
+    volumes:
+      - ./apps/backend/src:/app/src
+      - ./apps/backend/tsconfig.json:/app/tsconfig.json
+
+  frontend:
+    environment:
+      - VITE_API_BASE_URL=http://localhost:4000
+    volumes:
+      - ./apps/frontend/src:/app/src
+      - ./apps/frontend/index.html:/app/index.html

@@ -1,1 +1,29 @@
+# Node / Monorepo
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Build Outputs
+dist/
+build/
+coverage/
+.next/
+
+# Environment & Secrets
+.env
+.env.*
+*.local
+certs/
+
+# Logs & Temp
+*.log
+*.tmp
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Local-only docs
 planning.md
+appFoundationRequirements.md

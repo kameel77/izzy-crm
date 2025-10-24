@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  reverse-proxy:
+    image: "caddy:2.7"
+    container_name: izzy_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ops/infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: izzy_frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_BASE_URL=${API_BASE_URL:-http://backend:4000}
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: izzy_backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://izzy:izzy@postgres:5432/izzy}
+    depends_on:
+      - postgres
+    ports:
+      - "4000:4000"
+
+  postgres:
+    image: postgres:15
+    container_name: izzy_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=izzy
+      - POSTGRES_USER=izzy
+      - POSTGRES_PASSWORD=izzy
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:
