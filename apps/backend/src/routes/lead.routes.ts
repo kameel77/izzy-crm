@@ -1,9 +1,14 @@
-import { UserRole } from "@prisma/client";
+import { LeadStatus, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
-import { createLead } from "../services/lead.service.js";
+import {
+  createLead,
+  getLeadById,
+  listLeads,
+  transitionLeadStatus,
+} from "../services/lead.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
@@ -49,6 +54,40 @@ const createLeadSchema = z.object({
     .optional(),
 });
 
+const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).optional(),
+  perPage: z.coerce.number().int().min(1).max(100).default(20).optional(),
+  status: z
+    .preprocess((value) => {
+      if (!value) return undefined;
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        return value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      return value;
+    }, z.array(z.nativeEnum(LeadStatus)).optional()),
+  partnerId: z.string().optional(),
+  assignedUserId: z.string().optional(),
+  assigned: z.enum(["unassigned"]).optional(),
+  search: z.string().optional(),
+});
+
+const leadIdParamSchema = z.object({
+  id: z.string().min(1),
+});
+
+const transitionSchema = z.object({
+  status: z.nativeEnum(LeadStatus),
+  notes: z.string().max(2000).optional(),
+  assignToUserId: z.string().optional(),
+  unassign: z.boolean().optional(),
+  lastContactAt: z.coerce.date().optional(),
+  nextActionAt: z.coerce.date().optional(),
+});
+
 router.post(
   "/",
   authorize(UserRole.PARTNER, UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
@@ -80,6 +119,158 @@ router.post(
       partnerId: lead.partnerId,
       leadCreatedAt: lead.leadCreatedAt,
     });
+  }),
+);
+
+router.get(
+  "/",
+  authorize(UserRole.PARTNER, UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const query = listQuerySchema.parse(req.query);
+
+    const page = query.page ?? 1;
+    const perPage = query.perPage ?? 20;
+    const skip = (page - 1) * perPage;
+
+    let partnerFilter = query.partnerId;
+
+    if (req.user?.role === UserRole.PARTNER) {
+      if (!req.user.partnerId) {
+        return res.status(403).json({ message: "Partner context is missing" });
+      }
+
+      if (partnerFilter && partnerFilter !== req.user.partnerId) {
+        return res
+          .status(403)
+          .json({ message: "Cannot view leads for other partners" });
+      }
+
+      partnerFilter = req.user.partnerId;
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (partnerFilter && partnerFilter !== req.user.partnerId) {
+        return res
+          .status(403)
+          .json({ message: "Cannot view leads for other partners" });
+      }
+
+      partnerFilter = req.user.partnerId;
+    }
+
+    let assignedFilter: string | null | undefined = undefined;
+    if (query.assigned === "unassigned") {
+      assignedFilter = null;
+    } else if (query.assignedUserId) {
+      assignedFilter = query.assignedUserId;
+    }
+
+    const { items, total } = await listLeads({
+      status: query.status,
+      partnerId: partnerFilter,
+      assignedUserId: assignedFilter,
+      search: query.search,
+      skip,
+      take: perPage,
+    });
+
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+    return res.json({
+      data: items,
+      meta: {
+        page,
+        perPage,
+        total,
+        totalPages,
+      },
+    });
+  }),
+);
+
+router.get(
+  "/:id",
+  authorize(UserRole.PARTNER, UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (req.user?.role === UserRole.PARTNER) {
+      if (!req.user.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    return res.json(lead);
+  }),
+);
+
+router.post(
+  "/:id/status",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = transitionSchema.parse(req.body);
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    let assignToUserId: string | null | undefined = undefined;
+    if (body.unassign) {
+      assignToUserId = null;
+    } else if (body.assignToUserId) {
+      assignToUserId = body.assignToUserId;
+    }
+
+    if (
+      req.user?.role === UserRole.OPERATOR &&
+      assignToUserId &&
+      assignToUserId !== req.user.id
+    ) {
+      return res.status(403).json({ message: "Cannot assign lead to another user" });
+    }
+
+    if (req.user?.role === UserRole.OPERATOR && body.unassign) {
+      return res.status(403).json({ message: "Cannot unassign lead" });
+    }
+
+    if (body.unassign && body.status !== LeadStatus.NEW_LEAD) {
+      return res
+        .status(400)
+        .json({ message: "Unassign is only allowed when returning to NEW_LEAD" });
+    }
+
+    if (assignToUserId && body.unassign) {
+      return res.status(400).json({ message: "Cannot assign and unassign simultaneously" });
+    }
+
+    const result = await transitionLeadStatus({
+      leadId: id,
+      targetStatus: body.status,
+      userId: req.user!.id,
+      notes: body.notes,
+      assignToUserId,
+      lastContactAt: body.lastContactAt,
+      nextActionAt: body.nextActionAt,
+    });
+
+    return res.json(result);
   }),
 );
 

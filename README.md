@@ -50,6 +50,17 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
   }
   ```
   > Partner users can omit `partnerId`; it will default to the partner associated with the token.
+- Lead listing: `GET http://localhost:4000/api/leads?page=1&perPage=20&status=NEW_LEAD,GET_INFO`
+  - Optional filters: `partnerId`, `assignedUserId`, `assigned=unassigned`, `search` (customer name/email/phone).
+- Lead detail: `GET http://localhost:4000/api/leads/{leadId}` returns full customer/vehicle/financing context and recent audit trail.
+- Lead status update: `POST http://localhost:4000/api/leads/{leadId}/status`
+  ```jsonc
+  {
+    "status": "LEAD_TAKEN",
+    "notes": "Called customer",
+    "lastContactAt": "2025-10-24T17:00:00.000Z"
+  }
+  ```
 
 ## Status
 Foundation documentation lives in `appFoundationRequirements.md` (excluded from VCS history). Planning milestones tracked in `planning.md`.

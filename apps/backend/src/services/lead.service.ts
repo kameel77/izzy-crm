@@ -5,6 +5,49 @@ import { prisma } from "../lib/prisma.js";
 const toJson = (value?: Record<string, unknown>) =>
   (value as Prisma.InputJsonValue | undefined);
 
+const leadSummarySelect = {
+  id: true,
+  status: true,
+  partnerId: true,
+  leadCreatedAt: true,
+  claimedAt: true,
+  lastContactAt: true,
+  nextActionAt: true,
+  assignedUser: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+    },
+  },
+  partner: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  customerProfile: {
+    select: {
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+    },
+  },
+} satisfies Prisma.LeadSelect;
+
+const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
+  NEW_LEAD: [LeadStatus.LEAD_TAKEN, LeadStatus.BANK_REJECTED],
+  LEAD_TAKEN: [LeadStatus.GET_INFO, LeadStatus.BANK_REJECTED, LeadStatus.NEW_LEAD],
+  GET_INFO: [LeadStatus.WAITING_FOR_BANK, LeadStatus.BANK_REJECTED, LeadStatus.CLIENT_REJECTED],
+  WAITING_FOR_BANK: [LeadStatus.WAITING_FOR_APPROVAL, LeadStatus.BANK_REJECTED],
+  WAITING_FOR_APPROVAL: [LeadStatus.CLIENT_ACCEPTED, LeadStatus.CLIENT_REJECTED],
+  BANK_REJECTED: [LeadStatus.GET_INFO, LeadStatus.NEW_LEAD],
+  CLIENT_ACCEPTED: [LeadStatus.AGREEMENT_SIGNED, LeadStatus.CLIENT_REJECTED],
+  CLIENT_REJECTED: [LeadStatus.GET_INFO],
+  AGREEMENT_SIGNED: [],
+};
+
 export interface CreateLeadInput {
   partnerId: string;
   sourceMetadata?: Record<string, unknown>;
@@ -124,4 +167,210 @@ export const createLead = async (input: CreateLeadInput) => {
 
     throw error;
   }
+};
+
+export interface LeadListFilters {
+  status?: LeadStatus[];
+  partnerId?: string;
+  assignedUserId?: string | null;
+  search?: string;
+  skip: number;
+  take: number;
+}
+
+export const listLeads = async (filters: LeadListFilters) => {
+  const where: Prisma.LeadWhereInput = {};
+
+  if (filters.status?.length) {
+    where.status = { in: filters.status };
+  }
+
+  if (typeof filters.assignedUserId !== "undefined") {
+    if (filters.assignedUserId === null) {
+      where.assignedUserId = null;
+    } else {
+      where.assignedUserId = filters.assignedUserId;
+    }
+  }
+
+  if (filters.partnerId) {
+    where.partnerId = filters.partnerId;
+  }
+
+  if (filters.search) {
+    const searchTerm = filters.search.trim();
+    if (searchTerm) {
+      where.OR = [
+        { customerProfile: { firstName: { contains: searchTerm, mode: "insensitive" } } },
+        { customerProfile: { lastName: { contains: searchTerm, mode: "insensitive" } } },
+        { customerProfile: { email: { contains: searchTerm, mode: "insensitive" } } },
+        { customerProfile: { phone: { contains: searchTerm, mode: "insensitive" } } },
+      ];
+    }
+  }
+
+  const [items, total] = await prisma.$transaction([
+    prisma.lead.findMany({
+      where,
+      orderBy: { leadCreatedAt: "desc" },
+      skip: filters.skip,
+      take: filters.take,
+      select: leadSummarySelect,
+    }),
+    prisma.lead.count({ where }),
+  ]);
+
+  return {
+    items,
+    total,
+  };
+};
+
+export const getLeadById = async (id: string) => {
+  const lead = await prisma.lead.findUnique({
+    where: { id },
+    include: {
+      partner: { select: { id: true, name: true } },
+      assignedUser: { select: { id: true, fullName: true, email: true } },
+      customerProfile: true,
+      vehicleCurrent: true,
+      vehicleDesired: true,
+      financingApps: {
+        orderBy: { createdAt: "desc" },
+      },
+      documents: {
+        orderBy: { uploadedAt: "desc" },
+      },
+      offers: {
+        orderBy: { createdAt: "desc" },
+      },
+      agreement: true,
+      reminders: {
+        orderBy: { dueAt: "asc" },
+      },
+      auditLogs: {
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      },
+    },
+  });
+
+  return lead;
+};
+
+export interface TransitionLeadInput {
+  leadId: string;
+  targetStatus: LeadStatus;
+  userId: string;
+  notes?: string;
+  assignToUserId?: string | null;
+  lastContactAt?: Date;
+  nextActionAt?: Date;
+}
+
+export const transitionLeadStatus = async (input: TransitionLeadInput) => {
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: {
+        id: true,
+        status: true,
+        assignedUserId: true,
+      },
+    });
+
+    if (!current) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    if (current.status === input.targetStatus) {
+      const error = new Error("Lead already in requested status");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }
+
+    const transitions = allowedTransitions[current.status] || [];
+    if (!transitions.includes(input.targetStatus)) {
+      const error = new Error("Status transition not allowed");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }
+
+    const data: Prisma.LeadUncheckedUpdateInput = {
+      status: input.targetStatus,
+    };
+
+    if (typeof input.assignToUserId !== "undefined") {
+      data.assignedUserId = input.assignToUserId;
+    }
+
+    if (input.targetStatus === LeadStatus.LEAD_TAKEN) {
+      data.assignedUserId = input.assignToUserId ?? input.userId;
+      data.claimedAt = new Date();
+    }
+
+    if (input.targetStatus === LeadStatus.NEW_LEAD) {
+      data.assignedUserId = null;
+      data.claimedAt = null;
+    }
+
+    if (input.lastContactAt) {
+      data.lastContactAt = input.lastContactAt;
+    }
+
+    if (input.nextActionAt) {
+      data.nextActionAt = input.nextActionAt;
+    }
+
+    if (typeof input.notes !== "undefined") {
+      data.notes = input.notes;
+    }
+
+    let updatedLead: Prisma.LeadGetPayload<{ select: typeof leadSummarySelect }>;
+
+    try {
+      updatedLead = await tx.lead.update({
+        where: { id: input.leadId },
+        data,
+        select: leadSummarySelect,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2025") {
+          const notFound = new Error("Lead not found");
+          (notFound as Error & { status: number }).status = 404;
+          throw notFound;
+        }
+
+        if (error.code === "P2003") {
+          const relationError = new Error("Related record not found");
+          (relationError as Error & { status: number }).status = 400;
+          throw relationError;
+        }
+      }
+
+      throw error;
+    }
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.userId,
+        action: "status_change",
+        field: "status",
+        oldValue: current.status,
+        newValue: input.targetStatus,
+        metadata: {
+          ...(input.notes ? { notes: input.notes } : {}),
+          ...(typeof input.assignToUserId !== "undefined"
+            ? { assignedUserId: input.assignToUserId }
+            : {}),
+        },
+      },
+    });
+
+    return updatedLead;
+  });
 };
