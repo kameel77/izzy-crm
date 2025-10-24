@@ -61,6 +61,25 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
     "lastContactAt": "2025-10-24T17:00:00.000Z"
   }
   ```
+- Financing data: `POST http://localhost:4000/api/leads/{leadId}/financing`
+  ```jsonc
+  {
+    "bank": "ABC Bank",
+    "loanAmount": 120000,
+    "downPayment": 10000,
+    "termMonths": 48,
+    "income": 7500,
+    "expenses": 3200,
+    "decision": "pending"
+  }
+  ```
+- Attach document metadata: `POST http://localhost:4000/api/leads/{leadId}/documents`
+  ```jsonc
+  {
+    "type": "agreement",
+    "filePath": "https://files.example.com/agreements/123.pdf"
+  }
+  ```
 - User admin (requires supervisor/admin token):
   - `GET http://localhost:4000/api/users?page=1&perPage=20`
   - `POST http://localhost:4000/api/users` to invite/create users

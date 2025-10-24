@@ -4,10 +4,12 @@ import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
 import {
+  addLeadDocument,
   createLead,
   getLeadById,
   listLeads,
   transitionLeadStatus,
+  upsertFinancingApplication,
 } from "../services/lead.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -86,6 +88,23 @@ const transitionSchema = z.object({
   unassign: z.boolean().optional(),
   lastContactAt: z.coerce.date().optional(),
   nextActionAt: z.coerce.date().optional(),
+});
+
+const financingSchema = z.object({
+  applicationId: z.string().optional(),
+  bank: z.string().min(1),
+  loanAmount: z.number().min(0).optional(),
+  downPayment: z.number().min(0).optional(),
+  termMonths: z.number().int().positive().optional(),
+  income: z.number().min(0).optional(),
+  expenses: z.number().min(0).optional(),
+  decision: z.string().optional(),
+});
+
+const documentSchema = z.object({
+  type: z.string().min(1),
+  filePath: z.string().min(1),
+  checksum: z.string().optional(),
 });
 
 router.post(
@@ -271,6 +290,69 @@ router.post(
     });
 
     return res.json(result);
+  }),
+);
+
+router.post(
+  "/:id/financing",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const payload = financingSchema.parse(req.body);
+
+    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      const lead = await getLeadById(id);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const application = await upsertFinancingApplication({
+      leadId: id,
+      applicationId: payload.applicationId,
+      bank: payload.bank,
+      loanAmount: payload.loanAmount,
+      downPayment: payload.downPayment,
+      termMonths: payload.termMonths,
+      income: payload.income,
+      expenses: payload.expenses,
+      decision: payload.decision,
+      userId: req.user!.id,
+    });
+
+    res.status(payload.applicationId ? 200 : 201).json(application);
+  }),
+);
+
+router.post(
+  "/:id/documents",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const payload = documentSchema.parse(req.body);
+
+    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      const lead = await getLeadById(id);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const document = await addLeadDocument({
+      leadId: id,
+      userId: req.user!.id,
+      type: payload.type,
+      filePath: payload.filePath,
+      checksum: payload.checksum,
+    });
+
+    res.status(201).json(document);
   }),
 );
 

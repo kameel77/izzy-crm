@@ -6,9 +6,12 @@ import {
   LeadListResponse,
   LeadSummary,
   createLead,
+  createLeadDocument,
   fetchLeadDetail,
   fetchLeads,
+  saveFinancingApplication,
   updateLeadStatus,
+  FinancingPayload,
 } from "../api/leads";
 import { CreateLeadForm } from "../components/CreateLeadForm";
 import { LeadDetailCard } from "../components/LeadDetailCard";
@@ -117,6 +120,34 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  const handleSaveFinancing = async (payload: FinancingPayload) => {
+    if (!token || !selectedLeadId) return;
+    setNotification(null);
+    setError(null);
+    try {
+      await saveFinancingApplication(token, selectedLeadId, payload);
+      setNotification("Financing info saved");
+      await loadLeadDetail(selectedLeadId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to save financing info");
+      throw err;
+    }
+  };
+
+  const handleAddDocument = async (payload: { type: string; filePath: string; checksum?: string }) => {
+    if (!token || !selectedLeadId) return;
+    setNotification(null);
+    setError(null);
+    try {
+      await createLeadDocument(token, selectedLeadId, payload);
+      setNotification("Document saved");
+      await loadLeadDetail(selectedLeadId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to save document");
+      throw err;
+    }
+  };
+
   const metaSummary = useMemo(() => {
     if (!leadMeta) return "";
     return `${leadMeta.total} total leads`;
@@ -160,10 +191,10 @@ export const DashboardPage: React.FC = () => {
           ) : null}
           <LeadDetailCard
             lead={selectedLead}
-            onRefresh={() =>
-              selectedLeadId ? loadLeadDetail(selectedLeadId) : undefined
-            }
+            onRefresh={() => (selectedLeadId ? loadLeadDetail(selectedLeadId) : undefined)}
             onStatusUpdate={handleStatusUpdate}
+            onSaveFinancing={handleSaveFinancing}
+            onAddDocument={handleAddDocument}
           />
         </div>
       </div>

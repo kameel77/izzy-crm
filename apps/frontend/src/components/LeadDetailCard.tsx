@@ -1,19 +1,25 @@
 import React from "react";
 
-import { LeadDetail } from "../api/leads";
+import { LeadDetail, FinancingPayload } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
+import { DocumentForm } from "./DocumentForm";
+import { FinancingForm } from "./FinancingForm";
 import { StatusUpdateForm } from "./StatusUpdateForm";
 
 interface LeadDetailCardProps {
   lead: LeadDetail | null;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   onStatusUpdate: (payload: { status: LeadStatus; notes?: string }) => Promise<void>;
+  onSaveFinancing: (payload: FinancingPayload) => Promise<void>;
+  onAddDocument: (payload: { type: string; filePath: string; checksum?: string }) => Promise<void>;
 }
 
 export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   lead,
   onRefresh,
   onStatusUpdate,
+  onSaveFinancing,
+  onAddDocument,
 }) => {
   if (!lead) {
     return (
@@ -79,6 +85,39 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       </div>
 
       <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
+
+      <FinancingForm
+        application={lead.financingApps[0] ?? null}
+        onSave={async (payload) => {
+          await onSaveFinancing(payload);
+          onRefresh();
+        }}
+      />
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Documents</h3>
+        <ul style={styles.docList}>
+          {lead.documents.length ? (
+            lead.documents.map((doc) => (
+              <li key={doc.id} style={styles.docItem}>
+                <div>
+                  <strong>{doc.type}</strong>
+                  <div style={styles.subtleText}>{doc.filePath}</div>
+                </div>
+                <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
+              </li>
+            ))
+          ) : (
+            <li style={styles.subtleText}>No documents yet.</li>
+          )}
+        </ul>
+        <DocumentForm
+          onSubmit={async (payload) => {
+            await onAddDocument(payload);
+            onRefresh();
+          }}
+        />
+      </div>
     </section>
   );
 };
@@ -165,5 +204,21 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#1d4ed8",
     fontSize: "0.85rem",
     fontWeight: 600,
+  },
+  docList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  docItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    padding: "0.75rem 1rem",
   },
 };

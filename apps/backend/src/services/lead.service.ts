@@ -1,4 +1,4 @@
-import { LeadStatus, Prisma } from "@prisma/client";
+import { BankDecisionStatus, LeadStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 
@@ -373,4 +373,139 @@ export const transitionLeadStatus = async (input: TransitionLeadInput) => {
 
     return updatedLead;
   });
+};
+
+interface FinancingPayload {
+  bank: string;
+  loanAmount?: number;
+  downPayment?: number;
+  termMonths?: number;
+  income?: number;
+  expenses?: number;
+  decision?: string;
+}
+
+export interface UpsertFinancingInput extends FinancingPayload {
+  leadId: string;
+  applicationId?: string;
+  userId: string;
+}
+
+const toDecimal = (value?: number) =>
+  typeof value === "number" ? new Prisma.Decimal(value) : undefined;
+
+const parseDecision = (value?: string): BankDecisionStatus | null => {
+  if (!value) return null;
+  const upper = value.toUpperCase() as BankDecisionStatus;
+  if (["PENDING", "APPROVED", "REJECTED"].includes(upper)) {
+    return upper;
+  }
+  return null;
+};
+
+export const upsertFinancingApplication = async (input: UpsertFinancingInput) => {
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: { id: true },
+    });
+
+    if (!lead) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    const decisionValue = parseDecision(input.decision);
+
+    const data: Prisma.FinancingApplicationUncheckedCreateInput = {
+      leadId: input.leadId,
+      bank: input.bank,
+      loanAmount: toDecimal(input.loanAmount) ?? null,
+      downPayment: toDecimal(input.downPayment) ?? null,
+      termMonths: input.termMonths ?? null,
+      income: toDecimal(input.income) ?? null,
+      expenses: toDecimal(input.expenses) ?? null,
+      decision: decisionValue,
+    };
+
+    const auditPayload = {
+      bank: input.bank,
+      loanAmount: input.loanAmount ?? null,
+      downPayment: input.downPayment ?? null,
+      termMonths: input.termMonths ?? null,
+      income: input.income ?? null,
+      expenses: input.expenses ?? null,
+      decision: decisionValue,
+    } satisfies Record<string, unknown>;
+
+    let application;
+
+    if (input.applicationId) {
+      const existing = await tx.financingApplication.findUnique({
+        where: { id: input.applicationId },
+        select: { id: true, leadId: true },
+      });
+
+      if (!existing || existing.leadId !== input.leadId) {
+        const error = new Error("Financing application not found");
+        (error as Error & { status: number }).status = 404;
+        throw error;
+      }
+
+      application = await tx.financingApplication.update({
+        where: { id: input.applicationId },
+        data,
+      });
+    } else {
+      application = await tx.financingApplication.create({ data });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.userId,
+        action: "financing_update",
+        field: "financing",
+        oldValue: input.applicationId
+          ? ({ applicationId: input.applicationId } as Prisma.InputJsonValue)
+          : undefined,
+        newValue: auditPayload as Prisma.InputJsonValue,
+      },
+    });
+
+    return application;
+  });
+};
+
+export interface AddDocumentInput {
+  leadId: string;
+  userId: string;
+  type: string;
+  filePath: string;
+  checksum?: string;
+}
+
+export const addLeadDocument = async (input: AddDocumentInput) => {
+  const document = await prisma.document.create({
+    data: {
+      leadId: input.leadId,
+      type: input.type,
+      filePath: input.filePath,
+      uploadedBy: input.userId,
+      checksum: input.checksum,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      leadId: input.leadId,
+      userId: input.userId,
+      action: "document_added",
+      field: "document",
+      newValue: { id: document.id, type: document.type, filePath: document.filePath },
+    },
+  });
+
+  return document;
 };

@@ -148,3 +148,56 @@ export const updateLeadStatus = (
     token,
     body: JSON.stringify(payload),
   });
+
+export interface FinancingApplication {
+  id: string;
+  leadId: string;
+  bank: string;
+  loanAmount?: string | null;
+  downPayment?: string | null;
+  termMonths?: number | null;
+  income?: string | null;
+  expenses?: string | null;
+  decision?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancingPayload {
+  applicationId?: string;
+  bank: string;
+  loanAmount?: number;
+  downPayment?: number;
+  termMonths?: number;
+  income?: number;
+  expenses?: number;
+  decision?: string;
+}
+
+export const saveFinancingApplication = (
+  token: string,
+  leadId: string,
+  payload: FinancingPayload,
+) =>
+  apiFetch<FinancingApplication>(`/api/leads/${leadId}/financing`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
+export interface CreateDocumentPayload {
+  type: string;
+  filePath: string;
+  checksum?: string;
+}
+
+export const createLeadDocument = (
+  token: string,
+  leadId: string,
+  payload: CreateDocumentPayload,
+) =>
+  apiFetch<{ id: string }>(`/api/leads/${leadId}/documents`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
