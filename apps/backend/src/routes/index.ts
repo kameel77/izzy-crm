@@ -4,6 +4,7 @@ import { authenticate } from "../middlewares/authenticate.js";
 
 import { authRouter } from "./auth.routes.js";
 import { leadRouter } from "./lead.routes.js";
+import { userRouter } from "./user.routes.js";
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.get("/health", (_req, res) => {
 
 router.use("/auth", authRouter);
 router.use("/leads", authenticate, leadRouter);
+router.use("/users", authenticate, userRouter);
 
 export { router };

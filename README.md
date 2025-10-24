@@ -61,6 +61,11 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
     "lastContactAt": "2025-10-24T17:00:00.000Z"
   }
   ```
+- User admin (requires supervisor/admin token):
+  - `GET http://localhost:4000/api/users?page=1&perPage=20`
+  - `POST http://localhost:4000/api/users` to invite/create users
+  - `PATCH http://localhost:4000/api/users/{userId}` to update role/status/contact
+  - `POST http://localhost:4000/api/users/{userId}/reset-password`
 
 ## Status
 Foundation documentation lives in `appFoundationRequirements.md` (excluded from VCS history). Planning milestones tracked in `planning.md`.
