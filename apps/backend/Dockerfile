@@ -1,18 +1,27 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY package.json tsconfig.json ./
-COPY src ./src
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY apps/backend/package.json ./apps/backend/package.json
+COPY apps/backend/tsconfig.json ./apps/backend/tsconfig.json
+COPY apps/backend/src ./apps/backend/src
+COPY prisma ./prisma
 
-RUN npm install --production=false && npm run build
+WORKDIR /app/apps/backend
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+RUN npm install --production=false \
+  && npm run prisma:generate \
+  && npm run build
 
 FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=base /app/package.json ./package.json
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/dist ./dist
+COPY --from=builder /app/apps/backend/package.json .
+COPY --from=builder /app/apps/backend/package-lock.json .
+COPY --from=builder /app/apps/backend/node_modules ./node_modules
+COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 CMD ["node", "dist/server.js"]
