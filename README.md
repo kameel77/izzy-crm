@@ -86,5 +86,10 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
   - `PATCH http://localhost:4000/api/users/{userId}` to update role/status/contact
   - `POST http://localhost:4000/api/users/{userId}/reset-password`
 
+## Frontend Routes
+- Login: `http://localhost:5173/login`
+- Operator dashboard: `http://localhost:5173/leads`
+- User administration (admins & supervisors): `http://localhost:5173/admin/users`
+
 ## Status
 Foundation documentation lives in `appFoundationRequirements.md` (excluded from VCS history). Planning milestones tracked in `planning.md`.

@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { UserAdminPage } from "./pages/UserAdminPage";
 
 export const App: React.FC = () => {
   const { user } = useAuth();
@@ -20,6 +21,14 @@ export const App: React.FC = () => {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute>
+            <UserAdminPage />
           </ProtectedRoute>
         }
       />
