@@ -34,7 +34,7 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
       setStatus(user.status);
       setPartnerId(user.partner?.id ?? "");
     }
-  }, [user?.id]);
+  }, [user]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

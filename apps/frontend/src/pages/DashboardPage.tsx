@@ -18,9 +18,11 @@ import { LeadDetailCard } from "../components/LeadDetailCard";
 import { LeadList } from "../components/LeadList";
 import { LeadStatus } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
+import { useToasts } from "../hooks/useToasts";
 
 export const DashboardPage: React.FC = () => {
   const { token, user } = useAuth();
+  const toast = useToasts();
   const perPage = 25;
   const [leadList, setLeadList] = useState<LeadSummary[]>([]);
   const [leadMeta, setLeadMeta] = useState<LeadListResponse["meta"] | null>(null);
@@ -124,10 +126,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       const lead = await createLead(token, payload);
-      setNotification(`Lead ${lead.id} created`);
+      toast.success(`Lead ${lead.id} created`);
       await loadLeads({ selectLeadId: lead.id });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create lead");
+      const message = err instanceof ApiError ? err.message : "Failed to create lead";
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -137,11 +141,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       await updateLeadStatus(token, selectedLeadId, payload);
-      setNotification("Lead status updated");
+      toast.success("Lead status updated");
       await loadLeads({ selectLeadId: selectedLeadId });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update status";
       setError(message);
+      toast.error(message);
       throw (err instanceof Error ? err : new Error(message));
     }
   };
@@ -152,10 +157,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       await saveFinancingApplication(token, selectedLeadId, payload);
-      setNotification("Financing info saved");
+      toast.success("Financing info saved");
       await loadLeadDetail(selectedLeadId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save financing info");
+      const message = err instanceof ApiError ? err.message : "Failed to save financing info";
+      setError(message);
+      toast.error(message);
       throw err;
     }
   };
@@ -166,10 +173,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       await uploadLeadDocument(token, selectedLeadId, payload);
-      setNotification("Document uploaded");
+      toast.success("Document uploaded");
       await loadLeadDetail(selectedLeadId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to upload document");
+      const message = err instanceof ApiError ? err.message : "Failed to upload document";
+      setError(message);
+      toast.error(message);
       throw err;
     }
   };
@@ -229,18 +238,20 @@ export const DashboardPage: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    padding: "6rem 2rem 2rem",
-    minHeight: "100vh",
-    background: "#f3f4f6",
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
     display: "flex",
     flexDirection: "column",
     gap: "1.5rem",
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   },
   pageHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    padding: "1.5rem",
+    borderRadius: "1rem",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
   },
   heading: {
     margin: 0,

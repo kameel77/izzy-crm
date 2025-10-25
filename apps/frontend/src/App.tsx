@@ -1,19 +1,20 @@
 import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { AppHeader } from "./components/AppHeader";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UserAdminPage } from "./pages/UserAdminPage";
+import { AppLayout } from "./components/AppLayout";
+import { ToastProvider } from "./providers/ToastProvider";
 
 export const App: React.FC = () => {
   const { user } = useAuth();
 
   return (
     <>
-      {user ? <AppHeader /> : null}
+      <ToastProvider />
       <Routes>
         <Route
           path="/login"
@@ -23,7 +24,9 @@ export const App: React.FC = () => {
           path="/leads/*"
           element={
             <ProtectedRoute>
-              <DashboardPage />
+              <AppLayout>
+                <DashboardPage />
+              </AppLayout>
             </ProtectedRoute>
           }
         />
@@ -31,7 +34,9 @@ export const App: React.FC = () => {
           path="/admin/users"
           element={
             <ProtectedRoute roles={['ADMIN', 'SUPERVISOR']}>
-              <UserAdminPage />
+              <AppLayout>
+                <UserAdminPage />
+              </AppLayout>
             </ProtectedRoute>
           }
         />

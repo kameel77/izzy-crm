@@ -17,9 +17,16 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "prisma": "^6.18.0"
+    "prisma": "^6.18.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "typescript": "5.5.4"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.917.0"
+    "@aws-sdk/client-s3": "^3.917.0",
+    "react-hot-toast": "^2.6.0"
   }
 }

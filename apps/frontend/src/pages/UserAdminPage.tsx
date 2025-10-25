@@ -113,9 +113,6 @@ export const UserAdminPage: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    padding: "6rem 2rem 2rem",
-    minHeight: "100vh",
-    background: "#f3f4f6",
     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
     display: "flex",
     flexDirection: "column",
@@ -127,6 +124,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "flex-start",
     gap: "1rem",
     flexWrap: "wrap",
+    padding: "1.5rem",
+    borderRadius: "1rem",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
   },
   heading: {
     margin: 0,
