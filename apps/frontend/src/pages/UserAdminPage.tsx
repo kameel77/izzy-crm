@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 
 import { UpdateUserPayload, UserSummary } from "../api/users";
 import { UserForm } from "../components/UserForm";
@@ -23,12 +22,9 @@ export const UserAdminPage: React.FC = () => {
   } = useUserAdmin({ initialFilters: { perPage: 20, page: 1 } });
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
 
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPERVISOR";
-
   useEffect(() => {
-    if (!canManage) return;
     loadUsers();
-  }, [loadUsers, canManage]);
+  }, [loadUsers]);
 
   const handleSelectUser = (u: UserSummary) => {
     setSelectedUser(u);
@@ -51,10 +47,6 @@ export const UserAdminPage: React.FC = () => {
   };
 
   const isAdmin = user?.role === "ADMIN";
-
-  if (!canManage) {
-    return <Navigate to="/leads" replace />;
-  }
 
   return (
       <div style={styles.page}>
@@ -121,7 +113,7 @@ export const UserAdminPage: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    padding: "2rem",
+    padding: "6rem 2rem 2rem",
     minHeight: "100vh",
     background: "#f3f4f6",
     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",

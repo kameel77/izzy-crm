@@ -20,7 +20,7 @@ import { LeadStatus } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
 
 export const DashboardPage: React.FC = () => {
-  const { token, user, logout } = useAuth();
+  const { token, user } = useAuth();
   const perPage = 25;
   const [leadList, setLeadList] = useState<LeadSummary[]>([]);
   const [leadMeta, setLeadMeta] = useState<LeadListResponse["meta"] | null>(null);
@@ -181,17 +181,14 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div style={styles.page}>
-      <header style={styles.topbar}>
+      <div style={styles.pageHeader}>
         <div>
           <h1 style={styles.heading}>Lead Dashboard</h1>
           <p style={styles.meta}>
             Signed in as <strong>{user?.fullName || user?.email}</strong> · {metaSummary}
           </p>
         </div>
-        <button style={styles.logout} onClick={logout}>
-          Log out
-        </button>
-      </header>
+      </div>
 
       {notification ? <div style={styles.notice}>{notification}</div> : null}
       {error ? <div style={styles.error}>{error}</div> : null}
@@ -232,7 +229,7 @@ export const DashboardPage: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    padding: "2rem",
+    padding: "6rem 2rem 2rem",
     minHeight: "100vh",
     background: "#f3f4f6",
     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
@@ -240,11 +237,10 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: "1.5rem",
   },
-  topbar: {
+  pageHeader: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    gap: "1rem",
+    alignItems: "flex-start",
   },
   heading: {
     margin: 0,
@@ -253,13 +249,6 @@ const styles: Record<string, React.CSSProperties> = {
   meta: {
     margin: "0.25rem 0 0",
     color: "#6b7280",
-  },
-  logout: {
-    padding: "0.5rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    cursor: "pointer",
   },
   notice: {
     padding: "0.75rem",
