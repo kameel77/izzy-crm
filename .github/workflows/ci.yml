@@ -22,17 +22,14 @@ jobs:
       - name: Install root dependencies
         run: npm install
 
-      - name: Lint & Test Frontend
-        working-directory: apps/frontend
-        run: |
-          npm install
-          npm run build
+      - name: Lint Frontend
+        run: npm run lint --workspace=@izzy-crm/frontend
 
       - name: Build Backend
-        working-directory: apps/backend
-        run: |
-          npm install
-          npm run build
+        run: npm run build --workspace=@izzy-crm/backend
+
+      - name: Build Frontend
+        run: npm run build --workspace=@izzy-crm/frontend
 
       - name: Docker Compose Build
         run: docker compose build
