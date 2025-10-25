@@ -197,3 +197,79 @@ docker compose exec backend npx prisma migrate deploy
 | Prisma seed (prod)          | `docker compose exec backend npm run prisma:seed`    |
 
 Keep this file updated as the deployment pipeline evolves (e.g., when CI/CD replaces manual steps or new services are introduced).
+
+---
+
+## 5. Environment Strategy & Best Practices
+
+### 5.1 Separate Staging & Production
+- **Purpose**: keep a safe buffer between new code and customers.
+- Run staging on a distinct VPS (or Compose overlay) mirroring production configuration.
+- Maintain separate `.env` files, secrets, and database instances per environment.
+- Apply migrations and Docker updates to staging first; run smoke tests before promoting to prod.
+- Use anonymised production snapshots when seeding staging (never expose raw PII).
+- Restrict access to staging (VPN/IP allowlist) to avoid customer contact or data leakage.
+
+### 5.2 Suggested Release Flow
+1. Merge feature → CI builds → Deploy to staging (`./ops/scripts/deploy.sh user@staging-host`).
+2. QA/Regression testing on staging: API health, UI flows, migrations.
+3. Promote to production: deploy to prod host, run `prisma migrate deploy`, smoke-test.
+4. Maintain rollback assets (previous Docker image tag & latest DB backup) in case of regression.
+
+### 5.3 Operational Security
+- Use unique, strong `JWT_SECRET`, DB passwords, and TLS certs per environment.
+- SSH hardening: key-based auth, disable root login, audit `authorized_keys`.
+- Ensure Postgres listens only inside Docker network (default) and block external 5432 in `ufw`.
+- Rotate secrets periodically; store them in a password manager or secret manager.
+- Monitor logs and consider alerting (UptimeRobot, healthchecks.io, Loki/Grafana).
+
+---
+
+## 6. Backup & Restore Procedures
+
+### 6.1 Logical Database Backups
+Automate nightly dumps on each VPS:
+```bash
+mkdir -p ~/backups/postgres
+crontab -e
+# 01:00 daily
+0 1 * * * docker compose exec -T postgres pg_dump -U izzy izzy > ~/backups/postgres/izzy-$(date +\%F).sql
+```
+- Compress (`gzip`) and sync offsite (Hetzner Storage Box, S3) via `rclone`/`rsync`.
+- Retain a rotation (e.g., 7 daily + 4 weekly + 6 monthly snapshots).
+
+### 6.2 Application Assets
+If documents live on local volume (e.g., `./data/documents`), archive regularly:
+```bash
+tar czf ~/backups/app-docs-$(date +%F).tar.gz data/documents
+```
+For S3 or object storage, enable versioning and lifecycle rules.
+
+### 6.3 Database Restore
+1. Stop backend: `docker compose stop backend`.
+2. Restore dump:
+   ```bash
+   docker compose exec -T postgres psql -U izzy izzy < ~/backups/postgres/izzy-2025-10-24.sql
+   ```
+3. Restart backend & run migrations: `docker compose start backend` then `docker compose exec backend npx prisma migrate deploy`.
+4. Verify logins and core flows.
+
+### 6.4 Document Restore
+```bash
+tar xzf ~/backups/app-docs-2025-10-24.tar.gz -C data/
+chown -R deploy:deploy data/documents
+```
+
+### 6.5 Backup Testing
+- Quarterly restore drill on staging to validate dumps.
+- Monitor cron logs/alerts for failures.
+- Document restore steps in your ops runbook and keep sample data sets handy.
+
+---
+
+## 7. Security Maintenance Checklist
+- Patch OS monthly (`sudo apt update && sudo apt upgrade`).
+- Refresh Docker images before deployments (`docker compose pull`).
+- Review firewall rules (`ufw status`) and SSH accounts quarterly.
+- Ensure TLS certificate auto-renewal (Caddy) is functioning.
+- Consider centralised logging and monitoring as traffic grows.
