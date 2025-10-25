@@ -13,6 +13,13 @@ interface LeadListProps {
   statusFilter: LeadStatus | "";
   search: string;
   onSearchChange: (value: string) => void;
+  meta?: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  } | null;
+  onPageChange: (page: number) => void;
 }
 
 export const LeadList: React.FC<LeadListProps> = ({
@@ -25,7 +32,12 @@ export const LeadList: React.FC<LeadListProps> = ({
   onStatusFilterChange,
   search,
   onSearchChange,
+  meta,
+  onPageChange,
 }) => {
+  const page = meta?.page ?? 1;
+  const totalPages = meta?.totalPages ?? 1;
+
   return (
     <section style={styles.container}>
       <header style={styles.header}>
@@ -52,7 +64,9 @@ export const LeadList: React.FC<LeadListProps> = ({
             Refresh
           </button>
         </div>
-        <span style={styles.count}>{leads.length} results</span>
+        <span style={styles.count}>
+          {meta ? `${meta.total} results` : `${leads.length} results`}
+        </span>
       </header>
 
       <div style={styles.tableWrapper}>
@@ -107,6 +121,28 @@ export const LeadList: React.FC<LeadListProps> = ({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div style={styles.pagination}>
+        <button
+          type="button"
+          style={styles.paginationButton}
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1 || isLoading}
+        >
+          Previous
+        </button>
+        <span style={styles.paginationInfo}>
+          Page {page} of {totalPages}
+        </span>
+        <button
+          type="button"
+          style={styles.paginationButton}
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages || isLoading}
+        >
+          Next
+        </button>
       </div>
     </section>
   );
@@ -183,6 +219,25 @@ const styles: Record<string, React.CSSProperties> = {
   count: {
     fontSize: "0.9rem",
     color: "#6b7280",
+  },
+  pagination: {
+    marginTop: "0.5rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem",
+  },
+  paginationButton: {
+    padding: "0.5rem 0.9rem",
+    borderRadius: 8,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    cursor: "pointer",
+    minWidth: 100,
+  },
+  paginationInfo: {
+    fontSize: "0.9rem",
+    color: "#4b5563",
   },
   subtleText: {
     color: "#6b7280",

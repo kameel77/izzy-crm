@@ -251,6 +251,15 @@ export const getLeadById = async (id: string) => {
       auditLogs: {
         orderBy: { createdAt: "desc" },
         take: 50,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
       },
     },
   });

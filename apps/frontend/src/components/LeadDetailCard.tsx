@@ -118,6 +118,27 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           }}
         />
       </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Recent Activity</h3>
+        <ul style={styles.auditList}>
+          {lead.auditLogs.length ? (
+            lead.auditLogs.map((log) => (
+              <li key={log.id} style={styles.auditItem}>
+                <div>
+                  <strong>{formatAuditAction(log.action, log.field)}</strong>
+                  <div style={styles.auditMeta}>
+                    {log.user?.fullName || "System"} · {new Date(log.createdAt).toLocaleString()}
+                  </div>
+                  {renderAuditDetails(log)}
+                </div>
+              </li>
+            ))
+          ) : (
+            <li style={styles.subtleText}>No activity logged yet.</li>
+          )}
+        </ul>
+      </div>
     </section>
   );
 };
@@ -128,6 +149,59 @@ const InfoItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, 
     <span>{value}</span>
   </div>
 );
+
+const formatAuditAction = (action: string, field?: string | null) => {
+  switch (action) {
+    case "status_change":
+      return "Lead status updated";
+    case "financing_update":
+      return "Financing data saved";
+    case "document_added":
+      return "Document attached";
+    default:
+      return field ? `${action} (${field})` : action;
+  }
+};
+
+const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
+  if (log.action === "status_change" && typeof log.newValue === "string") {
+    return <div style={styles.auditDetails}>Status: {LEAD_STATUS_LABELS[log.newValue as LeadStatus] || log.newValue}</div>;
+  }
+
+  if (log.action === "document_added" && log.metadata) {
+    const doc = log.metadata as { type?: string; filePath?: string };
+    return (
+      <div style={styles.auditDetails}>
+        {doc.type ? <div>Type: {doc.type}</div> : null}
+        {doc.filePath ? <div>Path: {doc.filePath}</div> : null}
+      </div>
+    );
+  }
+
+  if (log.action === "financing_update" && log.newValue) {
+    const payload = log.newValue as Record<string, unknown>;
+    return (
+      <div style={styles.auditDetails}>
+        {Object.entries(payload)
+          .filter(([, value]) => value !== null && value !== undefined && value !== "")
+          .slice(0, 4)
+          .map(([key, value]) => (
+            <div key={key}>
+              {key}: {String(value)}
+            </div>
+          ))}
+      </div>
+    );
+  }
+
+  if (log.metadata) {
+    return (
+      <div style={styles.auditDetails}>{JSON.stringify(log.metadata)}</div>
+    );
+  }
+
+  return null;
+};
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -220,5 +294,30 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #e5e7eb",
     borderRadius: 10,
     padding: "0.75rem 1rem",
+  },
+  auditList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  auditItem: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    padding: "0.75rem 1rem",
+    background: "#f8fafc",
+  },
+  auditMeta: {
+    fontSize: "0.8rem",
+    color: "#6b7280",
+    marginTop: "0.25rem",
+  },
+  auditDetails: {
+    marginTop: "0.5rem",
+    fontSize: "0.85rem",
+    color: "#4b5563",
+    lineHeight: 1.4,
   },
 };

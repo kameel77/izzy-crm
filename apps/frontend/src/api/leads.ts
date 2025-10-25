@@ -72,6 +72,20 @@ export interface LeadDetail extends LeadSummary {
     signatureStatus: string;
     signedAt?: string | null;
   } | null;
+  auditLogs: Array<{
+    id: string;
+    action: string;
+    field?: string | null;
+    metadata?: Record<string, unknown> | null;
+    oldValue?: unknown;
+    newValue?: unknown;
+    createdAt: string;
+    user?: {
+      id: string;
+      fullName: string;
+      email: string;
+    } | null;
+  }>;
 }
 
 export interface LeadListFilters {

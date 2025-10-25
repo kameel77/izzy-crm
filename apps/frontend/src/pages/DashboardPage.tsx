@@ -21,9 +21,11 @@ import { useAuth } from "../hooks/useAuth";
 
 export const DashboardPage: React.FC = () => {
   const { token, user, logout } = useAuth();
+  const perPage = 25;
   const [leadList, setLeadList] = useState<LeadSummary[]>([]);
   const [leadMeta, setLeadMeta] = useState<LeadListResponse["meta"] | null>(null);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const [page, setPage] = useState(1);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<LeadDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -31,40 +33,6 @@ export const DashboardPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [notification, setNotification] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const loadLeads = useCallback(
-    async (options?: { selectLeadId?: string }) => {
-      if (!token) return;
-      setIsLoadingLeads(true);
-      setError(null);
-      try {
-        const response = await fetchLeads(token, {
-          page: 1,
-          perPage: 25,
-          status: statusFilter,
-          search: search.trim() || undefined,
-        });
-        setLeadList(response.data);
-        setLeadMeta(response.meta);
-        const idToSelect =
-          options?.selectLeadId ||
-          selectedLeadId ||
-          response.data[0]?.id ||
-          null;
-        setSelectedLeadId(idToSelect);
-        if (idToSelect) {
-          await loadLeadDetail(idToSelect);
-        } else {
-          setSelectedLead(null);
-        }
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Failed to load leads");
-      } finally {
-        setIsLoadingLeads(false);
-      }
-    },
-    [token, statusFilter, search, selectedLeadId],
-  );
 
   const loadLeadDetail = useCallback(
     async (leadId: string) => {
@@ -83,9 +51,67 @@ export const DashboardPage: React.FC = () => {
     [token],
   );
 
+  const loadLeads = useCallback(
+    async (options?: { selectLeadId?: string; pageOverride?: number }) => {
+      if (!token) return;
+      setIsLoadingLeads(true);
+      setError(null);
+      try {
+        const targetPage = options?.pageOverride ?? page;
+        const response = await fetchLeads(token, {
+          page: targetPage,
+          perPage,
+          status: statusFilter,
+          search: search.trim() || undefined,
+        });
+        setLeadList(response.data);
+        setLeadMeta(response.meta);
+        setPage(response.meta.page);
+        const idToSelect =
+          options?.selectLeadId ||
+          selectedLeadId ||
+          response.data[0]?.id ||
+          null;
+        setSelectedLeadId(idToSelect);
+        if (idToSelect) {
+          await loadLeadDetail(idToSelect);
+        } else {
+          setSelectedLead(null);
+        }
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Failed to load leads");
+      } finally {
+        setIsLoadingLeads(false);
+      }
+    },
+    [token, statusFilter, search, page, perPage, selectedLeadId, loadLeadDetail],
+  );
+
   useEffect(() => {
     loadLeads();
   }, [loadLeads]);
+
+  const handlePageChange = (nextPage: number) => {
+    if (!leadMeta) {
+      setPage(nextPage);
+      return;
+    }
+    if (nextPage < 1 || nextPage > leadMeta.totalPages) return;
+    setPage(nextPage);
+    loadLeads({ pageOverride: nextPage, selectLeadId: selectedLeadId ?? undefined });
+  };
+
+  const handleStatusFilterChange = (value: LeadStatus | "") => {
+    setStatusFilter(value);
+    setPage(1);
+    loadLeads({ pageOverride: 1, selectLeadId: selectedLeadId ?? undefined });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+    loadLeads({ pageOverride: 1, selectLeadId: selectedLeadId ?? undefined });
+  };
 
   const handleSelectLead = async (leadId: string) => {
     setSelectedLeadId(leadId);
@@ -180,9 +206,11 @@ export const DashboardPage: React.FC = () => {
             onSelect={handleSelectLead}
             onRefresh={() => loadLeads({ selectLeadId: selectedLeadId ?? undefined })}
             statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
+            onStatusFilterChange={handleStatusFilterChange}
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
+            meta={leadMeta}
+            onPageChange={handlePageChange}
           />
         </div>
         <div style={styles.rightColumn}>
