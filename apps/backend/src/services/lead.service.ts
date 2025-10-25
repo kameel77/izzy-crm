@@ -493,6 +493,9 @@ export interface AddDocumentInput {
   type: string;
   filePath: string;
   checksum?: string;
+  originalName?: string;
+  mimeType?: string;
+  size?: number;
 }
 
 export const addLeadDocument = async (input: AddDocumentInput) => {
@@ -512,7 +515,14 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
       userId: input.userId,
       action: "document_added",
       field: "document",
-      newValue: { id: document.id, type: document.type, filePath: document.filePath },
+      newValue: {
+        id: document.id,
+        type: document.type,
+        filePath: document.filePath,
+        originalName: input.originalName,
+        mimeType: input.mimeType,
+        size: input.size,
+      } as Prisma.InputJsonValue,
     },
   });
 

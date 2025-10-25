@@ -58,7 +58,9 @@ export interface LeadDetail extends LeadSummary {
   documents: Array<{
     id: string;
     type: string;
+    filePath: string;
     uploadedAt: string;
+    checksum?: string | null;
   }>;
   offers: Array<{
     id: string;
@@ -201,17 +203,25 @@ export const saveFinancingApplication = (
 
 export interface CreateDocumentPayload {
   type: string;
-  filePath: string;
+  file: File;
   checksum?: string;
 }
 
-export const createLeadDocument = (
+export const uploadLeadDocument = (
   token: string,
   leadId: string,
   payload: CreateDocumentPayload,
-) =>
-  apiFetch<{ id: string }>(`/api/leads/${leadId}/documents`, {
+) => {
+  const formData = new FormData();
+  formData.append("file", payload.file);
+  formData.append("type", payload.type);
+  if (payload.checksum) {
+    formData.append("checksum", payload.checksum);
+  }
+
+  return apiFetch<{ id: string }>(`/api/leads/${leadId}/documents/upload`, {
     method: "POST",
     token,
-    body: JSON.stringify(payload),
+    body: formData,
   });
+};

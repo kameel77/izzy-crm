@@ -6,11 +6,11 @@ import {
   LeadListResponse,
   LeadSummary,
   createLead,
-  createLeadDocument,
   fetchLeadDetail,
   fetchLeads,
   saveFinancingApplication,
   updateLeadStatus,
+  uploadLeadDocument,
   FinancingPayload,
 } from "../api/leads";
 import { CreateLeadForm } from "../components/CreateLeadForm";
@@ -160,16 +160,16 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleAddDocument = async (payload: { type: string; filePath: string; checksum?: string }) => {
+  const handleAddDocument = async (payload: { type: string; file: File; checksum?: string }) => {
     if (!token || !selectedLeadId) return;
     setNotification(null);
     setError(null);
     try {
-      await createLeadDocument(token, selectedLeadId, payload);
-      setNotification("Document saved");
+      await uploadLeadDocument(token, selectedLeadId, payload);
+      setNotification("Document uploaded");
       await loadLeadDetail(selectedLeadId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save document");
+      setError(err instanceof ApiError ? err.message : "Failed to upload document");
       throw err;
     }
   };

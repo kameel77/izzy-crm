@@ -80,6 +80,9 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
     "filePath": "https://files.example.com/agreements/123.pdf"
   }
   ```
+- Upload document file: `POST http://localhost:4000/api/leads/{leadId}/documents/upload`
+  - `multipart/form-data` with fields `file` (binary), `type`, optional `checksum`
+  - Returns stored document metadata and serves files under `/uploads/...`
 - User admin (requires supervisor/admin token):
   - `GET http://localhost:4000/api/users?page=1&perPage=20`
   - `POST http://localhost:4000/api/users` to invite/create users

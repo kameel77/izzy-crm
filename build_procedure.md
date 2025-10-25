@@ -41,6 +41,7 @@ npm run --workspace @izzy-crm/backend dev
 npm run --workspace @izzy-crm/frontend dev
 ```
 Backend listens on `http://localhost:4000`, frontend on `http://localhost:5173`.
+Uploaded documents store under `storage/uploads` and are exposed via `http://localhost:4000/uploads/...`.
 
 **Option B: Docker Compose**
 ```bash
@@ -153,6 +154,7 @@ Key values:
 - `JWT_SECRET` – strong random string
 - `DATABASE_URL` – `postgresql://user:password@postgres:5432/izzy`
 - `DOMAIN`/`EMAIL` for Caddy TLS certificate issuance
+- `UPLOAD_DIR` (default `storage/uploads`) and `UPLOAD_MAX_BYTES` (~50 MB by default) for document storage limits
 
 ### 3.6 Start Stack
 ```bash
@@ -239,9 +241,9 @@ crontab -e
 - Retain a rotation (e.g., 7 daily + 4 weekly + 6 monthly snapshots).
 
 ### 6.2 Application Assets
-If documents live on local volume (e.g., `./data/documents`), archive regularly:
+If documents live on local volume (e.g., `./storage/uploads`), archive regularly:
 ```bash
-tar czf ~/backups/app-docs-$(date +%F).tar.gz data/documents
+tar czf ~/backups/app-docs-$(date +%F).tar.gz storage/uploads
 ```
 For S3 or object storage, enable versioning and lifecycle rules.
 
@@ -256,8 +258,8 @@ For S3 or object storage, enable versioning and lifecycle rules.
 
 ### 6.4 Document Restore
 ```bash
-tar xzf ~/backups/app-docs-2025-10-24.tar.gz -C data/
-chown -R deploy:deploy data/documents
+tar xzf ~/backups/app-docs-2025-10-24.tar.gz -C storage/
+chown -R deploy:deploy storage/uploads
 ```
 
 ### 6.5 Backup Testing

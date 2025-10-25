@@ -3,12 +3,12 @@ import React, { useState } from "react";
 import { ApiError } from "../api/client";
 
 interface DocumentFormProps {
-  onSubmit: (payload: { type: string; filePath: string; checksum?: string }) => Promise<void>;
+  onSubmit: (payload: { type: string; file: File; checksum?: string }) => Promise<void>;
 }
 
 export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
   const [type, setType] = useState("agreement");
-  const [filePath, setFilePath] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [checksum, setChecksum] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,20 +16,25 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!file) {
+      setError("Please select a file to upload");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
       await onSubmit({
         type,
-        filePath,
+        file,
         checksum: checksum.trim() || undefined,
       });
-      setFilePath("");
+      setFile(null);
       setChecksum("");
-      setSuccess("Document metadata saved");
+      (event.currentTarget.elements.namedItem("file") as HTMLInputElement).value = "";
+      setSuccess("Document uploaded");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save document");
+      setError(err instanceof ApiError ? err.message : "Failed to upload document");
     } finally {
       setIsSubmitting(false);
     }
@@ -37,20 +42,20 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      <h3 style={styles.title}>Attach Document (metadata)</h3>
+      <h3 style={styles.title}>Attach Document</h3>
       <div style={styles.grid}>
         <label style={styles.label}>
           Type
           <input value={type} onChange={(event) => setType(event.target.value)} style={styles.input} />
         </label>
         <label style={styles.label}>
-          File URL / Path
+          File
           <input
-            value={filePath}
-            onChange={(event) => setFilePath(event.target.value)}
-            required
-            placeholder="https://..."
+            name="file"
+            type="file"
             style={styles.input}
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            required
           />
         </label>
       </div>
@@ -65,7 +70,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
       {error ? <div style={styles.error}>{error}</div> : null}
       {success ? <div style={styles.success}>{success}</div> : null}
       <button type="submit" style={styles.submit} disabled={isSubmitting}>
-        {isSubmitting ? "Saving..." : "Save"}
+        {isSubmitting ? "Uploading..." : "Upload"}
       </button>
     </form>
   );

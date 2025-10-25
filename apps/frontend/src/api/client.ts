@@ -25,19 +25,22 @@ export async function apiFetch<TResponse>(
   options: ApiFetchOptions = {},
 ): Promise<TResponse> {
   const { token, headers, ...rest } = options;
+  const init: RequestInit = { ...rest };
+  const mergedHeaders = new Headers(headers as HeadersInit | undefined);
+  const isFormData = init.body instanceof FormData;
 
-  const mergedHeaders: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(headers || {}),
-  };
-
-  if (token) {
-    mergedHeaders.Authorization = `Bearer ${token}`;
+  if (!isFormData && init.body !== undefined && !mergedHeaders.has("Content-Type")) {
+    mergedHeaders.set("Content-Type", "application/json");
   }
 
+  if (token) {
+    mergedHeaders.set("Authorization", `Bearer ${token}`);
+  }
+
+  init.headers = mergedHeaders;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...rest,
-    headers: mergedHeaders,
+    ...init,
   });
 
   let payload: unknown = null;

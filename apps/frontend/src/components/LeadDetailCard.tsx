@@ -11,7 +11,7 @@ interface LeadDetailCardProps {
   onRefresh: () => void | Promise<void>;
   onStatusUpdate: (payload: { status: LeadStatus; notes?: string }) => Promise<void>;
   onSaveFinancing: (payload: FinancingPayload) => Promise<void>;
-  onAddDocument: (payload: { type: string; filePath: string; checksum?: string }) => Promise<void>;
+  onAddDocument: (payload: { type: string; file: File; checksum?: string }) => Promise<void>;
 }
 
 export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
@@ -102,7 +102,14 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               <li key={doc.id} style={styles.docItem}>
                 <div>
                   <strong>{doc.type}</strong>
-                  <div style={styles.subtleText}>{doc.filePath}</div>
+                  <div style={styles.subtleText}>
+                    <a href={doc.filePath} target="_blank" rel="noopener noreferrer">
+                      {doc.filePath}
+                    </a>
+                  </div>
+                  {doc.checksum ? (
+                    <div style={styles.subtleText}>Checksum: {doc.checksum}</div>
+                  ) : null}
                 </div>
                 <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
               </li>
@@ -114,7 +121,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <DocumentForm
           onSubmit={async (payload) => {
             await onAddDocument(payload);
-            onRefresh();
+            const refreshResult = onRefresh();
+            if (refreshResult instanceof Promise) {
+              await refreshResult;
+            }
           }}
         />
       </div>
@@ -174,6 +184,27 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
       <div style={styles.auditDetails}>
         {doc.type ? <div>Type: {doc.type}</div> : null}
         {doc.filePath ? <div>Path: {doc.filePath}</div> : null}
+      </div>
+    );
+  }
+
+  if (log.action === "document_added" && log.newValue) {
+    const doc = log.newValue as {
+      filePath?: string;
+      originalName?: string;
+      mimeType?: string;
+      size?: number;
+    };
+    return (
+      <div style={styles.auditDetails}>
+        {doc.originalName ? <div>Original name: {doc.originalName}</div> : null}
+        {doc.mimeType ? <div>Type: {doc.mimeType}</div> : null}
+        {doc.size ? <div>Size: {Math.round(doc.size / 1024)} KB</div> : null}
+        {doc.filePath ? (
+          <div>
+            Link: <a href={doc.filePath}>{doc.filePath}</a>
+          </div>
+        ) : null}
       </div>
     );
   }

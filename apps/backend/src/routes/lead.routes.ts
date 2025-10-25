@@ -11,6 +11,7 @@ import {
   transitionLeadStatus,
   upsertFinancingApplication,
 } from "../services/lead.service.js";
+import { upload, getPublicPath } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
@@ -104,6 +105,11 @@ const financingSchema = z.object({
 const documentSchema = z.object({
   type: z.string().min(1),
   filePath: z.string().min(1),
+  checksum: z.string().optional(),
+});
+
+const uploadDocumentBodySchema = z.object({
+  type: z.string().min(1).optional(),
   checksum: z.string().optional(),
 });
 
@@ -350,6 +356,49 @@ router.post(
       type: payload.type,
       filePath: payload.filePath,
       checksum: payload.checksum,
+    });
+
+    res.status(201).json(document);
+  }),
+);
+
+router.post(
+  "/:id/documents/upload",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+
+    const body = uploadDocumentBodySchema.parse(req.body ?? {});
+    const type = body.type ?? "document";
+
+    if (!req.file) {
+      return res.status(400).json({ message: "File is required" });
+    }
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const publicPath = getPublicPath(id, req.file.filename);
+
+    const document = await addLeadDocument({
+      leadId: id,
+      userId: req.user!.id,
+      type,
+      filePath: publicPath,
+      checksum: body.checksum,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
     });
 
     res.status(201).json(document);

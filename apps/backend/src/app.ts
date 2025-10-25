@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import path from "path";
 
 import { env } from "./config/env.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
@@ -12,6 +13,7 @@ export const createApp = () => {
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
+  app.use("/uploads", express.static(path.resolve(env.uploadDir)));
 
   app.use("/api", router);
 

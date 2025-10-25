@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import path from "path";
 import { z } from "zod";
 
 dotenv.config();
@@ -10,6 +11,14 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(10),
   JWT_EXPIRES_IN: z.string().default("1d"),
   CORS_ORIGIN: z.string().default("*"),
+  UPLOAD_DIR: z.string().default("storage/uploads"),
+  UPLOAD_MAX_BYTES: z
+    .string()
+    .default("52428800")
+    .transform((val) => {
+      const parsed = Number(val);
+      return Number.isNaN(parsed) ? 52428800 : parsed;
+    }),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -23,4 +32,6 @@ if (!parsed.success) {
 export const env = {
   ...parsed.data,
   port: Number(parsed.data.PORT) || 4000,
+  uploadDir: path.resolve(parsed.data.UPLOAD_DIR),
+  uploadMaxBytes: parsed.data.UPLOAD_MAX_BYTES,
 };

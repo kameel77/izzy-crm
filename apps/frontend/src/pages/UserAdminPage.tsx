@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 
-import { UserSummary } from "../api/users";
-import { ProtectedRoute } from "../components/ProtectedRoute";
+import { UpdateUserPayload, UserSummary } from "../api/users";
 import { UserForm } from "../components/UserForm";
 import { UserTable } from "../components/UserTable";
 import { useAuth } from "../hooks/useAuth";
@@ -23,9 +23,12 @@ export const UserAdminPage: React.FC = () => {
   } = useUserAdmin({ initialFilters: { perPage: 20, page: 1 } });
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
 
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPERVISOR";
+
   useEffect(() => {
+    if (!canManage) return;
     loadUsers();
-  }, [loadUsers]);
+  }, [loadUsers, canManage]);
 
   const handleSelectUser = (u: UserSummary) => {
     setSelectedUser(u);
@@ -49,8 +52,11 @@ export const UserAdminPage: React.FC = () => {
 
   const isAdmin = user?.role === "ADMIN";
 
+  if (!canManage) {
+    return <Navigate to="/leads" replace />;
+  }
+
   return (
-    <ProtectedRoute>
       <div style={styles.page}>
         <header style={styles.header}>
           <div>
@@ -104,13 +110,12 @@ export const UserAdminPage: React.FC = () => {
             <UserForm
               mode="edit"
               user={selectedUser}
-              onSubmit={updateUser as any}
+              onSubmit={(payload) => updateUser(payload as UpdateUserPayload)}
               onResetPassword={isAdmin ? resetPassword : undefined}
             />
           </div>
         </div>
       </div>
-    </ProtectedRoute>
   );
 };
 
