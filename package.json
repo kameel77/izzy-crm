@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "npm run lint --workspaces",
     "test": "npm run test --workspaces",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces"
   },
   "workspaces": [
