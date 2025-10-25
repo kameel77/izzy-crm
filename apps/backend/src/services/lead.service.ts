@@ -496,6 +496,8 @@ export interface AddDocumentInput {
   originalName?: string;
   mimeType?: string;
   size?: number;
+  storageProvider?: string;
+  storageKey?: string;
 }
 
 export const addLeadDocument = async (input: AddDocumentInput) => {
@@ -506,6 +508,11 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
       filePath: input.filePath,
       uploadedBy: input.userId,
       checksum: input.checksum,
+      originalName: input.originalName,
+      mimeType: input.mimeType,
+      sizeBytes: input.size ?? null,
+      storageProvider: input.storageProvider,
+      storageKey: input.storageKey,
     },
   });
 
@@ -522,6 +529,7 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
         originalName: input.originalName,
         mimeType: input.mimeType,
         size: input.size,
+        storageProvider: input.storageProvider,
       } as Prisma.InputJsonValue,
     },
   });

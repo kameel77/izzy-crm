@@ -131,6 +131,11 @@ model Document {
   uploadedBy  String
   uploadedAt  DateTime @default(now())
   checksum    String?
+  originalName String?
+  mimeType    String?
+  sizeBytes   Int?
+  storageProvider String?
+  storageKey  String?
 }
 
 model Offer {

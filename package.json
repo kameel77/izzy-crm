@@ -18,5 +18,8 @@
   },
   "devDependencies": {
     "prisma": "^6.18.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.917.0"
   }
 }

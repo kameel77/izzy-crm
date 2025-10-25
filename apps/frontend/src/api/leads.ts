@@ -61,6 +61,10 @@ export interface LeadDetail extends LeadSummary {
     filePath: string;
     uploadedAt: string;
     checksum?: string | null;
+    originalName?: string | null;
+    mimeType?: string | null;
+    sizeBytes?: number | null;
+    storageProvider?: string | null;
   }>;
   offers: Array<{
     id: string;

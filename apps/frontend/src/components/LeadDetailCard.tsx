@@ -104,8 +104,12 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                   <strong>{doc.type}</strong>
                   <div style={styles.subtleText}>
                     <a href={doc.filePath} target="_blank" rel="noopener noreferrer">
-                      {doc.filePath}
+                      {doc.originalName || doc.filePath}
                     </a>
+                  </div>
+                  <div style={styles.subtleText}>
+                    {doc.mimeType ? `${doc.mimeType} · ` : ""}
+                    {doc.sizeBytes ? `${Math.round(doc.sizeBytes / 1024)} KB` : ""}
                   </div>
                   {doc.checksum ? (
                     <div style={styles.subtleText}>Checksum: {doc.checksum}</div>

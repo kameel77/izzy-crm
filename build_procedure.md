@@ -155,6 +155,7 @@ Key values:
 - `DATABASE_URL` – `postgresql://user:password@postgres:5432/izzy`
 - `DOMAIN`/`EMAIL` for Caddy TLS certificate issuance
 - `UPLOAD_DIR` (default `storage/uploads`) and `UPLOAD_MAX_BYTES` (~50 MB by default) for document storage limits
+- To use S3/MinIO storage, set `UPLOAD_DRIVER=s3` and provide `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; optionally set `S3_ENDPOINT`/`S3_FORCE_PATH_STYLE` (for MinIO) and `S3_PUBLIC_URL` for direct links.
 
 ### 3.6 Start Stack
 ```bash

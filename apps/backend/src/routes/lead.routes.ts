@@ -11,7 +11,7 @@ import {
   transitionLeadStatus,
   upsertFinancingApplication,
 } from "../services/lead.service.js";
-import { upload, getPublicPath } from "../utils/upload.js";
+import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
@@ -388,17 +388,19 @@ router.post(
       }
     }
 
-    const publicPath = getPublicPath(id, req.file.filename);
+    const stored = await saveUploadedFile({ leadId: id, file: req.file });
 
     const document = await addLeadDocument({
       leadId: id,
       userId: req.user!.id,
       type,
-      filePath: publicPath,
+      filePath: stored.filePath,
       checksum: body.checksum,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      size: req.file.size,
+      originalName: stored.originalName,
+      mimeType: stored.mimeType,
+      size: stored.size,
+      storageProvider: stored.storageProvider,
+      storageKey: stored.storageKey,
     });
 
     res.status(201).json(document);
