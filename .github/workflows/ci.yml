@@ -31,5 +31,8 @@ jobs:
       - name: Build Frontend
         run: npm run build --workspace=@izzy-crm/frontend
 
-      - name: Docker Compose Build
-        run: docker compose build
+      - name: Build Backend Docker image
+        run: docker build -f ./apps/backend/Dockerfile -t izzy-crm-backend .
+
+      - name: Build Frontend Docker image
+        run: docker build -f ./apps/frontend/Dockerfile -t izzy-crm-frontend .
