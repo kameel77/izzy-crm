@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { authenticate } from "../middlewares/authenticate.js";
 
+import { analyticsRouter } from "./analytics.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { leadRouter } from "./lead.routes.js";
 import { userRouter } from "./user.routes.js";
@@ -13,6 +14,7 @@ router.get("/health", (_req, res) => {
 });
 
 router.use("/auth", authRouter);
+router.use("/analytics", authenticate, analyticsRouter);
 router.use("/leads", authenticate, leadRouter);
 router.use("/users", authenticate, userRouter);
 

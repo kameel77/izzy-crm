@@ -18,6 +18,8 @@ git clone https://github.com/kameel77/izzy-crm.git
 cd izzy-crm
 
 npm install
+# For dashboard analytics, the frontend uses the recharts library.
+# You can add it by running: npm install --workspace @izzy-crm/frontend recharts
 cp .env.example .env
 cp .env.example apps/backend/.env
 

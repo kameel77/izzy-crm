@@ -8,6 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { UserAdminPage } from "./pages/UserAdminPage";
 import { AppLayout } from "./components/AppLayout";
 import { ToastProvider } from "./providers/ToastProvider";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 
 export const App: React.FC = () => {
   const { user } = useAuth();
@@ -26,6 +27,16 @@ export const App: React.FC = () => {
             <ProtectedRoute>
               <AppLayout>
                 <DashboardPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute roles={["OPERATOR", "SUPERVISOR", "ADMIN"]}>
+              <AppLayout>
+                <AnalyticsPage />
               </AppLayout>
             </ProtectedRoute>
           }

@@ -20,6 +20,12 @@ export const AppSidebar: React.FC = () => {
   const items: NavItem[] = [
     { to: "/leads", label: "Lead Workspace", description: "Manage and follow up on all leads" },
     {
+      to: "/analytics",
+      label: "Analytics",
+      description: "Visualize volume, conversion, and funnel health",
+      roles: ["OPERATOR", "SUPERVISOR", "ADMIN"],
+    },
+    {
       to: "/admin/users",
       label: "User Admin",
       description: "Invite teammates, manage roles, and reset passwords",

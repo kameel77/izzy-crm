@@ -27,3 +27,4 @@ docker-compose.override.yml
 # Local-only docs
 planning.md
 appFoundationRequirements.md
+start_locally.md
