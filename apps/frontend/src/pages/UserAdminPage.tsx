@@ -58,8 +58,10 @@ export const UserAdminPage: React.FC = () => {
           <div style={styles.filters}>
             <select style={styles.filterInput} onChange={handleRoleFilter} defaultValue={filters.role || ""}>
               <option value="">All roles</option>
-              <option value="OPERATOR">Operator</option>
               <option value="PARTNER">Partner</option>
+              <option value="PARTNER_MANAGER">Partner Manager</option>
+              <option value="PARTNER_EMPLOYEE">Partner Employee</option>
+              <option value="OPERATOR">Operator</option>
               <option value="SUPERVISOR">Supervisor</option>
               <option value="ADMIN">Admin</option>
               <option value="AUDITOR">Auditor</option>

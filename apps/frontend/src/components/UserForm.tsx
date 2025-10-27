@@ -9,7 +9,15 @@ interface UserFormProps {
   onResetPassword?: (userId: string, password: string) => Promise<void>;
 }
 
-const ROLE_OPTIONS = ["PARTNER", "OPERATOR", "SUPERVISOR", "ADMIN", "AUDITOR"];
+const ROLE_OPTIONS = [
+  "PARTNER",
+  "PARTNER_MANAGER",
+  "PARTNER_EMPLOYEE",
+  "OPERATOR",
+  "SUPERVISOR",
+  "ADMIN",
+  "AUDITOR",
+];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "INVITED"];
 
 export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onResetPassword }) => {

@@ -18,6 +18,7 @@ model User {
   partner      Partner?    @relation(fields: [partnerId], references: [id])
   partnerId    String?
   leads        Lead[]      @relation("LeadAssignedUser")
+  createdLeads Lead[]      @relation("LeadCreatedBy")
   auditLogs    AuditLog[]
   reminders    Reminder[]  @relation("ReminderAssignedUser")
   createdAt    DateTime    @default(now())
@@ -43,6 +44,8 @@ model Lead {
   partnerId        String
   assignedUser     User?             @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
   assignedUserId   String?
+  createdBy        User?             @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUserId  String?
   status           LeadStatus        @default(NEW_LEAD)
   sourceMetadata   Json?
   notes            String?
@@ -205,6 +208,8 @@ model LeadStatusReference {
 
 enum UserRole {
   PARTNER
+  PARTNER_MANAGER
+  PARTNER_EMPLOYEE
   OPERATOR
   SUPERVISOR
   ADMIN

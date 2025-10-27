@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   CreateUserPayload,
@@ -21,7 +21,9 @@ export const useUserAdmin = (options: UseUserAdminOptions = {}) => {
   const { token } = useAuth();
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [meta, setMeta] = useState<UserListResponse["meta"] | null>(null);
-  const [filters, setFilters] = useState<UserFilters>(options.initialFilters || {});
+  const initialFilters = useMemo(() => options.initialFilters || {}, [options.initialFilters]);
+  const filtersRef = useRef<UserFilters>(initialFilters);
+  const [filters, setFilters] = useState<UserFilters>(initialFilters);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -32,7 +34,8 @@ export const useUserAdmin = (options: UseUserAdminOptions = {}) => {
       setIsLoading(true);
       setError(null);
       try {
-        const nextFilters = { ...filters, ...override };
+        filtersRef.current = { ...filtersRef.current, ...override };
+        const nextFilters = filtersRef.current;
         const response = await fetchUsers(token, nextFilters);
         setUsers(response.data);
         setMeta(response.meta);
@@ -43,7 +46,7 @@ export const useUserAdmin = (options: UseUserAdminOptions = {}) => {
         setIsLoading(false);
       }
     },
-    [token, filters],
+    [token],
   );
 
   const handleCreateUser = useCallback(
@@ -107,7 +110,6 @@ export const useUserAdmin = (options: UseUserAdminOptions = {}) => {
     createUser: handleCreateUser,
     updateUser: handleUpdateUser,
     resetPassword: handleResetPassword,
-    setFilters,
     setError,
     setSuccess,
   };

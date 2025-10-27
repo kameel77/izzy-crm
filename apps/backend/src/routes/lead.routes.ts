@@ -16,6 +16,15 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
 
+const PARTNER_SCOPED_ROLES: UserRole[] = [
+  UserRole.PARTNER,
+  UserRole.PARTNER_MANAGER,
+  UserRole.PARTNER_EMPLOYEE,
+];
+
+const isPartnerScopedRole = (role?: UserRole | null): role is UserRole =>
+  Boolean(role && PARTNER_SCOPED_ROLES.includes(role));
+
 const createLeadSchema = z.object({
   partnerId: z.string().min(1).optional(),
   sourceMetadata: z.record(z.unknown()).optional(),
@@ -115,28 +124,39 @@ const uploadDocumentBodySchema = z.object({
 
 router.post(
   "/",
-  authorize(UserRole.PARTNER, UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
   asyncHandler(async (req, res) => {
     const payload = createLeadSchema.parse(req.body);
 
     const partnerIdFromToken = req.user?.partnerId;
 
     const partnerId =
-      req.user?.role === UserRole.PARTNER ? partnerIdFromToken : payload.partnerId;
+      isPartnerScopedRole(req.user?.role) ? partnerIdFromToken : payload.partnerId;
 
     if (!partnerId) {
       return res.status(400).json({ message: "partnerId is required" });
     }
 
     if (
-      req.user?.role === UserRole.PARTNER &&
+      isPartnerScopedRole(req.user?.role) &&
       payload.partnerId &&
       payload.partnerId !== partnerId
     ) {
       return res.status(403).json({ message: "Cannot create leads for other partners" });
     }
 
-    const lead = await createLead({ ...payload, partnerId });
+    const lead = await createLead({
+      ...payload,
+      partnerId,
+      createdByUserId: req.user?.id ?? null,
+    });
 
     return res.status(201).json({
       id: lead.id,
@@ -149,7 +169,14 @@ router.post(
 
 router.get(
   "/",
-  authorize(UserRole.PARTNER, UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
   asyncHandler(async (req, res) => {
     const query = listQuerySchema.parse(req.query);
 
@@ -159,7 +186,7 @@ router.get(
 
     let partnerFilter = query.partnerId;
 
-    if (req.user?.role === UserRole.PARTNER) {
+    if (isPartnerScopedRole(req.user?.role)) {
       if (!req.user.partnerId) {
         return res.status(403).json({ message: "Partner context is missing" });
       }
@@ -188,10 +215,14 @@ router.get(
       assignedFilter = query.assignedUserId;
     }
 
+    const limitToCreator =
+      req.user?.role === UserRole.PARTNER_EMPLOYEE ? req.user.id : undefined;
+
     const { items, total } = await listLeads({
       status: query.status,
       partnerId: partnerFilter,
       assignedUserId: assignedFilter,
+      createdByUserId: limitToCreator,
       search: query.search,
       skip,
       take: perPage,
@@ -213,7 +244,14 @@ router.get(
 
 router.get(
   "/:id",
-  authorize(UserRole.PARTNER, UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
   asyncHandler(async (req, res) => {
     const { id } = leadIdParamSchema.parse(req.params);
 
@@ -223,8 +261,15 @@ router.get(
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    if (req.user?.role === UserRole.PARTNER) {
+    if (isPartnerScopedRole(req.user?.role)) {
       if (!req.user.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
         return res.status(403).json({ message: "Access denied" });
       }
     } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {

@@ -13,6 +13,7 @@ const leadSummarySelect = {
   claimedAt: true,
   lastContactAt: true,
   nextActionAt: true,
+  createdByUserId: true,
   assignedUser: {
     select: {
       id: true,
@@ -52,6 +53,7 @@ export interface CreateLeadInput {
   partnerId: string;
   sourceMetadata?: Record<string, unknown>;
   notes?: string;
+  createdByUserId?: string | null;
   customer: {
     firstName: string;
     lastName: string;
@@ -91,6 +93,7 @@ export const createLead = async (input: CreateLeadInput) => {
         status: LeadStatus.NEW_LEAD,
         sourceMetadata: toJson(input.sourceMetadata),
         notes: input.notes,
+        createdByUserId: input.createdByUserId ?? null,
         customerProfile: {
           create: {
             firstName: input.customer.firstName,
@@ -173,6 +176,7 @@ export interface LeadListFilters {
   status?: LeadStatus[];
   partnerId?: string;
   assignedUserId?: string | null;
+  createdByUserId?: string;
   search?: string;
   skip: number;
   take: number;
@@ -195,6 +199,10 @@ export const listLeads = async (filters: LeadListFilters) => {
 
   if (filters.partnerId) {
     where.partnerId = filters.partnerId;
+  }
+
+  if (filters.createdByUserId) {
+    where.createdByUserId = filters.createdByUserId;
   }
 
   if (filters.search) {
