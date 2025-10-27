@@ -30,6 +30,23 @@ const envSchema = z.object({
     .optional()
     .transform((val) => (val ? val === "true" || val === "1" : undefined)),
   S3_PUBLIC_URL: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : undefined;
+    }),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_SECURE: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val === "true" || val === "1" : undefined)),
+  APP_BASE_URL: z.string().default("http://localhost:5173"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -57,4 +74,18 @@ export const env = {
         publicUrl: parsed.data.S3_PUBLIC_URL,
       }
     : null,
+  email:
+    parsed.data.SMTP_HOST && parsed.data.EMAIL_FROM
+      ? {
+          from: parsed.data.EMAIL_FROM,
+          host: parsed.data.SMTP_HOST,
+          port: parsed.data.SMTP_PORT ?? 587,
+          user: parsed.data.SMTP_USER,
+          password: parsed.data.SMTP_PASSWORD,
+          secure: parsed.data.SMTP_SECURE ?? false,
+        }
+      : null,
+  app: {
+    baseUrl: parsed.data.APP_BASE_URL,
+  },
 };

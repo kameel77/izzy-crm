@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { sendPasswordResetEmail, sendUserInviteEmail } from "../services/mail.service.js";
 import {
   createUser,
   listUsers,
@@ -88,7 +89,7 @@ router.post(
       return res.status(403).json({ message: "Only admins can create admin accounts" });
     }
 
-    const user = await createUser({
+    const result = await createUser({
       email: payload.email,
       fullName: payload.fullName,
       phone: payload.phone,
@@ -98,7 +99,17 @@ router.post(
       password: payload.password,
     });
 
-    res.status(201).json(user);
+    try {
+      await sendUserInviteEmail({
+        to: result.user.email,
+        fullName: result.user.fullName,
+        temporaryPassword: result.initialPassword,
+      });
+    } catch (error) {
+      console.error("[mail] Failed to send invite email", error);
+    }
+
+    res.status(201).json(result.user);
   }),
 );
 
@@ -136,7 +147,17 @@ router.post(
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const { password } = resetPasswordSchema.parse(req.body);
 
-    await resetPassword({ userId: id, newPassword: password });
+    const user = await resetPassword({ userId: id, newPassword: password });
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        fullName: user.fullName,
+        password,
+      });
+    } catch (error) {
+      console.error("[mail] Failed to send reset email", error);
+    }
 
     res.status(204).send();
   }),

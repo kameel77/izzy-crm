@@ -1,7 +1,7 @@
 import { Prisma, UserRole, UserStatus } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
-import { hashPassword } from "../utils/password.js";
+import { generatePassword, hashPassword } from "../utils/password.js";
 
 const userSummarySelect = {
   id: true,
@@ -79,7 +79,13 @@ export interface CreateUserInput {
   status?: UserStatus;
 }
 
-export const createUser = async (input: CreateUserInput) => {
+export interface CreateUserResult {
+  user: Prisma.UserGetPayload<{ select: typeof userSummarySelect }>;
+  initialPassword: string;
+  generatedPassword: boolean;
+}
+
+export const createUser = async (input: CreateUserInput): Promise<CreateUserResult> => {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
 
   if (existing) {
@@ -88,10 +94,8 @@ export const createUser = async (input: CreateUserInput) => {
     throw error;
   }
 
-  let hashedPassword = "INVITE_PENDING";
-  if (input.password) {
-    hashedPassword = await hashPassword(input.password);
-  }
+  const plainPassword = input.password || generatePassword();
+  const hashedPassword = await hashPassword(plainPassword);
 
   const user = await prisma.user.create({
     data: {
@@ -106,7 +110,11 @@ export const createUser = async (input: CreateUserInput) => {
     select: userSummarySelect,
   });
 
-  return user;
+  return {
+    user,
+    initialPassword: plainPassword,
+    generatedPassword: !input.password,
+  };
 };
 
 export interface UpdateUserInput {
@@ -174,10 +182,13 @@ export const resetPassword = async (input: ResetPasswordInput) => {
   const hashedPassword = await hashPassword(input.newPassword);
 
   try {
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: input.userId },
       data: { hashedPassword, status: UserStatus.ACTIVE },
+      select: userSummarySelect,
     });
+
+    return user;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       const notFound = new Error("User not found");
