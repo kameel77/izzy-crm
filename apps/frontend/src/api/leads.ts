@@ -137,11 +137,23 @@ export interface CreateLeadPayload {
     email?: string;
     phone?: string;
   };
+  currentVehicle?: {
+    make?: string;
+    model?: string;
+    year?: number;
+    mileage?: number;
+  };
   desiredVehicle?: {
     make?: string;
     model?: string;
     year?: number;
     budget?: number;
+    preferences?: {
+      notes?: string;
+    };
+  };
+  financing?: {
+    downPayment?: number;
   };
 }
 
@@ -150,6 +162,14 @@ export const createLead = (token: string, payload: CreateLeadPayload) =>
     method: "POST",
     token,
     body: JSON.stringify(payload),
+  });
+
+
+export const assignLead = (token: string, leadId: string, userId: string | null) =>
+  apiFetch<LeadSummary>(`/api/leads/${leadId}/assignment`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ userId }),
   });
 
 export interface UpdateLeadStatusPayload {

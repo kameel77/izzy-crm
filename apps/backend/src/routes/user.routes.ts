@@ -16,7 +16,7 @@ const router = Router();
 
 const listUsersSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).optional(),
-  perPage: z.coerce.number().int().min(1).max(100).default(20).optional(),
+  perPage: z.coerce.number().int().min(1).max(200).default(20).optional(),
   role: z.nativeEnum(UserRole).optional(),
   status: z.nativeEnum(UserStatus).optional(),
   partnerId: z.string().optional(),

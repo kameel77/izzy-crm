@@ -5,6 +5,7 @@ import { z } from "zod";
 import { authorize } from "../middlewares/authorize.js";
 import {
   addLeadDocument,
+  assignLeadOwner,
   createLead,
   getLeadById,
   listLeads,
@@ -120,6 +121,11 @@ const documentSchema = z.object({
 const uploadDocumentBodySchema = z.object({
   type: z.string().min(1).optional(),
   checksum: z.string().optional(),
+});
+
+
+const assignmentSchema = z.object({
+  userId: z.union([z.string().cuid(), z.literal("")]).optional(),
 });
 
 router.post(
@@ -279,6 +285,28 @@ router.get(
     }
 
     return res.json(lead);
+  }),
+);
+
+router.patch(
+  "/:id/assignment",
+  authorize(UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const { userId } = assignmentSchema.parse(req.body ?? {});
+    const assignTo = typeof userId === "string" && userId.length > 0 ? userId : null;
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const updated = await assignLeadOwner({
+      leadId: id,
+      assignToUserId: assignTo,
+      actorUserId: req.user.id,
+    });
+
+    return res.json(updated);
   }),
 );
 

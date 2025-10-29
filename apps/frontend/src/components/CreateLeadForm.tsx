@@ -4,18 +4,36 @@ interface CreateLeadFormProps {
   onCreate: (payload: {
     partnerId?: string;
     customer: { firstName: string; lastName: string; email?: string; phone?: string };
+    currentVehicle?: {
+      make?: string;
+      model?: string;
+      year?: number;
+      mileage?: number;
+    };
     desiredVehicle?: { make?: string; model?: string; year?: number; budget?: number };
+    financing: { downPayment: number };
   }) => Promise<void>;
   defaultPartnerId?: string | null;
+  hidePartnerField?: boolean;
 }
 
 export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   onCreate,
   defaultPartnerId,
+  hidePartnerField = false,
 }) => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [downPayment, setDownPayment] = useState("");
+  const [currentMake, setCurrentMake] = useState("");
+  const [currentModel, setCurrentModel] = useState("");
+  const [currentYear, setCurrentYear] = useState("");
+  const [currentMileage, setCurrentMileage] = useState("");
+  const [desiredMake, setDesiredMake] = useState("");
+  const [desiredModel, setDesiredModel] = useState("");
+  const [desiredYear, setDesiredYear] = useState("");
+  const [desiredNotes, setDesiredNotes] = useState("");
   const [partnerId, setPartnerId] = useState(defaultPartnerId ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,19 +41,89 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    const parsedDownPayment = Number(downPayment);
+    if (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0) {
+      setError("Amount available for down payment must be zero or a positive number.");
+      return;
+    }
+
+    const parsedYear = currentYear ? Number(currentYear) : undefined;
+    const parsedMileage = currentMileage ? Number(currentMileage) : undefined;
+    const parsedDesiredYear = desiredYear ? Number(desiredYear) : undefined;
+
+    if (parsedYear !== undefined && !Number.isFinite(parsedYear)) {
+      setError("Vehicle year must be a valid number.");
+      return;
+    }
+
+    if (parsedMileage !== undefined && !Number.isFinite(parsedMileage)) {
+      setError("Vehicle mileage must be a valid number.");
+      return;
+    }
+
+    if (parsedDesiredYear !== undefined && !Number.isFinite(parsedDesiredYear)) {
+      setError("Desired vehicle year must be a valid number.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await onCreate({
+      const payload: Parameters<typeof onCreate>[0] = {
         partnerId: partnerId || undefined,
         customer: {
           firstName,
           lastName,
           email: email || undefined,
         },
+        financing: {
+          downPayment: parsedDownPayment,
+        },
+      };
+
+      if (currentMake || currentModel || parsedYear !== undefined || parsedMileage !== undefined) {
+        payload.currentVehicle = {
+          make: currentMake || undefined,
+          model: currentModel || undefined,
+          year: parsedYear,
+          mileage: parsedMileage,
+        };
+      }
+
+      const trimmedNotes = desiredNotes.trim();
+
+      if (
+        desiredMake ||
+        desiredModel ||
+        parsedDesiredYear !== undefined ||
+        trimmedNotes.length > 0
+      ) {
+        payload.desiredVehicle = {
+          make: desiredMake || undefined,
+          model: desiredModel || undefined,
+          year: parsedDesiredYear,
+        };
+
+        if (trimmedNotes.length > 0) {
+          payload.desiredVehicle.preferences = { notes: trimmedNotes };
+        }
+      }
+
+      await onCreate({
+        ...payload,
       });
       setFirstName("");
       setLastName("");
       setEmail("");
+      setDownPayment("");
+      setCurrentMake("");
+      setCurrentModel("");
+      setCurrentYear("");
+      setCurrentMileage("");
+      setDesiredMake("");
+      setDesiredModel("");
+      setDesiredYear("");
+      setDesiredNotes("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create lead");
     } finally {
@@ -76,7 +164,19 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        {!defaultPartnerId ? (
+        <label style={styles.label}>
+          Amount Available (PLN)
+          <input
+            style={styles.input}
+            value={downPayment}
+            type="number"
+            min="0"
+            step="0.01"
+            onChange={(event) => setDownPayment(event.target.value)}
+            required
+          />
+        </label>
+        {!hidePartnerField && !defaultPartnerId ? (
           <label style={styles.label}>
             Partner ID
             <input
@@ -87,6 +187,92 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             />
           </label>
         ) : null}
+      </div>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          Current Vehicle Make
+          <input
+            style={styles.input}
+            value={currentMake}
+            onChange={(event) => setCurrentMake(event.target.value)}
+            placeholder="e.g. Toyota"
+          />
+        </label>
+        <label style={styles.label}>
+          Current Vehicle Model
+          <input
+            style={styles.input}
+            value={currentModel}
+            onChange={(event) => setCurrentModel(event.target.value)}
+            placeholder="e.g. Corolla"
+          />
+        </label>
+      </div>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          Current Vehicle Year
+          <input
+            style={styles.input}
+            value={currentYear}
+            type="number"
+            min="1900"
+            max={new Date().getFullYear() + 1}
+            onChange={(event) => setCurrentYear(event.target.value)}
+          />
+        </label>
+        <label style={styles.label}>
+          Current Vehicle Mileage (km)
+          <input
+            style={styles.input}
+            value={currentMileage}
+            type="number"
+            min="0"
+            step="1"
+            onChange={(event) => setCurrentMileage(event.target.value)}
+          />
+        </label>
+      </div>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          Desired Vehicle Make
+          <input
+            style={styles.input}
+            value={desiredMake}
+            onChange={(event) => setDesiredMake(event.target.value)}
+            placeholder="e.g. Skoda"
+          />
+        </label>
+        <label style={styles.label}>
+          Desired Vehicle Model
+          <input
+            style={styles.input}
+            value={desiredModel}
+            onChange={(event) => setDesiredModel(event.target.value)}
+            placeholder="e.g. Octavia"
+          />
+        </label>
+      </div>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          Desired Vehicle Year
+          <input
+            style={styles.input}
+            value={desiredYear}
+            type="number"
+            min="1900"
+            max={new Date().getFullYear() + 1}
+            onChange={(event) => setDesiredYear(event.target.value)}
+          />
+        </label>
+        <label style={styles.label}>
+          Desired Vehicle Notes
+          <input
+            style={styles.input}
+            value={desiredNotes}
+            onChange={(event) => setDesiredNotes(event.target.value)}
+            placeholder="np. rodzinne kombi"
+          />
+        </label>
       </div>
       {error ? <div style={styles.error}>{error}</div> : null}
       <button type="submit" style={styles.submit} disabled={loading}>

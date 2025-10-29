@@ -1,4 +1,4 @@
-import { BankDecisionStatus, LeadStatus, Prisma } from "@prisma/client";
+import { BankDecisionStatus, LeadStatus, Prisma, UserRole } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 
@@ -273,6 +273,68 @@ export const getLeadById = async (id: string) => {
   });
 
   return lead;
+};
+
+
+export interface AssignLeadInput {
+  leadId: string;
+  assignToUserId: string | null;
+  actorUserId: string;
+}
+
+export const assignLeadOwner = async (input: AssignLeadInput) => {
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: { assignedUserId: true },
+    });
+
+    if (!current) {
+      const notFound = new Error("Lead not found");
+      (notFound as Error & { status: number }).status = 404;
+      throw notFound;
+    }
+
+    if (input.assignToUserId) {
+      const user = await tx.user.findUnique({
+        where: { id: input.assignToUserId },
+        select: { id: true, role: true },
+      });
+
+      if (!user) {
+        const notFound = new Error("User not found");
+        (notFound as Error & { status: number }).status = 404;
+        throw notFound;
+      }
+
+      if (user.role !== UserRole.OPERATOR) {
+        const invalidRole = new Error("Only operators can be assigned to leads");
+        (invalidRole as Error & { status: number }).status = 400;
+        throw invalidRole;
+      }
+    }
+
+    const updatedLead = await tx.lead.update({
+      where: { id: input.leadId },
+      data: { assignedUserId: input.assignToUserId },
+      select: leadSummarySelect,
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.actorUserId,
+        action: "assignment_change",
+        field: "assignedUserId",
+        oldValue: current.assignedUserId
+          ? { assignedUserId: current.assignedUserId }
+          : Prisma.JsonNull,
+        newValue: input.assignToUserId ? { assignedUserId: input.assignToUserId } : Prisma.JsonNull,
+      },
+    });
+
+    return updatedLead;
+  });
 };
 
 export interface TransitionLeadInput {
