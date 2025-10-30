@@ -14,6 +14,7 @@ interface UserTableProps {
   selectedUserId?: string | null;
   onSelect: (user: UserSummary) => void;
   onPageChange: (page: number) => void;
+  onEdit?: (user: UserSummary) => void;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({
@@ -23,6 +24,7 @@ export const UserTable: React.FC<UserTableProps> = ({
   selectedUserId,
   onSelect,
   onPageChange,
+  onEdit,
 }) => {
   const page = meta?.page ?? 1;
   const totalPages = meta?.totalPages ?? 1;
@@ -45,12 +47,13 @@ export const UserTable: React.FC<UserTableProps> = ({
               <th>Role</th>
               <th>Status</th>
               <th>Partner</th>
+              <th style={styles.actionsHeader}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} style={styles.loader}>Loading users...</td>
+                <td colSpan={6} style={styles.loader}>Loading users...</td>
               </tr>
             ) : users.length ? (
               users.map((user) => (
@@ -69,11 +72,24 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </td>
                   <td>{user.status}</td>
                   <td>{user.partner?.name || "—"}</td>
+                  <td style={styles.actionsCell}>
+                    <button
+                      type="button"
+                      style={styles.actionButton}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelect(user);
+                        onEdit?.(user);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} style={styles.loader}>No users found.</td>
+                <td colSpan={6} style={styles.loader}>No users found.</td>
               </tr>
             )}
           </tbody>
@@ -152,6 +168,21 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0.25rem 0.5rem",
     background: "#f1f5f9",
     borderRadius: 999,
+  },
+  actionsHeader: {
+    textAlign: "right",
+  },
+  actionsCell: {
+    textAlign: "right",
+  },
+  actionButton: {
+    padding: "0.35rem 0.85rem",
+    borderRadius: 8,
+    border: "1px solid #2563eb",
+    background: "transparent",
+    color: "#2563eb",
+    cursor: "pointer",
+    fontWeight: 600,
   },
   pagination: {
     display: "flex",

@@ -189,7 +189,7 @@ const SidebarToggleIcon: React.FC<{ isCollapsed: boolean }> = ({ isCollapsed }) 
     strokeWidth="1.8"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ transform: isCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
+    style={{ transform: isCollapsed ? "none" : "rotate(180deg)", transition: "transform 0.2s ease" }}
     aria-hidden="true"
   >
     <path d="M9 6l6 6-6 6" />

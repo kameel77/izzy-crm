@@ -7,6 +7,7 @@ interface UserFormProps {
   user?: UserSummary | null;
   onSubmit: (payload: CreateUserPayload | UpdateUserPayload) => Promise<void>;
   onResetPassword?: (userId: string, password: string) => Promise<void>;
+  onSuccess?: () => void;
 }
 
 const ROLE_OPTIONS = [
@@ -20,7 +21,7 @@ const ROLE_OPTIONS = [
 ];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "INVITED"];
 
-export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onResetPassword }) => {
+export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onResetPassword, onSuccess }) => {
   const [email, setEmail] = useState(user?.email ?? "");
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -72,6 +73,7 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
         });
       }
       setSuccess(mode === "create" ? "User created" : "User updated");
+      onSuccess?.();
       if (mode === "create") {
         setEmail("");
         setFullName("");
