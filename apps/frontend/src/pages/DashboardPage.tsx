@@ -16,6 +16,7 @@ import {
 import { CreateLeadForm } from "../components/CreateLeadForm";
 import { LeadDetailCard } from "../components/LeadDetailCard";
 import { LeadList } from "../components/LeadList";
+import { Modal } from "../components/Modal";
 import { LeadStatus } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../hooks/useToasts";
@@ -35,6 +36,8 @@ export const DashboardPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [notification, setNotification] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
+  const [isLeadDetailOpen, setIsLeadDetailOpen] = useState(false);
 
   const loadLeadDetail = useCallback(
     async (leadId: string) => {
@@ -120,6 +123,11 @@ export const DashboardPage: React.FC = () => {
     await loadLeadDetail(leadId);
   };
 
+  const handleOpenLeadDetail = async (leadId: string) => {
+    await handleSelectLead(leadId);
+    setIsLeadDetailOpen(true);
+  };
+
   const handleCreateLead = async (payload: Parameters<typeof createLead>[1]) => {
     if (!token) return;
     setNotification(null);
@@ -127,7 +135,9 @@ export const DashboardPage: React.FC = () => {
     try {
       const lead = await createLead(token, payload);
       toast.success(`Lead ${lead.id} created`);
+      setSelectedLeadId(lead.id);
       await loadLeads({ selectLeadId: lead.id });
+      setIsCreateLeadOpen(false);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to create lead";
       setError(message);
@@ -203,30 +213,44 @@ export const DashboardPage: React.FC = () => {
       {error ? <div style={styles.error}>{error}</div> : null}
 
       <div style={styles.layout}>
-        <div style={styles.leftColumn}>
-          <CreateLeadForm
-            onCreate={handleCreateLead}
-            defaultPartnerId={user?.partnerId}
-            hidePartnerField={user?.role !== "ADMIN"}
-          />
-          <LeadList
-            leads={leadList}
-            isLoading={isLoadingLeads}
-            selectedLeadId={selectedLeadId}
-            onSelect={handleSelectLead}
-            onRefresh={() => loadLeads({ selectLeadId: selectedLeadId ?? undefined })}
-            statusFilter={statusFilter}
-            onStatusFilterChange={handleStatusFilterChange}
-            search={search}
-            onSearchChange={handleSearchChange}
-            meta={leadMeta}
-            onPageChange={handlePageChange}
-          />
-        </div>
-        <div style={styles.rightColumn}>
-          {isLoadingDetail && selectedLeadId ? (
-            <div style={styles.detailLoader}>Loading lead detail...</div>
-          ) : null}
+        <LeadList
+          leads={leadList}
+          isLoading={isLoadingLeads}
+          selectedLeadId={selectedLeadId}
+          onSelect={handleSelectLead}
+          onRefresh={() => loadLeads({ selectLeadId: selectedLeadId ?? undefined })}
+          onCreateLeadClick={() => setIsCreateLeadOpen(true)}
+          onMore={handleOpenLeadDetail}
+          statusFilter={statusFilter}
+          onStatusFilterChange={handleStatusFilterChange}
+          search={search}
+          onSearchChange={handleSearchChange}
+          meta={leadMeta}
+          onPageChange={handlePageChange}
+        />
+      </div>
+
+      <Modal
+        isOpen={isCreateLeadOpen}
+        onClose={() => setIsCreateLeadOpen(false)}
+        title="Quick lead capture"
+      >
+        <CreateLeadForm
+          onCreate={handleCreateLead}
+          defaultPartnerId={user?.partnerId}
+          hidePartnerField={user?.role !== "ADMIN"}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={isLeadDetailOpen}
+        onClose={() => setIsLeadDetailOpen(false)}
+        title="Lead detail"
+        width="min(1000px, 96%)"
+      >
+        {isLoadingDetail ? (
+          <div style={styles.detailLoader}>Loading lead detail...</div>
+        ) : (
           <LeadDetailCard
             lead={selectedLead}
             onRefresh={() => (selectedLeadId ? loadLeadDetail(selectedLeadId) : undefined)}
@@ -234,8 +258,8 @@ export const DashboardPage: React.FC = () => {
             onSaveFinancing={handleSaveFinancing}
             onAddDocument={handleAddDocument}
           />
-        </div>
-      </div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -245,7 +269,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "1.5rem",
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    fontFamily: "var(--font-family-sans)",
   },
   pageHeader: {
     display: "flex",
@@ -253,49 +277,44 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "flex-start",
     padding: "1.5rem",
     borderRadius: "1rem",
-    background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
+    background: "var(--app-surface-elevated)",
+    border: "1px solid var(--app-border)",
+    boxShadow: "0 18px 32px rgba(15, 23, 42, 0.08)",
   },
   heading: {
     margin: 0,
     fontSize: "2rem",
+    fontWeight: "var(--font-weight-bold)",
   },
   meta: {
     margin: "0.25rem 0 0",
-    color: "#6b7280",
+    color: "var(--app-text-muted)",
   },
   notice: {
     padding: "0.75rem",
     borderRadius: 8,
-    background: "#ecfdf5",
-    color: "#047857",
+    background: "rgba(16, 185, 129, 0.12)",
+    color: "var(--app-success)",
+    border: "1px solid rgba(16, 185, 129, 0.2)",
   },
   error: {
     padding: "0.75rem",
     borderRadius: 8,
-    background: "#fee2e2",
-    color: "#b91c1c",
+    background: "rgba(239, 68, 68, 0.12)",
+    color: "var(--app-danger)",
+    border: "1px solid rgba(239, 68, 68, 0.2)",
   },
   layout: {
-    display: "grid",
-    gap: "1.5rem",
-    gridTemplateColumns: "1fr 1fr",
-  },
-  leftColumn: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-  },
-  rightColumn: {
     display: "flex",
     flexDirection: "column",
     gap: "1.5rem",
   },
   detailLoader: {
-    padding: "0.75rem",
-    borderRadius: 8,
+    padding: "1rem",
+    borderRadius: 12,
     background: "#f3f4f6",
-    color: "#4b5563",
+    color: "#1f2937",
+    fontWeight: 500,
+    textAlign: "center",
   },
 };

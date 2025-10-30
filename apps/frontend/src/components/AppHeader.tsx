@@ -2,7 +2,12 @@ import React from "react";
 
 import { useAuth } from "../hooks/useAuth";
 
-export const AppHeader: React.FC = () => {
+interface AppHeaderProps {
+  onToggleSidebar: () => void;
+  isSidebarCollapsed: boolean;
+}
+
+export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebarCollapsed }) => {
   const { user, logout } = useAuth();
 
   if (!user) {
@@ -12,6 +17,15 @@ export const AppHeader: React.FC = () => {
   return (
     <header style={styles.header}>
       <div style={styles.brandGroup}>
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          style={styles.sidebarToggle}
+          aria-label={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-pressed={isSidebarCollapsed}
+        >
+          <SidebarToggleIcon isCollapsed={isSidebarCollapsed} />
+        </button>
         <div style={styles.brandMark}>Izzy</div>
         <div>
           <div style={styles.productName}>Izzy CRM</div>
@@ -55,16 +69,30 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "0.9rem 2rem",
-    background: "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)",
+    height: "var(--app-header-height)",
+    background: "rgba(15, 23, 42, 0.92)",
     backdropFilter: "blur(18px)",
     color: "#f8fafc",
     borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
-    boxShadow: "0 12px 30px rgba(15, 23, 42, 0.35)",
+    boxShadow: "0 18px 30px rgba(15, 23, 42, 0.28)",
+    fontFamily: "var(--font-family-sans)",
   },
   brandGroup: {
     display: "flex",
     alignItems: "center",
     gap: "1rem",
+  },
+  sidebarToggle: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "12px",
+    border: "1px solid rgba(148, 163, 184, 0.4)",
+    background: "rgba(15, 23, 42, 0.6)",
+    color: "#e2e8f0",
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
+    fontSize: "1rem",
   },
   brandMark: {
     width: "40px",
@@ -81,7 +109,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   productName: {
     fontSize: "1.25rem",
-    fontWeight: 700,
+    fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.02em",
   },
   productTagline: {
@@ -95,6 +123,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: "0.75rem",
+    fontFamily: "var(--font-family-sans)",
   },
   userBadge: {
     width: "42px",
@@ -115,7 +144,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.85rem",
   },
   userName: {
-    fontWeight: 600,
+    fontWeight: "var(--font-weight-medium)",
     letterSpacing: "0.01em",
   },
   userDetails: {
@@ -144,7 +173,25 @@ const styles: Record<string, React.CSSProperties> = {
     background: "rgba(255, 255, 255, 0.04)",
     color: "#f1f5f9",
     cursor: "pointer",
-    fontWeight: 500,
+    fontWeight: "var(--font-weight-medium)",
     letterSpacing: "0.01em",
+    fontFamily: "var(--font-family-sans)",
   },
 };
+
+const SidebarToggleIcon: React.FC<{ isCollapsed: boolean }> = ({ isCollapsed }) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ transform: isCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
+    aria-hidden="true"
+  >
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);

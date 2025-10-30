@@ -1,0 +1,52 @@
+:root {
+  color-scheme: light;
+  --font-family-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-weight-regular: 500;
+  --font-weight-medium: 600;
+  --font-weight-bold: 700;
+  --app-header-height: 72px;
+  --app-sidebar-width: 264px;
+  --app-sidebar-width-collapsed: 84px;
+  --app-surface: #f4f6fb;
+  --app-surface-elevated: #ffffff;
+  --app-border: rgba(148, 163, 184, 0.35);
+  --app-text: #0f172a;
+  --app-text-muted: #64748b;
+  --app-accent: #2563eb;
+  --app-accent-soft: rgba(37, 99, 235, 0.1);
+  --app-success: #047857;
+  --app-danger: #b91c1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-regular);
+  background: var(--app-surface);
+  color: var(--app-text);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.2);
+}

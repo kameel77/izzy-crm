@@ -9,6 +9,8 @@ interface LeadListProps {
   selectedLeadId?: string | null;
   onSelect: (leadId: string) => void;
   onRefresh: () => void;
+  onCreateLeadClick: () => void;
+  onMore: (leadId: string) => void;
   onStatusFilterChange: (status: LeadStatus | "") => void;
   statusFilter: LeadStatus | "";
   search: string;
@@ -28,6 +30,8 @@ export const LeadList: React.FC<LeadListProps> = ({
   selectedLeadId,
   onSelect,
   onRefresh,
+  onCreateLeadClick,
+  onMore,
   statusFilter,
   onStatusFilterChange,
   search,
@@ -63,6 +67,9 @@ export const LeadList: React.FC<LeadListProps> = ({
           <button type="button" style={styles.refreshButton} onClick={onRefresh}>
             Refresh
           </button>
+          <button type="button" style={styles.createButton} onClick={onCreateLeadClick}>
+            Create lead
+          </button>
         </div>
         <span style={styles.count}>
           {meta ? `${meta.total} results` : `${leads.length} results`}
@@ -73,17 +80,18 @@ export const LeadList: React.FC<LeadListProps> = ({
         <table style={styles.table}>
           <thead>
             <tr>
-              <th>Customer</th>
-              <th>Status</th>
-              <th>Assigned</th>
-              <th>Partner</th>
-              <th>Created</th>
+              <th style={styles.tableHeadCell}>Customer</th>
+              <th style={styles.tableHeadCell}>Status</th>
+              <th style={styles.tableHeadCell}>Assigned</th>
+              <th style={styles.tableHeadCell}>Partner</th>
+              <th style={styles.tableHeadCell}>Created</th>
+              <th aria-label="Lead actions" style={{ ...styles.tableHeadCell, textAlign: "right" }} />
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} style={styles.loadingCell}>
+                <td colSpan={6} style={{ ...styles.tableCell, ...styles.loadingCell }}>
                   Loading leads...
                 </td>
               </tr>
@@ -96,7 +104,7 @@ export const LeadList: React.FC<LeadListProps> = ({
                   }
                   onClick={() => onSelect(lead.id)}
                 >
-                  <td>
+                  <td style={styles.tableCell}>
                     <strong>
                       {lead.customerProfile
                         ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
@@ -104,17 +112,31 @@ export const LeadList: React.FC<LeadListProps> = ({
                     </strong>
                     <div style={styles.subtleText}>{lead.customerProfile?.email}</div>
                   </td>
-                  <td>
+                  <td style={styles.tableCell}>
                     <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
                   </td>
-                  <td>{lead.assignedUser?.fullName || <span style={styles.subtleText}>Unassigned</span>}</td>
-                  <td>{lead.partner?.name || lead.partnerId}</td>
-                  <td>{new Date(lead.leadCreatedAt).toLocaleString()}</td>
+                  <td style={styles.tableCell}>
+                    {lead.assignedUser?.fullName || <span style={styles.subtleText}>Unassigned</span>}
+                  </td>
+                  <td style={styles.tableCell}>{lead.partner?.name || lead.partnerId}</td>
+                  <td style={styles.tableCell}>{new Date(lead.leadCreatedAt).toLocaleString()}</td>
+                  <td style={{ ...styles.tableCell, ...styles.actionsCell }}>
+                    <button
+                      type="button"
+                      style={styles.moreButton}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onMore(lead.id);
+                      }}
+                    >
+                      More
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} style={styles.loadingCell}>
+                <td colSpan={6} style={{ ...styles.tableCell, ...styles.loadingCell }}>
                   No leads found.
                 </td>
               </tr>
@@ -150,13 +172,15 @@ export const LeadList: React.FC<LeadListProps> = ({
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+    background: "var(--app-surface-elevated)",
+    borderRadius: 16,
+    border: "1px solid var(--app-border)",
+    boxShadow: "0 16px 32px rgba(15, 23, 42, 0.08)",
     padding: "1.5rem",
     display: "flex",
     flexDirection: "column",
     gap: "1rem",
+    fontFamily: "var(--font-family-sans)",
   },
   header: {
     display: "flex",
@@ -169,6 +193,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: "0.75rem",
+    flexWrap: "wrap",
   },
   searchInput: {
     padding: "0.5rem 0.75rem",
@@ -184,10 +209,20 @@ const styles: Record<string, React.CSSProperties> = {
   refreshButton: {
     padding: "0.5rem 0.75rem",
     borderRadius: 8,
-    border: "1px solid #2563eb",
-    background: "#2563eb",
-    color: "#fff",
+    border: "1px solid rgba(37, 99, 235, 0.25)",
+    background: "rgba(37, 99, 235, 0.12)",
+    color: "#1d4ed8",
     cursor: "pointer",
+    fontWeight: 600,
+  },
+  createButton: {
+    padding: "0.5rem 0.85rem",
+    borderRadius: 8,
+    border: "1px solid rgba(4, 120, 87, 0.35)",
+    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+    color: "#f8fafc",
+    cursor: "pointer",
+    fontWeight: 600,
   },
   tableWrapper: {
     overflowX: "auto",
@@ -195,30 +230,46 @@ const styles: Record<string, React.CSSProperties> = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
+    fontSize: "0.92rem",
+  },
+  tableHeadCell: {
+    textAlign: "left",
+    padding: "0.75rem",
+    fontSize: "0.75rem",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--app-text-muted)",
+    borderBottom: "1px solid #e2e8f0",
+  },
+  tableCell: {
+    padding: "1rem 0.75rem",
+    borderBottom: "1px solid #f1f5f9",
+    verticalAlign: "top",
   },
   clickableRow: {
     cursor: "pointer",
   },
   selectedRow: {
     cursor: "pointer",
-    background: "#e0ecff",
+    background: "rgba(37, 99, 235, 0.12)",
   },
   loadingCell: {
     textAlign: "center",
     padding: "1.5rem",
-    color: "#6b7280",
+    color: "var(--app-text-muted)",
   },
   badge: {
     display: "inline-block",
     padding: "0.25rem 0.5rem",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3730a3",
+    background: "rgba(79, 70, 229, 0.12)",
+    color: "#4338ca",
     fontSize: "0.85rem",
+    fontWeight: 600,
   },
   count: {
     fontSize: "0.9rem",
-    color: "#6b7280",
+    color: "var(--app-text-muted)",
   },
   pagination: {
     marginTop: "0.5rem",
@@ -230,7 +281,7 @@ const styles: Record<string, React.CSSProperties> = {
   paginationButton: {
     padding: "0.5rem 0.9rem",
     borderRadius: 8,
-    border: "1px solid #d1d5db",
+    border: "1px solid #e2e8f0",
     background: "#fff",
     cursor: "pointer",
     minWidth: 100,
@@ -240,7 +291,20 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#4b5563",
   },
   subtleText: {
-    color: "#6b7280",
+    color: "var(--app-text-muted)",
+    fontSize: "0.85rem",
+  },
+  actionsCell: {
+    textAlign: "right",
+    whiteSpace: "nowrap",
+  },
+  moreButton: {
+    padding: "0.35rem 0.75rem",
+    borderRadius: 999,
+    border: "1px solid #1d4ed8",
+    background: "#1d4ed8",
+    color: "#fff",
+    cursor: "pointer",
     fontSize: "0.85rem",
   },
 };
