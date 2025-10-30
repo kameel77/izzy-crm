@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
 import { AuthProvider } from "./providers/AuthProvider";
+import "./styles/global.css";
 
 const rootElement = document.getElementById("root");
 
