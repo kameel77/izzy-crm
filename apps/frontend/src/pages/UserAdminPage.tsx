@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import { UpdateUserPayload, UserSummary } from "../api/users";
+import { Modal } from "../components/Modal";
 import { UserForm } from "../components/UserForm";
 import { UserTable } from "../components/UserTable";
 import { useAuth } from "../hooks/useAuth";
@@ -21,6 +22,8 @@ export const UserAdminPage: React.FC = () => {
     resetPassword,
   } = useUserAdmin({ initialFilters: { perPage: 20, page: 1 } });
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -28,6 +31,31 @@ export const UserAdminPage: React.FC = () => {
 
   const handleSelectUser = (u: UserSummary) => {
     setSelectedUser(u);
+  };
+
+  const handleOpenCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleOpenEditModal = (u: UserSummary) => {
+    setSelectedUser(u);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+  };
+
+  const handleCreateSuccess = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
   };
 
   const handlePageChange = (page: number) => {
@@ -49,67 +77,78 @@ export const UserAdminPage: React.FC = () => {
   const isAdmin = user?.role === "ADMIN";
 
   return (
-      <div style={styles.page}>
-        <header style={styles.header}>
-          <div>
-            <h1 style={styles.heading}>User Administration</h1>
-            <p style={styles.subtitle}>Invite teammates, manage roles, and reset passwords.</p>
-          </div>
-          <div style={styles.filters}>
-            <select style={styles.filterInput} onChange={handleRoleFilter} defaultValue={filters.role || ""}>
-              <option value="">All roles</option>
-              <option value="PARTNER">Partner</option>
-              <option value="PARTNER_MANAGER">Partner Manager</option>
-              <option value="PARTNER_EMPLOYEE">Partner Employee</option>
-              <option value="OPERATOR">Operator</option>
-              <option value="SUPERVISOR">Supervisor</option>
-              <option value="ADMIN">Admin</option>
-              <option value="AUDITOR">Auditor</option>
-            </select>
-            <select style={styles.filterInput} onChange={handleStatusFilter} defaultValue={filters.status || ""}>
-              <option value="">All statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INVITED">Invited</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-            <input
-              type="search"
-              placeholder="Search name or email"
-              defaultValue={filters.search || ""}
-              onChange={handleSearchChange}
-              style={styles.filterInput}
-            />
-            <button type="button" style={styles.refresh} onClick={() => loadUsers()}>Refresh</button>
-          </div>
-        </header>
-
-        {error ? <div style={styles.error}>{error}</div> : null}
-        {success ? <div style={styles.success}>{success}</div> : null}
-
-        <div style={styles.layout}>
-          <UserTable
-            users={users}
-            meta={meta}
-            isLoading={isLoading}
-            selectedUserId={selectedUser?.id}
-            onSelect={handleSelectUser}
-            onPageChange={handlePageChange}
-          />
-
-          <div style={styles.forms}>
-            <UserForm
-              mode="create"
-              onSubmit={createUser}
-            />
-            <UserForm
-              mode="edit"
-              user={selectedUser}
-              onSubmit={(payload) => updateUser(payload as UpdateUserPayload)}
-              onResetPassword={isAdmin ? resetPassword : undefined}
-            />
-          </div>
+    <div style={styles.page}>
+      <header style={styles.header}>
+        <div>
+          <h1 style={styles.heading}>User Administration</h1>
+          <p style={styles.subtitle}>Invite teammates, manage roles, and reset passwords.</p>
         </div>
-      </div>
+        <div style={styles.filters}>
+          <select style={styles.filterInput} onChange={handleRoleFilter} defaultValue={filters.role || ""}>
+            <option value="">All roles</option>
+            <option value="PARTNER">Partner</option>
+            <option value="PARTNER_MANAGER">Partner Manager</option>
+            <option value="PARTNER_EMPLOYEE">Partner Employee</option>
+            <option value="OPERATOR">Operator</option>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="ADMIN">Admin</option>
+            <option value="AUDITOR">Auditor</option>
+          </select>
+          <select style={styles.filterInput} onChange={handleStatusFilter} defaultValue={filters.status || ""}>
+            <option value="">All statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INVITED">Invited</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+          <input
+            type="search"
+            placeholder="Search name or email"
+            defaultValue={filters.search || ""}
+            onChange={handleSearchChange}
+            style={styles.filterInput}
+          />
+          <button type="button" style={styles.refresh} onClick={() => loadUsers()}>Refresh</button>
+          <button type="button" style={styles.create} onClick={handleOpenCreateModal}>Create user</button>
+        </div>
+      </header>
+
+      {error ? <div style={styles.error}>{error}</div> : null}
+      {success ? <div style={styles.success}>{success}</div> : null}
+
+      <UserTable
+        users={users}
+        meta={meta}
+        isLoading={isLoading}
+        selectedUserId={selectedUser?.id}
+        onSelect={handleSelectUser}
+        onPageChange={handlePageChange}
+        onEdit={handleOpenEditModal}
+      />
+
+      <Modal isOpen={isCreateModalOpen} onClose={handleCloseCreateModal} title="Create user">
+        <UserForm
+          mode="create"
+          onSubmit={createUser}
+          onSuccess={handleCreateSuccess}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={isEditModalOpen && Boolean(selectedUser)}
+        onClose={handleCloseEditModal}
+        title={selectedUser ? `Edit ${selectedUser.fullName || selectedUser.email}` : "Edit user"}
+      >
+        {selectedUser ? (
+          <UserForm
+            mode="edit"
+            user={selectedUser}
+            onSubmit={(payload) => updateUser(payload as UpdateUserPayload)}
+            onResetPassword={isAdmin ? resetPassword : undefined}
+            onSuccess={handleEditSuccess}
+          />
+        ) : null}
+      </Modal>
+    </div>
   );
 };
 
@@ -157,6 +196,16 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#fff",
     cursor: "pointer",
   },
+  create: {
+    padding: "0.5rem 1.1rem",
+    borderRadius: 8,
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 600,
+    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.35)",
+  },
   error: {
     background: "#fee2e2",
     color: "#b91c1c",
@@ -168,15 +217,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#047857",
     padding: "0.75rem",
     borderRadius: 8,
-  },
-  layout: {
-    display: "grid",
-    gap: "1.5rem",
-    gridTemplateColumns: "1.5fr 1fr",
-  },
-  forms: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
   },
 };
