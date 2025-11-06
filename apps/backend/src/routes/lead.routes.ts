@@ -9,6 +9,7 @@ import {
   assignLeadOwner,
   createLead,
   getLeadById,
+  listLeadNotes,
   listLeads,
   transitionLeadStatus,
   upsertFinancingApplication,
@@ -325,6 +326,60 @@ router.post(
     });
 
     return res.status(201).json(note);
+  }),
+);
+
+router.get(
+  "/:id/notes",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+
+    const notesPayload = await listLeadNotes(id);
+
+    if (!notesPayload) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user.partnerId || notesPayload.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        notesPayload.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (notesPayload.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    return res.json({
+      data: notesPayload.notes.map((note) => ({
+        id: note.id,
+        content: note.content,
+        createdAt: note.createdAt.toISOString(),
+        author: note.user
+          ? {
+              id: note.user.id,
+              fullName: note.user.fullName,
+              email: note.user.email,
+            }
+          : null,
+        source: note.source,
+      })),
+    });
   }),
 );
 
