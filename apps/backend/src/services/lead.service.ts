@@ -289,7 +289,15 @@ export const getLeadById = async (id: string) => {
   return lead;
 };
 
-export const listLeadNotes = async (leadId: string) => {
+type LeadNotesPayload = {
+  partnerId: string | null;
+  createdByUserId: string | null;
+  notes: LeadNoteRecord[];
+};
+
+export const listLeadNotes = async (
+  leadId: string,
+): Promise<LeadNotesPayload | null> => {
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
     select: {
@@ -329,33 +337,33 @@ export const listLeadNotes = async (leadId: string) => {
     },
   });
 
-  const notesFromLogs = auditLogs
-    .map((log) => {
-      const metadata = log.metadata as { notes?: unknown } | null;
-      const rawContent =
-        metadata && typeof metadata.notes === "string" ? metadata.notes.trim() : "";
+  const notesFromLogs: LeadNoteRecord[] = [];
 
-      if (!rawContent) {
-        return null;
-      }
+  for (const log of auditLogs) {
+    const metadata = log.metadata as { notes?: unknown } | null;
+    const rawContent =
+      metadata && typeof metadata.notes === "string" ? metadata.notes.trim() : "";
 
-      const user = log.user
-        ? {
-            id: log.user.id,
-            fullName: log.user.fullName,
-            email: log.user.email,
-          }
-        : null;
+    if (!rawContent) {
+      continue;
+    }
 
-      return {
-        id: log.id,
-        content: rawContent,
-        createdAt: log.createdAt,
-        user,
-        source: "status_change" as const,
-      } satisfies LeadNoteRecord;
-    })
-    .filter((entry): entry is LeadNoteRecord => entry !== null);
+    const user = log.user
+      ? {
+          id: log.user.id,
+          fullName: log.user.fullName,
+          email: log.user.email,
+        }
+      : null;
+
+    notesFromLogs.push({
+      id: log.id,
+      content: rawContent,
+      createdAt: log.createdAt,
+      user,
+      source: "status_change",
+    });
+  }
 
   const trimmedLeadNote = lead.notes?.trim();
   if (
