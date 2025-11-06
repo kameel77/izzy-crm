@@ -34,6 +34,7 @@ export interface LeadSummary {
 
 export interface LeadDetail extends LeadSummary {
   customerProfile?: LeadCustomerProfile | null;
+  notes: LeadNote[];
   vehicleCurrent?: {
     make?: string | null;
     model?: string | null;
@@ -94,20 +95,16 @@ export interface LeadDetail extends LeadSummary {
   }>;
 }
 
-export interface LeadNoteAuthor {
-  id: string;
-  fullName: string;
-  email: string;
-}
-
 export interface LeadNote {
   id: string;
-  leadId: string;
-  authorId: string;
   content: string;
-  url?: string | null;
+  link?: string | null;
   createdAt: string;
-  author: LeadNoteAuthor;
+  author?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
 }
 
 export interface LeadListFilters {
@@ -144,6 +141,12 @@ export const fetchLeads = (token: string, filters: LeadListFilters = {}) => {
 
 export const fetchLeadDetail = (token: string, id: string) =>
   apiFetch<LeadDetail>(`/api/leads/${id}`, { token });
+
+export const fetchLeadNotes = (
+  token: string,
+  id: string,
+  init?: RequestInit,
+) => apiFetch<LeadNotesResponse>(`/api/leads/${id}/notes`, { token, ...(init ?? {}) });
 
 export interface CreateLeadPayload {
   partnerId?: string;
@@ -207,11 +210,7 @@ export const updateLeadStatus = (
 
 export interface CreateLeadNotePayload {
   content: string;
-  url?: string;
-}
-
-export interface LeadNotesQuery {
-  sort?: "asc" | "desc";
+  link?: string;
 }
 
 export const createLeadNote = (
@@ -224,26 +223,6 @@ export const createLeadNote = (
     token,
     body: JSON.stringify(payload),
   });
-
-export const fetchLeadNotes = async (
-  token: string,
-  leadId: string,
-  query: LeadNotesQuery = {},
-) => {
-  const params = new URLSearchParams();
-  if (query.sort) {
-    params.set("sort", query.sort);
-  }
-
-  const queryString = params.toString();
-
-  const response = await apiFetch<{ data: LeadNote[] }>(
-    `/api/leads/${leadId}/notes${queryString ? `?${queryString}` : ""}`,
-    { token },
-  );
-
-  return response.data;
-};
 
 export interface FinancingApplication {
   id: string;
