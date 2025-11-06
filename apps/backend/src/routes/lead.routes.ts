@@ -12,6 +12,12 @@ import {
   transitionLeadStatus,
   upsertFinancingApplication,
 } from "../services/lead.service.js";
+import {
+  createLeadNote,
+  deleteLeadNote,
+  listLeadNotes,
+  updateLeadNote,
+} from "../services/lead-note.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -126,6 +132,40 @@ const uploadDocumentBodySchema = z.object({
 
 const assignmentSchema = z.object({
   userId: z.union([z.string().cuid(), z.literal("")]).optional(),
+});
+
+const noteQuerySchema = z.object({
+  tagIds: z
+    .preprocess((value) => {
+      if (!value) return undefined;
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        return value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      return value;
+    }, z.array(z.string().cuid()).optional()),
+});
+
+const noteBodySchema = z.object({
+  content: z.string().min(1).max(2000),
+  tagIds: z.array(z.string().cuid()).optional(),
+});
+
+const noteUpdateSchema = z
+  .object({
+    content: z.string().min(1).max(2000).optional(),
+    tagIds: z.array(z.string().cuid()).optional(),
+  })
+  .refine((value) => typeof value.content !== "undefined" || typeof value.tagIds !== "undefined", {
+    message: "At least one field must be provided",
+    path: ["content"],
+  });
+
+const noteParamSchema = leadIdParamSchema.extend({
+  noteId: z.string().cuid(),
 });
 
 router.post(
@@ -369,6 +409,190 @@ router.post(
     });
 
     return res.json(result);
+  }),
+);
+
+router.get(
+  "/:id/notes",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const query = noteQuerySchema.parse(req.query);
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user?.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const notes = await listLeadNotes(id, { tagIds: query.tagIds ?? undefined });
+
+    return res.json({ data: notes });
+  }),
+);
+
+router.post(
+  "/:id/notes",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = noteBodySchema.parse(req.body);
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user?.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const note = await createLeadNote({
+      leadId: id,
+      authorId: req.user.id,
+      content: body.content,
+      tagIds: body.tagIds,
+    });
+
+    return res.status(201).json(note);
+  }),
+);
+
+router.patch(
+  "/:id/notes/:noteId",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const { id, noteId } = noteParamSchema.parse(req.params);
+    const body = noteUpdateSchema.parse(req.body ?? {});
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user?.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const note = await updateLeadNote(noteId, {
+      leadId: id,
+      content: body.content,
+      tagIds: body.tagIds,
+    });
+
+    return res.json(note);
+  }),
+);
+
+router.delete(
+  "/:id/notes/:noteId",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const { id, noteId } = noteParamSchema.parse(req.params);
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user?.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    await deleteLeadNote(noteId, id);
+
+    return res.status(204).send();
   }),
 );
 

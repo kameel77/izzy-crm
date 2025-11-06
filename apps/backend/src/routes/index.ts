@@ -5,6 +5,7 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { analyticsRouter } from "./analytics.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { leadRouter } from "./lead.routes.js";
+import { noteTagRouter } from "./note-tag.routes.js";
 import { userRouter } from "./user.routes.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ router.get("/health", (_req, res) => {
 router.use("/auth", authRouter);
 router.use("/analytics", authenticate, analyticsRouter);
 router.use("/leads", authenticate, leadRouter);
+router.use("/note-tags", authenticate, noteTagRouter);
 router.use("/users", authenticate, userRouter);
 
 export { router };
