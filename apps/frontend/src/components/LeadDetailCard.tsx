@@ -34,6 +34,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
+  const leadId = lead?.id ?? null;
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -71,6 +72,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, token]);
+
+  useEffect(() => {
+    if (!leadId) {
+      setNotesRefreshToken(0);
+      return;
+    }
+
+    setNotesRefreshToken((value) => value + 1);
+  }, [leadId]);
 
   const handleRefresh = useCallback(async () => {
     const result = onRefresh();
