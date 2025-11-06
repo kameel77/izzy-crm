@@ -1,4 +1,5 @@
 import { LeadStatus, UserRole } from "@prisma/client";
+import type { Express } from "express";
 import { Router } from "express";
 import { z } from "zod";
 
@@ -7,12 +8,20 @@ import {
   addLeadDocument,
   assignLeadOwner,
   createLead,
+  createLeadNote,
+  deleteLeadNote,
+  findLeadNoteAttachment,
   getLeadById,
   listLeads,
   transitionLeadStatus,
   upsertFinancingApplication,
 } from "../services/lead.service.js";
-import { upload, saveUploadedFile } from "../utils/upload.js";
+import {
+  upload,
+  saveUploadedFile,
+  deleteStoredFile,
+  getStoredFileStream,
+} from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
@@ -121,6 +130,19 @@ const documentSchema = z.object({
 const uploadDocumentBodySchema = z.object({
   type: z.string().min(1).optional(),
   checksum: z.string().optional(),
+});
+
+const createNoteBodySchema = z.object({
+  content: z.string().trim().min(1).max(4000),
+});
+
+const noteParamsSchema = z.object({
+  id: z.string().min(1),
+  noteId: z.string().min(1),
+});
+
+const noteAttachmentParamsSchema = noteParamsSchema.extend({
+  attachmentId: z.string().min(1),
 });
 
 
@@ -373,6 +395,190 @@ router.post(
 );
 
 router.post(
+  "/:id/notes",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  upload.array("attachments", 5),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = createNoteBodySchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user.role)) {
+      if (!req.user.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const uploadedFiles = Array.isArray(req.files)
+      ? (req.files as Express.Multer.File[])
+      : [];
+
+    const storedFiles: Array<Awaited<ReturnType<typeof saveUploadedFile>>> = [];
+
+    try {
+      for (const file of uploadedFiles) {
+        storedFiles.push(
+          await saveUploadedFile({ leadId: id, file, category: "notes" }),
+        );
+      }
+
+      const note = await createLeadNote({
+        leadId: id,
+        authorId: req.user.id,
+        content: body.content,
+        attachments: storedFiles.map((stored) => ({
+          originalName: stored.originalName,
+          mimeType: stored.mimeType,
+          sizeBytes: stored.size,
+          storageProvider: stored.storageProvider,
+          storageKey: stored.storageKey,
+          publicUrl: stored.filePath,
+        })),
+      });
+
+      return res.status(201).json(note);
+    } catch (error) {
+      await Promise.allSettled(
+        storedFiles.map((stored) =>
+          deleteStoredFile({
+            storageProvider: stored.storageProvider,
+            storageKey: stored.storageKey,
+          }),
+        ),
+      );
+      throw error;
+    }
+  }),
+);
+
+router.delete(
+  "/:id/notes/:noteId",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const params = noteParamsSchema.parse(req.params);
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(params.id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (req.user.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    await deleteLeadNote({
+      leadId: params.id,
+      noteId: params.noteId,
+      actorUserId: req.user.id,
+    });
+
+    return res.status(204).send();
+  }),
+);
+
+router.get(
+  "/:id/notes/:noteId/attachments/:attachmentId/download",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const params = noteAttachmentParamsSchema.parse(req.params);
+
+    const attachment = await findLeadNoteAttachment(
+      params.id,
+      params.noteId,
+      params.attachmentId,
+    );
+
+    if (!attachment || !attachment.note) {
+      return res.status(404).json({ message: "Attachment not found" });
+    }
+
+    const leadMeta = attachment.note.lead;
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user?.partnerId || leadMeta?.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        leadMeta?.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (leadMeta?.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const stream = await getStoredFileStream({
+      storageProvider: attachment.storageProvider,
+      storageKey: attachment.storageKey,
+    });
+
+    const safeName = (attachment.originalName || "attachment").replace(/"/g, "'");
+
+    res.setHeader("Content-Type", attachment.mimeType ?? "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(
+        attachment.originalName || "attachment",
+      )}`,
+    );
+    res.setHeader("Cache-Control", "private, max-age=0, must-revalidate");
+
+    await new Promise<void>((resolve, reject) => {
+      stream.on("error", reject);
+      res.on("error", reject);
+      res.on("finish", resolve);
+      res.on("close", resolve);
+      stream.pipe(res);
+    });
+  }),
+);
+
+router.post(
   "/:id/financing",
   authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
   asyncHandler(async (req, res) => {
@@ -461,7 +667,11 @@ router.post(
       }
     }
 
-    const stored = await saveUploadedFile({ leadId: id, file: req.file });
+    const stored = await saveUploadedFile({
+      leadId: id,
+      file: req.file,
+      category: "documents",
+    });
 
     const document = await addLeadDocument({
       leadId: id,

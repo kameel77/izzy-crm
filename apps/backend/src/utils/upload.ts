@@ -1,8 +1,14 @@
 import { randomBytes } from "crypto";
 import fs from "fs";
 import path from "path";
+import { Readable } from "stream";
 import multer from "multer";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 import { env } from "../config/env.js";
 
@@ -38,6 +44,7 @@ export const upload = multer({
 interface SaveFileArgs {
   leadId: string;
   file: Express.Multer.File;
+  category?: string;
 }
 
 export interface SaveFileResult {
@@ -55,10 +62,29 @@ const generateFileName = (originalName: string) => {
   return `${Date.now()}-${base}${ext}`;
 };
 
-export const saveUploadedFile = async ({ leadId, file }: SaveFileArgs): Promise<SaveFileResult> => {
+const normalizeCategory = (category?: string) => {
+  if (!category) return undefined;
+  return category
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join("/");
+};
+
+export const saveUploadedFile = async ({
+  leadId,
+  file,
+  category,
+}: SaveFileArgs): Promise<SaveFileResult> => {
   const filename = generateFileName(file.originalname);
+  const normalizedCategory = normalizeCategory(category);
+  const keyPrefix = normalizedCategory ? `${normalizedCategory}/` : "";
   if (env.uploadDriver === "s3" && s3Client && env.s3) {
-    const key = `leads/${leadId}/${filename}`;
+    if (!env.s3.bucket) {
+      throw new Error("S3 bucket is not configured");
+    }
+
+    const key = `leads/${leadId}/${keyPrefix}${filename}`;
     await s3Client.send(
       new PutObjectCommand({
         Bucket: env.s3.bucket,
@@ -88,9 +114,15 @@ export const saveUploadedFile = async ({ leadId, file }: SaveFileArgs): Promise<
   ensureDir(rootUploadDir);
   const leadDir = path.join(rootUploadDir, leadId);
   ensureDir(leadDir);
-  const diskPath = path.join(leadDir, filename);
+  const categoryDir = normalizedCategory ? path.join(leadDir, normalizedCategory) : leadDir;
+  ensureDir(categoryDir);
+  const diskPath = path.join(categoryDir, filename);
   fs.writeFileSync(diskPath, file.buffer);
-  const publicPath = path.posix.join("/uploads", leadId, filename);
+  const publicPath = path.posix.join(
+    "/uploads",
+    normalizedCategory ? path.posix.join(leadId, normalizedCategory) : leadId,
+    filename,
+  );
 
   return {
     filePath: publicPath,
@@ -100,4 +132,81 @@ export const saveUploadedFile = async ({ leadId, file }: SaveFileArgs): Promise<
     storageProvider: "disk",
     storageKey: diskPath,
   };
+};
+
+export interface StoredFileLocation {
+  storageProvider: string;
+  storageKey?: string | null;
+}
+
+export const getStoredFileStream = async (
+  location: StoredFileLocation,
+): Promise<Readable> => {
+  if (location.storageProvider === "s3") {
+    if (!s3Client || !env.s3?.bucket) {
+      throw new Error("S3 storage is not configured");
+    }
+
+    if (!location.storageKey) {
+      throw new Error("S3 object key is missing");
+    }
+
+    const result = await s3Client.send(
+      new GetObjectCommand({ Bucket: env.s3.bucket, Key: location.storageKey }),
+    );
+
+    if (!result.Body || !(result.Body instanceof Readable)) {
+      const body = result.Body as NodeJS.ReadableStream | null | undefined;
+      if (!body) {
+        throw new Error("S3 object body is empty");
+      }
+      return Readable.from(body as AsyncIterable<Uint8Array>);
+    }
+
+    return result.Body;
+  }
+
+  if (location.storageProvider === "disk") {
+    if (!location.storageKey) {
+      throw new Error("Disk file path is missing");
+    }
+
+    return fs.createReadStream(location.storageKey);
+  }
+
+  throw new Error(`Unsupported storage provider: ${location.storageProvider}`);
+};
+
+export const deleteStoredFile = async (location: StoredFileLocation) => {
+  if (location.storageProvider === "s3") {
+    if (!s3Client || !env.s3?.bucket) {
+      throw new Error("S3 storage is not configured");
+    }
+
+    if (!location.storageKey) {
+      return;
+    }
+
+    await s3Client.send(
+      new DeleteObjectCommand({ Bucket: env.s3.bucket, Key: location.storageKey }),
+    );
+    return;
+  }
+
+  if (location.storageProvider === "disk") {
+    if (!location.storageKey) {
+      return;
+    }
+
+    try {
+      await fs.promises.unlink(location.storageKey);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+    return;
+  }
+
+  throw new Error(`Unsupported storage provider: ${location.storageProvider}`);
 };
