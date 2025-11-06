@@ -21,10 +21,15 @@ export const LEAD_NOTE_ALLOWED_ROLES = [
   UserRole.ADMIN,
 ] as const;
 
+type LeadNoteAllowedRole = (typeof LEAD_NOTE_ALLOWED_ROLES)[number];
+
+const isLeadNoteAllowedRole = (role: UserRole): role is LeadNoteAllowedRole =>
+  LEAD_NOTE_ALLOWED_ROLES.some((allowedRole) => allowedRole === role);
+
 type Actor = Express.UserPayload | undefined;
 
 const ensureCanManageLeadNotes = (actor: Actor) => {
-  if (!actor || !LEAD_NOTE_ALLOWED_ROLES.includes(actor.role)) {
+  if (!actor || !isLeadNoteAllowedRole(actor.role)) {
     const error = new Error("Forbidden");
     (error as Error & { status: number }).status = 403;
     throw error;
