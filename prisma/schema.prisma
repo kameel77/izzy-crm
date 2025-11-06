@@ -21,6 +21,7 @@ model User {
   createdLeads Lead[]      @relation("LeadCreatedBy")
   auditLogs    AuditLog[]
   reminders    Reminder[]  @relation("ReminderAssignedUser")
+  leadNotes    LeadNote[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 }
