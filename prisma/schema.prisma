@@ -19,6 +19,7 @@ model User {
   partnerId    String?
   leads        Lead[]      @relation("LeadAssignedUser")
   createdLeads Lead[]      @relation("LeadCreatedBy")
+  leadNotes    LeadNote[]  @relation("LeadNoteAuthor")
   auditLogs    AuditLog[]
   reminders    Reminder[]  @relation("ReminderAssignedUser")
   leadNotes    LeadNote[]
@@ -50,6 +51,7 @@ model Lead {
   status           LeadStatus        @default(NEW_LEAD)
   sourceMetadata   Json?
   notes            String?
+  leadNotes        LeadNote[] @relation("LeadNoteLead")
   leadCreatedAt    DateTime          @default(now())
   claimedAt        DateTime?
   lastContactAt    DateTime?
@@ -209,6 +211,19 @@ model Reminder {
   status          ReminderStatus @default(OPEN)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  lead      Lead     @relation("LeadNoteLead", fields: [leadId], references: [id])
+  leadId    String
+  author    User     @relation("LeadNoteAuthor", fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
 }
 
 model LeadStatusReference {
