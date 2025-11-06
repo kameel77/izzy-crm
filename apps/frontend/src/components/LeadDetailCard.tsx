@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LeadDetail, FinancingPayload, assignLead } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
 import { FinancingForm } from "./FinancingForm";
+import { LeadNotesList } from "./LeadNotesList";
 import { StatusUpdateForm } from "./StatusUpdateForm";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../hooks/useToasts";
@@ -32,6 +33,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [notesRefreshToken, setNotesRefreshToken] = useState(0);
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -70,6 +72,12 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, token]);
 
+  const handleRefresh = useCallback(async () => {
+    const result = onRefresh();
+    await Promise.resolve(result);
+    setNotesRefreshToken((value) => value + 1);
+  }, [onRefresh]);
+
   const handleAssignmentChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     if (!token || !lead) return;
     const nextValue = event.target.value;
@@ -80,7 +88,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     try {
       await assignLead(token, lead.id, userId);
       toast.success(userId ? "Lead assigned" : "Lead marked as unassigned");
-      await Promise.resolve(onRefresh());
+      await handleRefresh();
       window.dispatchEvent(new CustomEvent("lead-assignment-updated", { detail: { leadId: lead.id } }));
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update assignment";
@@ -160,7 +168,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </h2>
           <p style={styles.subtitle}>{lead.customerProfile?.email}</p>
         </div>
-        <button type="button" style={styles.refreshButton} onClick={onRefresh}>
+        <button
+          type="button"
+          style={styles.refreshButton}
+          onClick={() => {
+            void handleRefresh();
+          }}
+        >
           Refresh
         </button>
       </header>
@@ -215,13 +229,23 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
       </div>
 
-      <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
+      <div style={styles.section}>
+        <LeadNotesList leadId={lead.id} refreshKey={notesRefreshToken} />
+      </div>
+
+      <StatusUpdateForm
+        lead={lead}
+        onSubmit={async (payload) => {
+          await onStatusUpdate(payload);
+          setNotesRefreshToken((value) => value + 1);
+        }}
+      />
 
       <FinancingForm
         application={lead.financingApps[0] ?? null}
         onSave={async (payload) => {
           await onSaveFinancing(payload);
-          onRefresh();
+          await handleRefresh();
         }}
       />
 
@@ -256,10 +280,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <DocumentForm
           onSubmit={async (payload) => {
             await onAddDocument(payload);
-            const refreshResult = onRefresh();
-            if (refreshResult instanceof Promise) {
-              await refreshResult;
-            }
+            await handleRefresh();
           }}
         />
       </div>

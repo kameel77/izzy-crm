@@ -49,6 +49,20 @@ const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
   AGREEMENT_SIGNED: [],
 };
 
+type LeadNoteRecord = {
+  id: string;
+  content: string;
+  createdAt: Date;
+  user:
+    | {
+        id: string;
+        fullName: string;
+        email: string;
+      }
+    | null;
+  source: "status_change" | "initial";
+};
+
 export interface CreateLeadInput {
   partnerId: string;
   sourceMetadata?: Record<string, unknown>;
@@ -273,6 +287,105 @@ export const getLeadById = async (id: string) => {
   });
 
   return lead;
+};
+
+export const listLeadNotes = async (leadId: string) => {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      id: true,
+      partnerId: true,
+      notes: true,
+      leadCreatedAt: true,
+      createdByUserId: true,
+      createdBy: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!lead) {
+    return null;
+  }
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: {
+      leadId,
+      action: "status_change",
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  const notesFromLogs = auditLogs
+    .map((log) => {
+      const metadata = log.metadata as { notes?: unknown } | null;
+      const rawContent =
+        metadata && typeof metadata.notes === "string" ? metadata.notes.trim() : "";
+
+      if (!rawContent) {
+        return null;
+      }
+
+      const user = log.user
+        ? {
+            id: log.user.id,
+            fullName: log.user.fullName,
+            email: log.user.email,
+          }
+        : null;
+
+      return {
+        id: log.id,
+        content: rawContent,
+        createdAt: log.createdAt,
+        user,
+        source: "status_change" as const,
+      } satisfies LeadNoteRecord;
+    })
+    .filter((entry): entry is LeadNoteRecord => entry !== null);
+
+  const trimmedLeadNote = lead.notes?.trim();
+  if (
+    trimmedLeadNote &&
+    !notesFromLogs.some((entry) => entry.content === trimmedLeadNote)
+  ) {
+    notesFromLogs.push({
+      id: `lead-initial-${lead.id}`,
+      content: trimmedLeadNote,
+      createdAt: lead.leadCreatedAt,
+      user: lead.createdBy
+        ? {
+            id: lead.createdBy.id,
+            fullName: lead.createdBy.fullName,
+            email: lead.createdBy.email,
+          }
+        : null,
+      source: "initial",
+    });
+  }
+
+  notesFromLogs.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+
+  return {
+    partnerId: lead.partnerId,
+    createdByUserId: lead.createdByUserId ?? lead.createdBy?.id ?? null,
+    notes: notesFromLogs,
+  };
 };
 
 
