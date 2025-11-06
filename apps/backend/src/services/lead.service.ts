@@ -249,6 +249,18 @@ export const getLeadById = async (id: string) => {
       documents: {
         orderBy: { uploadedAt: "desc" },
       },
+      leadNotes: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          author: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      },
       offers: {
         orderBy: { createdAt: "desc" },
       },
@@ -605,4 +617,60 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
   });
 
   return document;
+};
+
+export interface AddLeadNoteInput {
+  leadId: string;
+  userId: string;
+  content: string;
+  link?: string | null;
+}
+
+export const addLeadNote = async (input: AddLeadNoteInput) => {
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: { id: true },
+    });
+
+    if (!lead) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    const note = await tx.leadNote.create({
+      data: {
+        leadId: input.leadId,
+        authorId: input.userId,
+        content: input.content,
+        link: input.link ?? null,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.userId,
+        action: "note_added",
+        field: "notes",
+        newValue: {
+          id: note.id,
+          content: note.content,
+          link: note.link,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return note;
+  });
 };

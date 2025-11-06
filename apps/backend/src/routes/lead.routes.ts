@@ -5,6 +5,7 @@ import { z } from "zod";
 import { authorize } from "../middlewares/authorize.js";
 import {
   addLeadDocument,
+  addLeadNote,
   assignLeadOwner,
   createLead,
   getLeadById,
@@ -116,6 +117,18 @@ const documentSchema = z.object({
   type: z.string().min(1),
   filePath: z.string().min(1),
   checksum: z.string().optional(),
+});
+
+const leadNoteSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+  link: z
+    .preprocess((value) => {
+      if (typeof value === "string" && value.trim().length === 0) {
+        return undefined;
+      }
+      return value;
+    }, z.string().trim().url().max(2048))
+    .optional(),
 });
 
 const uploadDocumentBodySchema = z.object({
@@ -284,7 +297,34 @@ router.get(
       }
     }
 
-    return res.json(lead);
+    const { leadNotes, ...leadRest } = lead;
+
+    return res.json({
+      ...leadRest,
+      notes: leadNotes,
+    });
+  }),
+);
+
+router.post(
+  "/:id/notes",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = leadNoteSchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const note = await addLeadNote({
+      leadId: id,
+      userId: req.user.id,
+      content: body.content.trim(),
+      link: body.link,
+    });
+
+    return res.status(201).json(note);
   }),
 );
 
