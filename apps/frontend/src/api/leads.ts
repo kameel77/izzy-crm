@@ -34,6 +34,7 @@ export interface LeadSummary {
 
 export interface LeadDetail extends LeadSummary {
   customerProfile?: LeadCustomerProfile | null;
+  notes: LeadNote[];
   vehicleCurrent?: {
     make?: string | null;
     model?: string | null;
@@ -92,6 +93,18 @@ export interface LeadDetail extends LeadSummary {
       email: string;
     } | null;
   }>;
+}
+
+export interface LeadNote {
+  id: string;
+  content: string;
+  link?: string | null;
+  createdAt: string;
+  author?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
 }
 
 export interface LeadListFilters {
@@ -184,6 +197,22 @@ export const updateLeadStatus = (
   payload: UpdateLeadStatusPayload,
 ) =>
   apiFetch<LeadSummary>(`/api/leads/${leadId}/status`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
+export interface CreateLeadNotePayload {
+  content: string;
+  link?: string;
+}
+
+export const createLeadNote = (
+  token: string,
+  leadId: string,
+  payload: CreateLeadNotePayload,
+) =>
+  apiFetch<LeadNote>(`/api/leads/${leadId}/notes`, {
     method: "POST",
     token,
     body: JSON.stringify(payload),

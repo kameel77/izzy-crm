@@ -21,6 +21,7 @@ model User {
   createdLeads Lead[]      @relation("LeadCreatedBy")
   auditLogs    AuditLog[]
   reminders    Reminder[]  @relation("ReminderAssignedUser")
+  leadNotes    LeadNote[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 }
@@ -62,8 +63,20 @@ model Lead {
   agreement        Agreement?
   reminders        Reminder[]
   auditLogs        AuditLog[]
+  leadNotes        LeadNote[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  leadId    String
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  String?
+  content   String
+  link      String?
+  createdAt DateTime @default(now())
 }
 
 model CustomerProfile {
