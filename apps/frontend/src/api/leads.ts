@@ -94,6 +94,22 @@ export interface LeadDetail extends LeadSummary {
   }>;
 }
 
+export interface LeadNoteAuthor {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface LeadNote {
+  id: string;
+  leadId: string;
+  authorId: string;
+  content: string;
+  url?: string | null;
+  createdAt: string;
+  author: LeadNoteAuthor;
+}
+
 export interface LeadListFilters {
   page?: number;
   perPage?: number;
@@ -188,6 +204,46 @@ export const updateLeadStatus = (
     token,
     body: JSON.stringify(payload),
   });
+
+export interface CreateLeadNotePayload {
+  content: string;
+  url?: string;
+}
+
+export interface LeadNotesQuery {
+  sort?: "asc" | "desc";
+}
+
+export const createLeadNote = (
+  token: string,
+  leadId: string,
+  payload: CreateLeadNotePayload,
+) =>
+  apiFetch<LeadNote>(`/api/leads/${leadId}/notes`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
+export const fetchLeadNotes = async (
+  token: string,
+  leadId: string,
+  query: LeadNotesQuery = {},
+) => {
+  const params = new URLSearchParams();
+  if (query.sort) {
+    params.set("sort", query.sort);
+  }
+
+  const queryString = params.toString();
+
+  const response = await apiFetch<{ data: LeadNote[] }>(
+    `/api/leads/${leadId}/notes${queryString ? `?${queryString}` : ""}`,
+    { token },
+  );
+
+  return response.data;
+};
 
 export interface FinancingApplication {
   id: string;

@@ -12,6 +12,10 @@ import {
   transitionLeadStatus,
   upsertFinancingApplication,
 } from "../services/lead.service.js";
+import {
+  createLeadNote,
+  listLeadNotes,
+} from "../services/lead-note.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -126,6 +130,15 @@ const uploadDocumentBodySchema = z.object({
 
 const assignmentSchema = z.object({
   userId: z.union([z.string().cuid(), z.literal("")]).optional(),
+});
+
+const leadNoteBodySchema = z.object({
+  content: z.string().min(1).max(5000),
+  url: z.string().url().optional(),
+});
+
+const leadNoteListQuerySchema = z.object({
+  sort: z.enum(["asc", "desc"]).optional(),
 });
 
 router.post(
@@ -307,6 +320,38 @@ router.patch(
     });
 
     return res.json(updated);
+  }),
+);
+
+router.post(
+  "/:id/notes",
+  authorize(UserRole.OPERATOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = leadNoteBodySchema.parse(req.body);
+
+    const note = await createLeadNote(req.user, {
+      leadId: id,
+      content: body.content,
+      url: body.url,
+    });
+
+    return res.status(201).json(note);
+  }),
+);
+
+router.get(
+  "/:id/notes",
+  authorize(UserRole.OPERATOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const query = leadNoteListQuerySchema.parse(req.query);
+
+    const notes = await listLeadNotes(req.user, id, {
+      sort: query.sort,
+    });
+
+    return res.json({ data: notes });
   }),
 );
 
