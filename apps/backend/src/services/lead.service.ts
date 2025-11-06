@@ -49,6 +49,20 @@ const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
   AGREEMENT_SIGNED: [],
 };
 
+type LeadNoteRecord = {
+  id: string;
+  content: string;
+  createdAt: Date;
+  user:
+    | {
+        id: string;
+        fullName: string;
+        email: string;
+      }
+    | null;
+  source: "status_change" | "initial";
+};
+
 export interface CreateLeadInput {
   partnerId: string;
   sourceMetadata?: Record<string, unknown>;
@@ -249,6 +263,18 @@ export const getLeadById = async (id: string) => {
       documents: {
         orderBy: { uploadedAt: "desc" },
       },
+      leadNotes: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          author: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      },
       offers: {
         orderBy: { createdAt: "desc" },
       },
@@ -273,6 +299,113 @@ export const getLeadById = async (id: string) => {
   });
 
   return lead;
+};
+
+type LeadNotesPayload = {
+  partnerId: string | null;
+  createdByUserId: string | null;
+  notes: LeadNoteRecord[];
+};
+
+export const listLeadNotes = async (
+  leadId: string,
+): Promise<LeadNotesPayload | null> => {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      id: true,
+      partnerId: true,
+      notes: true,
+      leadCreatedAt: true,
+      createdByUserId: true,
+      createdBy: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!lead) {
+    return null;
+  }
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: {
+      leadId,
+      action: "status_change",
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  const notesFromLogs: LeadNoteRecord[] = [];
+
+  for (const log of auditLogs) {
+    const metadata = log.metadata as { notes?: unknown } | null;
+    const rawContent =
+      metadata && typeof metadata.notes === "string" ? metadata.notes.trim() : "";
+
+    if (!rawContent) {
+      continue;
+    }
+
+    const user = log.user
+      ? {
+          id: log.user.id,
+          fullName: log.user.fullName,
+          email: log.user.email,
+        }
+      : null;
+
+    notesFromLogs.push({
+      id: log.id,
+      content: rawContent,
+      createdAt: log.createdAt,
+      user,
+      source: "status_change",
+    });
+  }
+
+  const trimmedLeadNote = lead.notes?.trim();
+  if (
+    trimmedLeadNote &&
+    !notesFromLogs.some((entry) => entry.content === trimmedLeadNote)
+  ) {
+    notesFromLogs.push({
+      id: `lead-initial-${lead.id}`,
+      content: trimmedLeadNote,
+      createdAt: lead.leadCreatedAt,
+      user: lead.createdBy
+        ? {
+            id: lead.createdBy.id,
+            fullName: lead.createdBy.fullName,
+            email: lead.createdBy.email,
+          }
+        : null,
+      source: "initial",
+    });
+  }
+
+  notesFromLogs.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+
+  return {
+    partnerId: lead.partnerId,
+    createdByUserId: lead.createdByUserId ?? lead.createdBy?.id ?? null,
+    notes: notesFromLogs,
+  };
 };
 
 
@@ -605,4 +738,60 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
   });
 
   return document;
+};
+
+export interface AddLeadNoteInput {
+  leadId: string;
+  userId: string;
+  content: string;
+  link?: string | null;
+}
+
+export const addLeadNote = async (input: AddLeadNoteInput) => {
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: { id: true },
+    });
+
+    if (!lead) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    const note = await tx.leadNote.create({
+      data: {
+        leadId: input.leadId,
+        authorId: input.userId,
+        content: input.content,
+        link: input.link ?? null,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.userId,
+        action: "note_added",
+        field: "notes",
+        newValue: {
+          id: note.id,
+          content: note.content,
+          link: note.link,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return note;
+  });
 };
