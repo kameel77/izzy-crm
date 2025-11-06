@@ -1,14 +1,22 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { LeadDetail, FinancingPayload, assignLead } from "../api/leads";
+import {
+  LeadDetail,
+  FinancingPayload,
+  assignLead,
+  createLeadNote,
+  LeadNote,
+} from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
 import { FinancingForm } from "./FinancingForm";
+import { LeadNotesList } from "./LeadNotesList";
 import { StatusUpdateForm } from "./StatusUpdateForm";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../hooks/useToasts";
 import { fetchUsers } from "../api/users";
 import { ApiError } from "../api/client";
+import { Modal } from "./Modal";
 
 interface LeadDetailCardProps {
   lead: LeadDetail | null;
@@ -32,6 +40,16 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<LeadNote[]>(lead?.notes ?? []);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState("");
+  const [noteLink, setNoteLink] = useState("");
+  const [noteErrors, setNoteErrors] = useState<{ content?: string; link?: string }>({});
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  useEffect(() => {
+    setNotes(lead?.notes ?? []);
+  }, [lead]);
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -70,6 +88,21 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, token]);
 
+  useEffect(() => {
+    if (!leadId) {
+      setNotesRefreshToken(0);
+      return;
+    }
+
+    refreshNotes();
+  }, [leadId, refreshNotes]);
+
+  const handleRefresh = useCallback(async () => {
+    const result = onRefresh();
+    await Promise.resolve(result);
+    refreshNotes();
+  }, [onRefresh, refreshNotes]);
+
   const handleAssignmentChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     if (!token || !lead) return;
     const nextValue = event.target.value;
@@ -80,7 +113,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     try {
       await assignLead(token, lead.id, userId);
       toast.success(userId ? "Lead assigned" : "Lead marked as unassigned");
-      await Promise.resolve(onRefresh());
+      await handleRefresh();
       window.dispatchEvent(new CustomEvent("lead-assignment-updated", { detail: { leadId: lead.id } }));
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update assignment";
@@ -106,6 +139,74 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
   const assignedUserId = lead?.assignedUser?.id ?? "";
   const assignedEmail = lead?.assignedUser?.email || (isAdmin ? "Do przypisania" : "Unassigned");
+
+  const resetNoteForm = () => {
+    setNoteContent("");
+    setNoteLink("");
+    setNoteErrors({});
+  };
+
+  const handleCloseNoteModal = () => {
+    setIsNoteModalOpen(false);
+    resetNoteForm();
+  };
+
+  const validateNoteForm = () => {
+    const trimmedContent = noteContent.trim();
+    const trimmedLink = noteLink.trim();
+    const errors: { content?: string; link?: string } = {};
+
+    if (!trimmedContent) {
+      errors.content = "Note cannot be empty.";
+    } else if (trimmedContent.length > 2000) {
+      errors.content = "Note must be at most 2000 characters.";
+    }
+
+    if (trimmedLink) {
+      try {
+        const parsed = new URL(trimmedLink);
+        if (!parsed.protocol.startsWith("http")) {
+          errors.link = "Link must start with http or https.";
+        }
+      } catch (error) {
+        errors.link = "Provide a valid URL.";
+      }
+    }
+
+    setNoteErrors(errors);
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      content: trimmedContent,
+      link: trimmedLink ? trimmedLink : undefined,
+    };
+  };
+
+  const handleSubmitNote = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token || !lead) return;
+
+    const validation = validateNoteForm();
+    if (!validation.isValid) {
+      return;
+    }
+
+    setIsSavingNote(true);
+    try {
+      const createdNote = await createLeadNote(token, lead.id, {
+        content: validation.content,
+        link: validation.link,
+      });
+      setNotes((prev) => [createdNote, ...prev]);
+      toast.success("Note added");
+      handleCloseNoteModal();
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to add note";
+      toast.error(message);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   if (!lead) {
     return (
@@ -160,7 +261,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </h2>
           <p style={styles.subtitle}>{lead.customerProfile?.email}</p>
         </div>
-        <button type="button" style={styles.refreshButton} onClick={onRefresh}>
+        <button
+          type="button"
+          style={styles.refreshButton}
+          onClick={() => {
+            void handleRefresh();
+          }}
+        >
           Refresh
         </button>
       </header>
@@ -169,35 +276,35 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
         <div style={styles.grid}>
           <InfoItem label="Partner" value={lead.partner?.name || lead.partnerId} />
-                  <InfoItem
-          label="Assigned To"
-          value={
-            isAdmin ? (
-              <div style={styles.assignmentControl}>
-                <select
-                  value={assignedUserId}
-                  onChange={handleAssignmentChange}
-                  style={{
-                    ...styles.assignmentSelect,
-                    background: assignedUserId ? "#ffffff" : "#fef3c7",
-                  }}
-                  disabled={isLoadingOperators || isUpdatingAssignment}
-                >
-                  <option value="">Do przypisania</option>
-                  {mergedOperatorOptions.map((operator) => (
-                    <option key={operator.id} value={operator.id}>
-                      {operator.email}
-                      {operator.fullName ? ` (${operator.fullName})` : ""}
-                    </option>
-                  ))}
-                </select>
-                {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
-              </div>
-            ) : (
-              assignedEmail
-            )
-          }
-        />
+          <InfoItem
+            label="Assigned To"
+            value={
+              isAdmin ? (
+                <div style={styles.assignmentControl}>
+                  <select
+                    value={assignedUserId}
+                    onChange={handleAssignmentChange}
+                    style={{
+                      ...styles.assignmentSelect,
+                      background: assignedUserId ? "#ffffff" : "#fef3c7",
+                    }}
+                    disabled={isLoadingOperators || isUpdatingAssignment}
+                  >
+                    <option value="">Do przypisania</option>
+                    {mergedOperatorOptions.map((operator) => (
+                      <option key={operator.id} value={operator.id}>
+                        {operator.email}
+                        {operator.fullName ? ` (${operator.fullName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
+                </div>
+              ) : (
+                assignedEmail
+              )
+            }
+          />
           <InfoItem
             label="Created"
             value={new Date(lead.leadCreatedAt).toLocaleString()}
@@ -210,18 +317,62 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       </div>
 
       <div style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>Notes</h3>
+          <button type="button" style={styles.primaryButton} onClick={() => setIsNoteModalOpen(true)}>
+            New note
+          </button>
+        </div>
+        <ul style={styles.noteList}>
+          {notes.length ? (
+            notes.map((note) => (
+              <li key={note.id} style={styles.noteItem}>
+                <div style={styles.noteMeta}>
+                  <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+                  <span>· {new Date(note.createdAt).toLocaleString()}</span>
+                  {note.link ? (
+                    <a
+                      href={note.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.noteLink}
+                    >
+                      Link
+                    </a>
+                  ) : null}
+                </div>
+                <p style={styles.noteContent}>{note.content}</p>
+              </li>
+            ))
+          ) : (
+            <li style={styles.noteEmpty}>No notes yet.</li>
+          )}
+        </ul>
+      </div>
+
+      <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
         <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
         <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
       </div>
 
-      <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
+      <div style={styles.section}>
+        <LeadNotesList leadId={lead.id} refreshKey={notesRefreshToken} />
+      </div>
+
+      <StatusUpdateForm
+        lead={lead}
+        onSubmit={async (payload) => {
+          await onStatusUpdate(payload);
+          refreshNotes();
+        }}
+      />
 
       <FinancingForm
         application={lead.financingApps[0] ?? null}
         onSave={async (payload) => {
           await onSaveFinancing(payload);
-          onRefresh();
+          await handleRefresh();
         }}
       />
 
@@ -256,10 +407,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <DocumentForm
           onSubmit={async (payload) => {
             await onAddDocument(payload);
-            const refreshResult = onRefresh();
-            if (refreshResult instanceof Promise) {
-              await refreshResult;
-            }
+            await handleRefresh();
           }}
         />
       </div>
@@ -284,6 +432,45 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           )}
         </ul>
       </div>
+
+      <Modal isOpen={isNoteModalOpen} onClose={handleCloseNoteModal} title="Add note">
+        <form onSubmit={handleSubmitNote} style={styles.modalForm}>
+          <label style={styles.modalLabel}>
+            Note
+            <textarea
+              required
+              value={noteContent}
+              onChange={(event) => setNoteContent(event.target.value)}
+              style={styles.modalTextarea}
+              maxLength={2000}
+            />
+            {noteErrors.content ? <span style={styles.errorText}>{noteErrors.content}</span> : null}
+          </label>
+          <label style={styles.modalLabel}>
+            Link (optional)
+            <input
+              type="url"
+              value={noteLink}
+              onChange={(event) => setNoteLink(event.target.value)}
+              style={styles.modalInput}
+              placeholder="https://example.com"
+            />
+            {noteErrors.link ? <span style={styles.errorText}>{noteErrors.link}</span> : null}
+          </label>
+          <div style={styles.modalActions}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={handleCloseNoteModal}
+            >
+              Cancel
+            </button>
+            <button type="submit" style={styles.primaryButton} disabled={isSavingNote}>
+              {isSavingNote ? "Saving..." : "Save note"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </section>
   );
 };
@@ -415,6 +602,12 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: "0.75rem",
   },
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem",
+  },
   sectionTitle: {
     margin: 0,
     fontSize: "1.1rem",
@@ -450,6 +643,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.85rem",
     fontWeight: 600,
   },
+  noteList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
   docList: {
     listStyle: "none",
     padding: 0,
@@ -457,6 +658,16 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "0.75rem",
+  },
+  noteItem: {
+    background: "#fff",
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+    padding: "0.75rem 1rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
   },
   docItem: {
     display: "flex",
@@ -485,6 +696,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#6b7280",
     marginTop: "0.25rem",
   },
+  noteMeta: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "0.5rem",
+    color: "#475569",
+    fontSize: "0.85rem",
+  },
+  noteContent: {
+    margin: 0,
+    color: "#0f172a",
+    whiteSpace: "pre-wrap",
+    lineHeight: 1.5,
+  },
+  noteLink: {
+    marginLeft: "auto",
+    color: "#2563eb",
+    textDecoration: "underline",
+  },
+  noteEmpty: {
+    color: "#64748b",
+    fontStyle: "italic",
+  },
   assignmentControl: {
     display: "flex",
     flexDirection: "column",
@@ -503,10 +737,63 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.8rem",
     color: "#b91c1c",
   },
+  primaryButton: {
+    background: "#2563eb",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "0.5rem 1rem",
+    cursor: "pointer",
+    fontWeight: 600,
+    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.2)",
+  },
+  secondaryButton: {
+    background: "#e2e8f0",
+    color: "#1e293b",
+    border: "none",
+    borderRadius: 8,
+    padding: "0.5rem 1rem",
+    cursor: "pointer",
+    fontWeight: 500,
+  },
   auditDetails: {
     marginTop: "0.5rem",
     fontSize: "0.85rem",
     color: "#4b5563",
     lineHeight: 1.4,
+  },
+  errorText: {
+    color: "#b91c1c",
+    fontSize: "0.8rem",
+  },
+  modalForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+  },
+  modalLabel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+    fontWeight: 500,
+    color: "#0f172a",
+  },
+  modalTextarea: {
+    minHeight: "120px",
+    borderRadius: 8,
+    border: "1px solid #cbd5f5",
+    padding: "0.75rem",
+    fontFamily: "inherit",
+    resize: "vertical",
+  },
+  modalInput: {
+    borderRadius: 8,
+    border: "1px solid #cbd5f5",
+    padding: "0.5rem 0.75rem",
+  },
+  modalActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "0.75rem",
   },
 };
