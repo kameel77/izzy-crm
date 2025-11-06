@@ -183,35 +183,35 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
         <div style={styles.grid}>
           <InfoItem label="Partner" value={lead.partner?.name || lead.partnerId} />
-                  <InfoItem
-          label="Assigned To"
-          value={
-            isAdmin ? (
-              <div style={styles.assignmentControl}>
-                <select
-                  value={assignedUserId}
-                  onChange={handleAssignmentChange}
-                  style={{
-                    ...styles.assignmentSelect,
-                    background: assignedUserId ? "#ffffff" : "#fef3c7",
-                  }}
-                  disabled={isLoadingOperators || isUpdatingAssignment}
-                >
-                  <option value="">Do przypisania</option>
-                  {mergedOperatorOptions.map((operator) => (
-                    <option key={operator.id} value={operator.id}>
-                      {operator.email}
-                      {operator.fullName ? ` (${operator.fullName})` : ""}
-                    </option>
-                  ))}
-                </select>
-                {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
-              </div>
-            ) : (
-              assignedEmail
-            )
-          }
-        />
+          <InfoItem
+            label="Assigned To"
+            value={
+              isAdmin ? (
+                <div style={styles.assignmentControl}>
+                  <select
+                    value={assignedUserId}
+                    onChange={handleAssignmentChange}
+                    style={{
+                      ...styles.assignmentSelect,
+                      background: assignedUserId ? "#ffffff" : "#fef3c7",
+                    }}
+                    disabled={isLoadingOperators || isUpdatingAssignment}
+                  >
+                    <option value="">Do przypisania</option>
+                    {mergedOperatorOptions.map((operator) => (
+                      <option key={operator.id} value={operator.id}>
+                        {operator.email}
+                        {operator.fullName ? ` (${operator.fullName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
+                </div>
+              ) : (
+                assignedEmail
+              )
+            }
+          />
           <InfoItem
             label="Created"
             value={new Date(lead.leadCreatedAt).toLocaleString()}

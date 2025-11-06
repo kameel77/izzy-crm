@@ -22,6 +22,11 @@ export const LeadNotesList: React.FC<LeadNotesListProps> = ({
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   useEffect(() => {
+    setNotes([]);
+    setError(null);
+  }, [leadId]);
+
+  useEffect(() => {
     setSortOrder("desc");
   }, [leadId]);
 
