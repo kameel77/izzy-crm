@@ -35,6 +35,16 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
   const leadId = lead?.id ?? null;
+  const refreshNotes = useCallback(() => {
+    if (!leadId) {
+      return;
+    }
+
+    setNotesRefreshToken((value) => value + 1);
+    window.dispatchEvent(
+      new CustomEvent("lead-notes-refresh", { detail: { leadId } }),
+    );
+  }, [leadId]);
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -79,14 +89,14 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       return;
     }
 
-    setNotesRefreshToken((value) => value + 1);
-  }, [leadId]);
+    refreshNotes();
+  }, [leadId, refreshNotes]);
 
   const handleRefresh = useCallback(async () => {
     const result = onRefresh();
     await Promise.resolve(result);
-    setNotesRefreshToken((value) => value + 1);
-  }, [onRefresh]);
+    refreshNotes();
+  }, [onRefresh, refreshNotes]);
 
   const handleAssignmentChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     if (!token || !lead) return;
@@ -247,7 +257,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         lead={lead}
         onSubmit={async (payload) => {
           await onStatusUpdate(payload);
-          setNotesRefreshToken((value) => value + 1);
+          refreshNotes();
         }}
       />
 

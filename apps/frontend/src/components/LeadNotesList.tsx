@@ -20,14 +20,43 @@ export const LeadNotesList: React.FC<LeadNotesListProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [externalRefreshToken, setExternalRefreshToken] = useState(0);
 
   useEffect(() => {
     setNotes([]);
     setError(null);
+    setExternalRefreshToken(0);
   }, [leadId]);
 
   useEffect(() => {
     setSortOrder("desc");
+  }, [leadId]);
+
+  useEffect(() => {
+    const handleExternalRefresh = (event: Event) => {
+      if (!(event instanceof CustomEvent)) {
+        return;
+      }
+
+      const detail = (event as CustomEvent<{ leadId?: string }>).detail;
+      if (detail?.leadId !== leadId) {
+        return;
+      }
+
+      setExternalRefreshToken((value) => value + 1);
+    };
+
+    window.addEventListener(
+      "lead-notes-refresh",
+      handleExternalRefresh as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "lead-notes-refresh",
+        handleExternalRefresh as EventListener,
+      );
+    };
   }, [leadId]);
 
   useEffect(() => {
@@ -70,7 +99,7 @@ export const LeadNotesList: React.FC<LeadNotesListProps> = ({
       cancelled = true;
       controller.abort();
     };
-  }, [token, leadId, refreshKey]);
+  }, [token, leadId, refreshKey, externalRefreshToken]);
 
   const sortedNotes = useMemo(() => {
     const sorted = [...notes];
