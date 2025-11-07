@@ -278,3 +278,35 @@ export const uploadLeadDocument = (
     body: formData,
   });
 };
+
+export interface UpdateLeadVehiclesPayload {
+  current?: {
+    make?: string;
+    model?: string;
+    year?: number;
+    mileage?: number;
+    ownershipStatus?: string;
+  } | null;
+  desired?: {
+    make?: string;
+    model?: string;
+    year?: number;
+    budget?: number | null;
+    notes?: string;
+  } | null;
+  amountAvailable?: number | null;
+}
+
+export const updateLeadVehicles = (
+  token: string,
+  leadId: string,
+  payload: UpdateLeadVehiclesPayload,
+) =>
+  apiFetch<Pick<LeadDetail, "vehicleCurrent" | "vehicleDesired" | "financingApps">>(
+    `/api/leads/${leadId}/vehicles`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(payload),
+    },
+  );

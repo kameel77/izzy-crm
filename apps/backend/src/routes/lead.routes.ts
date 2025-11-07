@@ -12,6 +12,7 @@ import {
   listLeads,
   transitionLeadStatus,
   upsertFinancingApplication,
+  updateLeadVehicles,
 } from "../services/lead.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -139,6 +140,32 @@ const uploadDocumentBodySchema = z.object({
 
 const assignmentSchema = z.object({
   userId: z.union([z.string().cuid(), z.literal("")]).optional(),
+});
+
+const vehicleCurrentUpdateSchema = z
+  .object({
+    make: z.string().max(100).optional(),
+    model: z.string().max(100).optional(),
+    year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
+    mileage: z.number().int().min(0).optional(),
+    ownershipStatus: z.string().max(100).optional(),
+  })
+  .partial();
+
+const desiredVehicleUpdateSchema = z
+  .object({
+    make: z.string().max(100).optional(),
+    model: z.string().max(100).optional(),
+    year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
+    budget: z.number().min(0).nullable().optional(),
+    notes: z.string().max(500).optional(),
+  })
+  .partial();
+
+const vehicleUpdateSchema = z.object({
+  current: vehicleCurrentUpdateSchema.nullable().optional(),
+  desired: desiredVehicleUpdateSchema.nullable().optional(),
+  amountAvailable: z.number().min(0).nullable().optional(),
 });
 
 router.post(
@@ -325,6 +352,86 @@ router.post(
     });
 
     return res.status(201).json(note);
+  }),
+);
+
+router.patch(
+  "/:id/vehicles",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = vehicleUpdateSchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user.partnerId || lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        lead.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (lead.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    const currentInput =
+      typeof body.current === "object" && body.current !== null
+        ? {
+            make: body.current.make?.trim() || undefined,
+            model: body.current.model?.trim() || undefined,
+            year: body.current.year,
+            mileage: body.current.mileage,
+            ownershipStatus: body.current.ownershipStatus?.trim() || undefined,
+          }
+        : body.current;
+
+    const desiredInput =
+      typeof body.desired === "object" && body.desired !== null
+        ? {
+            make: body.desired.make?.trim() || undefined,
+            model: body.desired.model?.trim() || undefined,
+            year: body.desired.year,
+            budget:
+              typeof body.desired.budget === "number" || body.desired.budget === null
+                ? body.desired.budget
+                : undefined,
+            preferences:
+              typeof body.desired.notes === "string"
+                ? body.desired.notes.trim().length
+                  ? { notes: body.desired.notes.trim() }
+                  : null
+                : undefined,
+          }
+        : body.desired;
+    const amountAvailableInput =
+      typeof body.amountAvailable === "number" || body.amountAvailable === null
+        ? body.amountAvailable
+        : undefined;
+
+    const updatedVehicles = await updateLeadVehicles({
+      leadId: id,
+      userId: req.user.id,
+      current: typeof body.current === "undefined" ? undefined : currentInput,
+      desired: typeof body.desired === "undefined" ? undefined : desiredInput,
+      amountAvailable: amountAvailableInput,
+    });
+
+    return res.json(updatedVehicles);
   }),
 );
 

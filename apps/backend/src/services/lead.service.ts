@@ -287,6 +287,172 @@ export const getLeadById = async (id: string) => {
   return lead;
 };
 
+export interface UpdateLeadVehiclesInput {
+  leadId: string;
+  userId: string;
+  current?: {
+    make?: string;
+    model?: string;
+    year?: number;
+    mileage?: number;
+    ownershipStatus?: string;
+  } | null;
+  desired?: {
+    make?: string;
+    model?: string;
+    year?: number;
+    budget?: number | null;
+    preferences?: Record<string, unknown> | null;
+  } | null;
+  amountAvailable?: number | null;
+}
+
+export const updateLeadVehicles = async (input: UpdateLeadVehiclesInput) => {
+  return prisma.$transaction(async (tx) => {
+    const existingLead = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: { id: true },
+    });
+
+    if (!existingLead) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    if (typeof input.current !== "undefined") {
+      if (input.current) {
+        await tx.vehicleCurrent.upsert({
+          where: { leadId: input.leadId },
+          create: {
+            leadId: input.leadId,
+            make: input.current.make,
+            model: input.current.model,
+            year: input.current.year ?? undefined,
+            mileage: input.current.mileage ?? undefined,
+            ownershipStatus: input.current.ownershipStatus,
+          },
+          update: {
+            make: input.current.make,
+            model: input.current.model,
+            year: input.current.year ?? undefined,
+            mileage: input.current.mileage ?? undefined,
+            ownershipStatus: input.current.ownershipStatus,
+          },
+        });
+      } else {
+        await tx.vehicleCurrent.deleteMany({ where: { leadId: input.leadId } });
+      }
+    }
+
+    if (typeof input.desired !== "undefined") {
+      if (input.desired) {
+        await tx.vehicleDesired.upsert({
+          where: { leadId: input.leadId },
+          create: {
+            leadId: input.leadId,
+            make: input.desired.make,
+            model: input.desired.model,
+            year: input.desired.year ?? undefined,
+            budget: typeof input.desired.budget === "number"
+              ? new Prisma.Decimal(input.desired.budget)
+              : undefined,
+            preferences:
+              typeof input.desired.preferences === "undefined"
+                ? undefined
+                : input.desired.preferences === null
+                  ? Prisma.JsonNull
+                  : toJson(input.desired.preferences),
+          },
+          update: {
+            make: input.desired.make,
+            model: input.desired.model,
+            year: input.desired.year ?? undefined,
+            budget: typeof input.desired.budget === "number"
+              ? new Prisma.Decimal(input.desired.budget)
+              : input.desired.budget === null
+                ? null
+                : undefined,
+            preferences:
+              typeof input.desired.preferences === "undefined"
+                ? undefined
+                : input.desired.preferences === null
+                  ? Prisma.JsonNull
+                  : toJson(input.desired.preferences),
+          },
+        });
+      } else {
+        await tx.vehicleDesired.deleteMany({ where: { leadId: input.leadId } });
+      }
+    }
+
+    if (typeof input.amountAvailable !== "undefined") {
+      const existingFinancing = await tx.financingApplication.findFirst({
+        where: { leadId: input.leadId },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (existingFinancing) {
+        await tx.financingApplication.update({
+          where: { id: existingFinancing.id },
+          data: {
+            downPayment:
+              input.amountAvailable === null
+                ? null
+                : new Prisma.Decimal(input.amountAvailable),
+            bank: existingFinancing.bank || "TBD",
+          },
+        });
+      } else if (input.amountAvailable !== null) {
+        await tx.financingApplication.create({
+          data: {
+            leadId: input.leadId,
+            bank: "TBD",
+            downPayment: new Prisma.Decimal(input.amountAvailable),
+          },
+        });
+      }
+    }
+
+    const updatedVehicles = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: {
+        vehicleCurrent: true,
+        vehicleDesired: true,
+        financingApps: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.userId,
+        action: "vehicle_updated",
+        field: "vehicle",
+        newValue: {
+          vehicleCurrent: updatedVehicles?.vehicleCurrent ?? null,
+          vehicleDesired: updatedVehicles?.vehicleDesired
+            ? {
+                ...updatedVehicles.vehicleDesired,
+                budget: updatedVehicles.vehicleDesired.budget
+                  ? updatedVehicles.vehicleDesired.budget.toString()
+                  : null,
+              }
+            : null,
+          amountAvailable: updatedVehicles?.financingApps?.[0]?.downPayment
+            ? updatedVehicles.financingApps[0].downPayment.toString()
+            : null,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return updatedVehicles;
+  });
+};
+
 
 export interface AssignLeadInput {
   leadId: string;

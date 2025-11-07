@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   LeadDetail,
   FinancingPayload,
   assignLead,
   createLeadNote,
+  updateLeadVehicles,
   LeadNote,
 } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
@@ -16,6 +17,24 @@ import { useToasts } from "../hooks/useToasts";
 import { fetchUsers } from "../api/users";
 import { ApiError } from "../api/client";
 import { Modal } from "./Modal";
+
+type VehicleFormState = {
+  current: {
+    make: string;
+    model: string;
+    year: string;
+    mileage: string;
+    ownershipStatus: string;
+  };
+  desired: {
+    make: string;
+    model: string;
+    year: string;
+    budget: string;
+    amountAvailable: string;
+    notes: string;
+  };
+};
 
 interface LeadDetailCardProps {
   lead: LeadDetail | null;
@@ -35,6 +54,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const { token, user } = useAuth();
   const toast = useToasts();
   const isAdmin = user?.role === "ADMIN";
+  const canEditVehicles =
+    user?.role === "ADMIN" || user?.role === "SUPERVISOR" || user?.role === "OPERATOR";
   const [operatorOptions, setOperatorOptions] = useState<Array<{ id: string; email: string; fullName?: string | null }>>([]);
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
@@ -45,10 +66,47 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [noteLink, setNoteLink] = useState("");
   const [noteErrors, setNoteErrors] = useState<{ content?: string; link?: string }>({});
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const buildVehicleFormState = useCallback((): VehicleFormState => {
+    const preferences = lead?.vehicleDesired?.preferences;
+    const desiredNotes =
+      typeof (preferences as { notes?: unknown } | null | undefined)?.notes === "string"
+        ? String((preferences as { notes?: unknown }).notes ?? "")
+        : "";
+    const latestFinancingApp = lead?.financingApps?.[0];
+
+    return {
+      current: {
+        make: lead?.vehicleCurrent?.make ?? "",
+        model: lead?.vehicleCurrent?.model ?? "",
+        year: lead?.vehicleCurrent?.year?.toString() ?? "",
+        mileage: lead?.vehicleCurrent?.mileage?.toString() ?? "",
+        ownershipStatus: lead?.vehicleCurrent?.ownershipStatus ?? "",
+      },
+      desired: {
+        make: lead?.vehicleDesired?.make ?? "",
+        model: lead?.vehicleDesired?.model ?? "",
+        year: lead?.vehicleDesired?.year?.toString() ?? "",
+        budget: lead?.vehicleDesired?.budget ?? "",
+        amountAvailable: latestFinancingApp?.downPayment
+          ? String(latestFinancingApp.downPayment)
+          : "",
+        notes: desiredNotes,
+      },
+    };
+  }, [lead]);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(buildVehicleFormState);
+  const [vehicleErrors, setVehicleErrors] = useState<Record<string, string>>({});
+  const [isSavingVehicles, setIsSavingVehicles] = useState(false);
 
   useEffect(() => {
     setNotes(lead?.notes ?? []);
   }, [lead]);
+
+  useEffect(() => {
+    setVehicleForm(buildVehicleFormState());
+    setVehicleErrors({});
+  }, [buildVehicleFormState]);
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -105,6 +163,179 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       toast.error(message);
     } finally {
       setIsUpdatingAssignment(false);
+    }
+  };
+
+  const handleVehicleModalOpen = () => {
+    setVehicleForm(buildVehicleFormState());
+    setVehicleErrors({});
+    setIsVehicleModalOpen(true);
+  };
+
+  const handleCloseVehicleModal = () => {
+    setIsVehicleModalOpen(false);
+    setVehicleErrors({});
+  };
+
+  const handleVehicleFieldChange = (
+    section: "current" | "desired",
+    field: string,
+    value: string,
+  ) => {
+    setVehicleForm((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value,
+      },
+    }));
+  };
+
+  const buildVehiclePayload = () => {
+    const errors: Record<string, string> = {};
+    const trimOrUndefined = (value: string) => {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : undefined;
+    };
+    const parseNumberField = (
+      value: string,
+      path: string,
+      options?: { allowFloat?: boolean; min?: number; max?: number },
+    ) => {
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      const parsed = options?.allowFloat ? Number(trimmed) : parseInt(trimmed, 10);
+      if (Number.isNaN(parsed)) {
+        errors[path] = "Invalid number";
+        return undefined;
+      }
+      if (typeof options?.min === "number" && parsed < options.min) {
+        errors[path] = `Must be ≥ ${options.min}`;
+        return undefined;
+      }
+      if (typeof options?.max === "number" && parsed > options.max) {
+        errors[path] = `Must be ≤ ${options.max}`;
+        return undefined;
+      }
+      return parsed;
+    };
+
+    const current = {
+      make: trimOrUndefined(vehicleForm.current.make),
+      model: trimOrUndefined(vehicleForm.current.model),
+      year: parseNumberField(vehicleForm.current.year, "current.year", {
+        min: 1900,
+        max: new Date().getFullYear() + 1,
+      }),
+      mileage: parseNumberField(vehicleForm.current.mileage, "current.mileage", {
+        min: 0,
+      }),
+      ownershipStatus: trimOrUndefined(vehicleForm.current.ownershipStatus),
+    };
+
+    const desiredBudgetRaw = vehicleForm.desired.budget.trim();
+    const desiredBudget =
+      desiredBudgetRaw.length === 0
+        ? null
+        : parseNumberField(desiredBudgetRaw, "desired.budget", {
+            allowFloat: true,
+            min: 0,
+          });
+    const amountAvailableRaw = vehicleForm.desired.amountAvailable.trim();
+    let amountAvailable: number | null | undefined;
+    if (amountAvailableRaw.length === 0) {
+      amountAvailable = null;
+    } else {
+      amountAvailable = parseNumberField(amountAvailableRaw, "desired.amountAvailable", {
+        allowFloat: true,
+        min: 0,
+      });
+    }
+    const existingDesiredPreferences = lead?.vehicleDesired?.preferences as
+      | { notes?: unknown }
+      | null
+      | undefined;
+    const previousNotes =
+      typeof existingDesiredPreferences?.notes === "string"
+        ? String(existingDesiredPreferences.notes).trim()
+        : "";
+
+    const desired: {
+      make?: string;
+      model?: string;
+      year?: number;
+      budget?: number | null;
+      notes?: string;
+    } = {
+      make: trimOrUndefined(vehicleForm.desired.make),
+      model: trimOrUndefined(vehicleForm.desired.model),
+      year: parseNumberField(vehicleForm.desired.year, "desired.year", {
+        min: 1900,
+        max: new Date().getFullYear() + 1,
+      }),
+      budget: desiredBudget,
+    };
+    const notesValue = vehicleForm.desired.notes.trim();
+    if (notesValue.length) {
+      desired.notes = notesValue;
+    } else if (previousNotes) {
+      desired.notes = "";
+    }
+
+    if (Object.keys(errors).length) {
+      setVehicleErrors(errors);
+      return null;
+    }
+
+    setVehicleErrors({});
+
+    const hasCurrentValues = Object.values(current).some(
+      (value) => typeof value !== "undefined",
+    );
+    const hasDesiredValues =
+      Boolean(
+        desired.make ||
+          desired.model ||
+          typeof desired.year !== "undefined" ||
+          (desiredBudgetRaw.length > 0 && desiredBudget !== undefined) ||
+          (amountAvailableRaw.length > 0 && typeof amountAvailable !== "undefined"),
+      ) ||
+      desiredBudget === null ||
+      amountAvailable === null ||
+      typeof desired.notes !== "undefined";
+
+    const payload: Parameters<typeof updateLeadVehicles>[2] = {};
+    payload.current = hasCurrentValues ? current : null;
+    payload.desired = hasDesiredValues ? desired : null;
+    if (typeof amountAvailable !== "undefined") {
+      payload.amountAvailable = amountAvailable;
+    }
+
+    return payload;
+  };
+
+  const handleSaveVehicles = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!token || !lead) return;
+    const payload = buildVehiclePayload();
+    if (!payload) {
+      return;
+    }
+
+    setIsSavingVehicles(true);
+    try {
+      await updateLeadVehicles(token, lead.id, payload);
+      toast.success("Vehicle details updated");
+      setIsVehicleModalOpen(false);
+      const refreshResult = onRefresh();
+      if (refreshResult instanceof Promise) {
+        await refreshResult;
+      }
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to update vehicle details";
+      toast.error(message);
+    } finally {
+      setIsSavingVehicles(false);
     }
   };
 
@@ -216,7 +447,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     return meta.length ? `${base}${base === "—" ? "" : ", "}${meta.join(", ")}` : base;
   };
 
-  const formatDesiredVehicle = () => {
+  const formatDesiredVehicle = (): React.ReactNode => {
     const vehicle = lead.vehicleDesired;
     if (!vehicle) return "—";
     const baseParts = [vehicle.make, vehicle.model].filter(Boolean);
@@ -227,11 +458,31 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     }
     const preferences = vehicle.preferences as { notes?: unknown } | null | undefined;
     const notes =
-      preferences && typeof preferences.notes === "string" ? preferences.notes.trim() : "";
-    if (notes) {
-      meta.push(`Info: ${notes}`);
+      typeof preferences?.notes === "string" ? String(preferences.notes).trim() : "";
+    const downPaymentRaw = lead.financingApps?.[0]?.downPayment;
+    if (downPaymentRaw !== null && typeof downPaymentRaw !== "undefined" && downPaymentRaw !== "") {
+      const parsed = Number(downPaymentRaw);
+      const formatted =
+        Number.isFinite(parsed) && parsed >= 0
+          ? new Intl.NumberFormat("pl-PL", {
+              style: "currency",
+              currency: "PLN",
+              minimumFractionDigits: 0,
+            }).format(parsed)
+          : `${downPaymentRaw} PLN`;
+      meta.push(`Amount Available: ${formatted}`);
     }
-    return meta.length ? `${base}${base === "—" ? "" : ", "}${meta.join(", ")}` : base;
+    const summary = meta.length ? `${base}${base === "—" ? "" : ", "}${meta.join(", ")}` : base;
+    if (notes) {
+      return (
+        <div style={styles.vehicleValue}>
+          <div>{summary}</div>
+          <div style={styles.additionalInfo}>Additional info: {notes}</div>
+        </div>
+      );
+    }
+
+    return summary;
   };
 
   return (
@@ -329,7 +580,18 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       </div>
 
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
+        <div style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
+          {canEditVehicles ? (
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={handleVehicleModalOpen}
+            >
+              Edit
+            </button>
+          ) : null}
+        </div>
         <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
         <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
       </div>
@@ -438,6 +700,191 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             </button>
             <button type="submit" style={styles.primaryButton} disabled={isSavingNote}>
               {isSavingNote ? "Saving..." : "Save note"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isVehicleModalOpen}
+        onClose={handleCloseVehicleModal}
+        title="Edit vehicle details"
+      >
+        <form onSubmit={handleSaveVehicles} style={styles.modalForm}>
+          <div style={styles.vehicleFormSection}>
+            <h4 style={styles.modalSubheading}>Current vehicle</h4>
+            <div style={styles.fieldGrid}>
+              <label style={styles.modalLabel}>
+                Make
+                <input
+                  type="text"
+                  value={vehicleForm.current.make}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("current", "make", event.target.value)
+                  }
+                  style={styles.modalInput}
+                />
+              </label>
+              <label style={styles.modalLabel}>
+                Model
+                <input
+                  type="text"
+                  value={vehicleForm.current.model}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("current", "model", event.target.value)
+                  }
+                  style={styles.modalInput}
+                />
+              </label>
+              <label style={styles.modalLabel}>
+                Year
+                <input
+                  type="number"
+                  value={vehicleForm.current.year}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("current", "year", event.target.value)
+                  }
+                  style={styles.modalInput}
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                />
+                {vehicleErrors["current.year"] ? (
+                  <span style={styles.errorText}>{vehicleErrors["current.year"]}</span>
+                ) : null}
+              </label>
+              <label style={styles.modalLabel}>
+                Mileage (km)
+                <input
+                  type="number"
+                  value={vehicleForm.current.mileage}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("current", "mileage", event.target.value)
+                  }
+                  style={styles.modalInput}
+                  min={0}
+                />
+                {vehicleErrors["current.mileage"] ? (
+                  <span style={styles.errorText}>{vehicleErrors["current.mileage"]}</span>
+                ) : null}
+              </label>
+              <label style={styles.modalLabel}>
+                Ownership status
+                <input
+                  type="text"
+                  value={vehicleForm.current.ownershipStatus}
+                  onChange={(event) =>
+                    handleVehicleFieldChange(
+                      "current",
+                      "ownershipStatus",
+                      event.target.value,
+                    )
+                  }
+                  style={styles.modalInput}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div style={styles.vehicleFormSection}>
+            <h4 style={styles.modalSubheading}>Desired vehicle</h4>
+            <div style={styles.fieldGrid}>
+              <label style={styles.modalLabel}>
+                Make
+                <input
+                  type="text"
+                  value={vehicleForm.desired.make}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "make", event.target.value)
+                  }
+                  style={styles.modalInput}
+                />
+              </label>
+              <label style={styles.modalLabel}>
+                Model
+                <input
+                  type="text"
+                  value={vehicleForm.desired.model}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "model", event.target.value)
+                  }
+                  style={styles.modalInput}
+                />
+              </label>
+              <label style={styles.modalLabel}>
+                Year
+                <input
+                  type="number"
+                  value={vehicleForm.desired.year}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "year", event.target.value)
+                  }
+                  style={styles.modalInput}
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                />
+                {vehicleErrors["desired.year"] ? (
+                  <span style={styles.errorText}>{vehicleErrors["desired.year"]}</span>
+                ) : null}
+              </label>
+              <label style={styles.modalLabel}>
+                Budget
+                <input
+                  type="number"
+                  value={vehicleForm.desired.budget}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "budget", event.target.value)
+                  }
+                  style={styles.modalInput}
+                  min={0}
+                  step="100"
+                />
+                {vehicleErrors["desired.budget"] ? (
+                  <span style={styles.errorText}>{vehicleErrors["desired.budget"]}</span>
+                ) : null}
+                <span style={styles.helperText}>Leave blank to remove budget</span>
+              </label>
+              <label style={styles.modalLabel}>
+                Amount Available (PLN)
+                <input
+                  type="number"
+                  value={vehicleForm.desired.amountAvailable}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "amountAvailable", event.target.value)
+                  }
+                  style={styles.modalInput}
+                  min={0}
+                  step="0.01"
+                />
+                {vehicleErrors["desired.amountAvailable"] ? (
+                  <span style={styles.errorText}>{vehicleErrors["desired.amountAvailable"]}</span>
+                ) : null}
+                <span style={styles.helperText}>Leave blank to clear the amount.</span>
+              </label>
+            </div>
+            <label style={styles.modalLabel}>
+              Notes
+              <textarea
+                value={vehicleForm.desired.notes}
+                onChange={(event) =>
+                  handleVehicleFieldChange("desired", "notes", event.target.value)
+                }
+                style={styles.modalTextarea}
+                maxLength={500}
+              />
+              <span style={styles.helperText}>This maps to desired vehicle preferences.</span>
+            </label>
+          </div>
+
+          <div style={styles.modalActions}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={handleCloseVehicleModal}
+            >
+              Cancel
+            </button>
+            <button type="submit" style={styles.primaryButton} disabled={isSavingVehicles}>
+              {isSavingVehicles ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
@@ -762,9 +1209,38 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #cbd5f5",
     padding: "0.5rem 0.75rem",
   },
+  modalSubheading: {
+    margin: 0,
+    fontSize: "1rem",
+    fontWeight: 600,
+    color: "#0f172a",
+  },
+  vehicleFormSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  fieldGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "0.75rem",
+  },
   modalActions: {
     display: "flex",
     justifyContent: "flex-end",
     gap: "0.75rem",
+  },
+  helperText: {
+    fontSize: "0.75rem",
+    color: "#64748b",
+  },
+  vehicleValue: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.3rem",
+  },
+  additionalInfo: {
+    fontSize: "0.85rem",
+    color: "#475569",
   },
 };
