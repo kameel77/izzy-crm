@@ -15,7 +15,7 @@ import { StatusUpdateForm } from "./StatusUpdateForm";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../hooks/useToasts";
 import { fetchUsers } from "../api/users";
-import { ApiError } from "../api/client";
+import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
 
 type VehicleFormState = {
@@ -34,6 +34,17 @@ type VehicleFormState = {
     amountAvailable: string;
     notes: string;
   };
+};
+
+const resolveDocumentUrl = (path: string) => {
+  if (!path) return "#";
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  if (path.startsWith("/")) {
+    return `${API_BASE_URL}${path}`;
+  }
+  return `${API_BASE_URL}/${path}`;
 };
 
 interface LeadDetailCardProps {
@@ -615,7 +626,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                 <div>
                   <strong>{doc.type}</strong>
                   <div style={styles.subtleText}>
-                    <a href={doc.filePath} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={resolveDocumentUrl(doc.filePath)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {doc.originalName || doc.filePath}
                     </a>
                   </div>
@@ -923,7 +938,14 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
     return (
       <div style={styles.auditDetails}>
         {doc.type ? <div>Type: {doc.type}</div> : null}
-        {doc.filePath ? <div>Path: {doc.filePath}</div> : null}
+        {doc.filePath ? (
+          <div>
+            Path:{" "}
+            <a href={resolveDocumentUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
+              {doc.filePath}
+            </a>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -942,7 +964,10 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
         {doc.size ? <div>Size: {Math.round(doc.size / 1024)} KB</div> : null}
         {doc.filePath ? (
           <div>
-            Link: <a href={doc.filePath}>{doc.filePath}</a>
+            Link:{" "}
+            <a href={resolveDocumentUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
+              {doc.filePath}
+            </a>
           </div>
         ) : null}
       </div>
