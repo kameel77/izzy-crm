@@ -5,13 +5,19 @@ import { z } from "zod";
 import { authorize } from "../middlewares/authorize.js";
 import {
   addLeadDocument,
+  addLeadNote,
   assignLeadOwner,
   createLead,
   getLeadById,
+  listLeadNotes,
   listLeads,
   transitionLeadStatus,
   upsertFinancingApplication,
 } from "../services/lead.service.js";
+import {
+  createLeadNote,
+  listLeadNotes,
+} from "../services/lead-note.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -118,6 +124,18 @@ const documentSchema = z.object({
   checksum: z.string().optional(),
 });
 
+const leadNoteSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+  link: z
+    .preprocess((value) => {
+      if (typeof value === "string" && value.trim().length === 0) {
+        return undefined;
+      }
+      return value;
+    }, z.string().trim().url().max(2048))
+    .optional(),
+});
+
 const uploadDocumentBodySchema = z.object({
   type: z.string().min(1).optional(),
   checksum: z.string().optional(),
@@ -126,6 +144,15 @@ const uploadDocumentBodySchema = z.object({
 
 const assignmentSchema = z.object({
   userId: z.union([z.string().cuid(), z.literal("")]).optional(),
+});
+
+const leadNoteBodySchema = z.object({
+  content: z.string().min(1).max(5000),
+  url: z.string().url().optional(),
+});
+
+const leadNoteListQuerySchema = z.object({
+  sort: z.enum(["asc", "desc"]).optional(),
 });
 
 router.post(
@@ -284,7 +311,88 @@ router.get(
       }
     }
 
-    return res.json(lead);
+    const { leadNotes, ...leadRest } = lead;
+
+    return res.json({
+      ...leadRest,
+      notes: leadNotes,
+    });
+  }),
+);
+
+router.post(
+  "/:id/notes",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = leadNoteSchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const note = await addLeadNote({
+      leadId: id,
+      userId: req.user.id,
+      content: body.content.trim(),
+      link: body.link,
+    });
+
+    return res.status(201).json(note);
+  }),
+);
+
+router.get(
+  "/:id/notes",
+  authorize(
+    UserRole.PARTNER,
+    UserRole.PARTNER_MANAGER,
+    UserRole.PARTNER_EMPLOYEE,
+    UserRole.OPERATOR,
+    UserRole.SUPERVISOR,
+    UserRole.ADMIN,
+  ),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+
+    const notesPayload = await listLeadNotes(id);
+
+    if (!notesPayload) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (isPartnerScopedRole(req.user?.role)) {
+      if (!req.user.partnerId || notesPayload.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        req.user.role === UserRole.PARTNER_EMPLOYEE &&
+        notesPayload.createdByUserId !== req.user.id
+      ) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
+      if (notesPayload.partnerId !== req.user.partnerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    return res.json({
+      data: notesPayload.notes.map((note) => ({
+        id: note.id,
+        content: note.content,
+        createdAt: note.createdAt.toISOString(),
+        author: note.user
+          ? {
+              id: note.user.id,
+              fullName: note.user.fullName,
+              email: note.user.email,
+            }
+          : null,
+        source: note.source,
+      })),
+    });
   }),
 );
 
@@ -307,6 +415,38 @@ router.patch(
     });
 
     return res.json(updated);
+  }),
+);
+
+router.post(
+  "/:id/notes",
+  authorize(UserRole.OPERATOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = leadNoteBodySchema.parse(req.body);
+
+    const note = await createLeadNote(req.user, {
+      leadId: id,
+      content: body.content,
+      url: body.url,
+    });
+
+    return res.status(201).json(note);
+  }),
+);
+
+router.get(
+  "/:id/notes",
+  authorize(UserRole.OPERATOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const query = leadNoteListQuerySchema.parse(req.query);
+
+    const notes = await listLeadNotes(req.user, id, {
+      sort: query.sort,
+    });
+
+    return res.json({ data: notes });
   }),
 );
 
