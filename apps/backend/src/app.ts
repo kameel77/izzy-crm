@@ -12,7 +12,14 @@ export const createApp = () => {
 
   app.set("etag", false);
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: {
+        policy: "cross-origin",
+      },
+    }),
+  );
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
   app.use((_, res, next) => {
