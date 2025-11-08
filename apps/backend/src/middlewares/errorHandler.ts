@@ -1,7 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
-type ErrorWithStatus = Error & { status?: number; code?: string };
+type ErrorWithStatus = Error & {
+  status?: number;
+  code?: string;
+  meta?: unknown;
+  retryAfterSeconds?: number;
+};
 
 export const errorHandler = (
   err: ErrorWithStatus,
@@ -21,9 +26,17 @@ export const errorHandler = (
     console.error(err);
   }
 
-  const payload: { message: string; code?: string } = { message };
+  if (typeof err.retryAfterSeconds === "number") {
+    res.setHeader("Retry-After", String(err.retryAfterSeconds));
+  }
+
+  const payload: { message: string; code?: string; details?: unknown } = { message };
   if (err.code) {
     payload.code = err.code;
+  }
+
+  if (typeof err.meta !== "undefined") {
+    payload.details = err.meta;
   }
 
   return res.status(status).json(payload);

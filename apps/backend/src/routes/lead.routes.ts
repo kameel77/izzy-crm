@@ -3,6 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
+import { ensureOperatorCanMutateLead } from "../services/application-form.service.js";
 import {
   addLeadDocument,
   addLeadNote,
@@ -344,6 +345,14 @@ router.post(
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
+    }
+
     const note = await addLeadNote({
       leadId: id,
       userId: req.user.id,
@@ -387,6 +396,14 @@ router.patch(
       if (lead.partnerId !== req.user.partnerId) {
         return res.status(403).json({ message: "Access denied" });
       }
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
     }
 
     const currentInput =
@@ -505,6 +522,14 @@ router.post(
       return res.status(400).json({ message: "Cannot assign and unassign simultaneously" });
     }
 
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
+    }
+
     const result = await transitionLeadStatus({
       leadId: id,
       targetStatus: body.status,
@@ -534,6 +559,14 @@ router.post(
       if (lead.partnerId !== req.user.partnerId) {
         return res.status(403).json({ message: "Access denied" });
       }
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
     }
 
     const application = await upsertFinancingApplication({
@@ -568,6 +601,14 @@ router.post(
       if (lead.partnerId !== req.user.partnerId) {
         return res.status(403).json({ message: "Access denied" });
       }
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
     }
 
     const document = await addLeadDocument({
@@ -606,6 +647,14 @@ router.post(
       if (lead.partnerId !== req.user.partnerId) {
         return res.status(403).json({ message: "Access denied" });
       }
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
     }
 
     const stored = await saveUploadedFile({ leadId: id, file: req.file });

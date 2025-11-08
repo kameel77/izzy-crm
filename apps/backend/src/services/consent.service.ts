@@ -8,6 +8,29 @@ import { prisma } from "../lib/prisma.js";
 import { createHttpError } from "../utils/httpError.js";
 
 const DEFAULT_FORM_TYPE = "financing_application";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const STALE_WARNING_MS = 15 * 60 * 1000;
+
+type TemplateCacheEntry = {
+  data: ConsentTemplate[];
+  expiresAt: number;
+  fetchedAt: number;
+  warned: boolean;
+};
+
+const templateCache = new Map<string, TemplateCacheEntry>();
+const templateCacheStats = {
+  hits: 0,
+  misses: 0,
+  lastWarningTs: 0,
+};
+
+const buildCacheKey = (formType: string, includeInactive: boolean) =>
+  `${formType}:${includeInactive}`;
+
+export const getConsentTemplateCacheStats = () => ({
+  ...templateCacheStats,
+});
 
 export type ListConsentTemplatesParams = {
   formType?: string;
@@ -18,8 +41,25 @@ export const listConsentTemplates = async (
   params: ListConsentTemplatesParams = {},
 ): Promise<ConsentTemplate[]> => {
   const { formType = DEFAULT_FORM_TYPE, includeInactive = false } = params;
+  const cacheKey = buildCacheKey(formType, includeInactive);
+  const now = Date.now();
+  const cached = templateCache.get(cacheKey);
 
-  return prisma.consentTemplate.findMany({
+  if (cached && cached.expiresAt > now) {
+    templateCacheStats.hits += 1;
+    if (!cached.warned && now - cached.fetchedAt > STALE_WARNING_MS) {
+      cached.warned = true;
+      templateCacheStats.lastWarningTs = now;
+      console.warn(
+        `[consent-cache] Consent template cache for ${cacheKey} older than 15 minutes – consider refreshing source data`,
+      );
+    }
+    return cached.data;
+  }
+
+  templateCacheStats.misses += 1;
+
+  const templates = await prisma.consentTemplate.findMany({
     where: {
       formType,
       ...(includeInactive ? {} : { isActive: true }),
@@ -29,6 +69,15 @@ export const listConsentTemplates = async (
       { version: "desc" },
     ],
   });
+
+  templateCache.set(cacheKey, {
+    data: templates,
+    expiresAt: now + CACHE_TTL_MS,
+    fetchedAt: now,
+    warned: false,
+  });
+
+  return templates;
 };
 
 export type RecordConsentInput = {
@@ -49,8 +98,13 @@ export type RecordConsentPayload = {
   consents: RecordConsentInput[];
 };
 
-const createConsentError = (status: number, code: string, message: string) =>
-  createHttpError({ status, code, message });
+const createConsentError = (
+  status: number,
+  code: string,
+  message: string,
+  meta?: Record<string, unknown>,
+  retryAfterSeconds?: number,
+) => createHttpError({ status, code, message, meta, retryAfterSeconds });
 
 export const recordConsentBatch = async (payload: RecordConsentPayload) => {
   if (!payload.consents.length) {
@@ -90,7 +144,13 @@ export const recordConsentBatch = async (payload: RecordConsentPayload) => {
     }
 
     if (template.version !== consent.version) {
-      throw createConsentError(409, "TEMPLATE_OUTDATED", `Consent template ${template.id} is outdated`);
+      throw createConsentError(
+        409,
+        "TEMPLATE_OUTDATED",
+        `Consent template ${template.id} is outdated`,
+        { consentTemplateId: template.id, latestVersion: template.version },
+        0,
+      );
     }
 
     if (template.isRequired && !consent.consentGiven) {
