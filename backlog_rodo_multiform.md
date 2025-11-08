@@ -20,7 +20,7 @@
 [ ] Podpiąć pobieranie zgód z `GET /api/consent-templates?form_type=financing_application` wraz z automatycznym re-fetchem po odpowiedzi 409 (`TEMPLATE_OUTDATED`)
 [ ] Dodać modal błędów z UX z PRD (401 – wygasły link, 409 – aktywna sesja/wersja, 422 – brak wymaganej zgody) oraz telemetry dla tych ścieżek
 [ ] Przechować `consent_template_id`, `version`, timestamp akceptacji i `ip/userAgent` w store formularza, żeby wysłać je w submit payload
-[ ] Napisać Playwright e2e covering: fetch zgód, aktywacja modala błędów, aktualizacja store po re-fetcha 409, oraz pomiar czasu wypełniania konsentów
+[x] Napisać Playwright e2e covering: fetch zgód, aktywacja modala błędów, aktualizacja store po re-fetcha 409, oraz pomiar czasu wypełniania konsentów
 [ ] Zintegrować stan blokady `isClientActive` z bannerem/CTA disable w UI, zgodnie z handshake ze Sprintu 1
 
 ## Sprint 3 – Admin & QA
