@@ -52,6 +52,13 @@ Firma jest pośrednikiem finansowym w finansowaniu pojazdów. Leady pozyskiwane 
 4. Przesłanie danych do partnerów → finalizacja
 ```
 
+## 🔗 Integracja z multi-step application form
+- **Statusy formularza:** moduł RODO przyjmuje i raportuje statusy `draft`, `in_progress`, `ready`, `submitted`, `locked` dokładnie tak, jak zdefiniowano w `prd_multiform_financing.md`. Każdy Consent Record przechowuje `application_form_id`, aby można było zmapować zgody do konkretnego etapu.
+- **Blokada edycji:** kiedy `isClientActive = true` (heartbeat z formularza online), panel operatora nie pozwala zmienić danych ani zgód; próba akcji zwraca błąd `409 CLIENT_ACTIVE`.
+- **Wersjonowanie zgód:** formularz podczas submitu przekazuje `consent_template_id` + `version`. Moduł RODO odrzuca zapis, jeżeli wersja jest nieaktualna i zwraca `TEMPLATE_OUTDATED`.
+- **Odblokowanie (unlock):** gdy admin odblokuje wniosek, moduł RODO generuje nową instancję linku oraz wymusza ponowne zaakceptowanie zgód (nowe Consent Records, stara historia pozostaje tylko do wglądu).
+- **Audit trail:** ApplicationForm przekazuje `ip`, `userAgent`, oraz `accessCodeHash`, które są kopiowane do Consent Records dla pełnego audytu.
+
 ---
 
 ## 👥 Persony użytkowników
@@ -1505,6 +1512,17 @@ CREATE TABLE audit_logs_2025 PARTITION OF audit_logs
 - ✅ Weryfikacja partnerów z reminderami
 - ✅ Dopracowany, production-ready system
 
+### Feature flag alignment z formularzem wieloetapowym
+| Flaga (`prd_multiform_financing.md`) | Opis zależności | Faza modułu RODO |
+| --- | --- | --- |
+| `RODO_ADMIN_PANEL` | CRUD szablonów zgód + UI admina | Phase 1 Week 2 (MVP) |
+| `CONSENT_VERSIONING` | Historyczne wersje i wymuszenie aktualizacji formularza | Phase 1 Week 1 (backend) |
+| `AUDIT_EXPORT` | Audit log + eksport leadów z pełną historią zgód | Phase 2 Week 6 |
+| `SMART_VALIDATION` | Weryfikacja danych klienta na podstawie metadanych zgód | Phase 3 Week 7+ |
+| `E_SIGNATURE` | Możliwość podpisu elektronicznego zgód | Phase 3 Week 8+ |
+
+> **Nota:** wdrożenia formularza nie mogą przejść do kolejnego etapu dopóki odpowiadająca flaga nie zostanie formalnie udostępniona przez moduł RODO.
+
 ---
 
 ## ✅ Kryteria akceptacji (Definition of Done)
@@ -1628,7 +1646,9 @@ CREATE TABLE audit_logs_2025 PARTITION OF audit_logs
   2. Wypełnia dodatkowe dane
   3. Musi zaznaczyć wymagane zgody przed submit
   4. Consent records są zaktualizowane/utworzone
-  5. Status leada: "gotowy do procesowania"
+  5. Status wniosku zgodnie z tabelą ze `prd_multiform_financing.md`: `draft` → `in_progress` → `ready` → `submitted`
+  6. Moduł RODO blokuje edycję przez operatora, gdy `isClientActive = true` (sygnał z ApplicationForm)
+  7. Przy wznowieniu (unlock) klient ponownie potwierdza zgody i powstają nowe Consent Records powiązane z nową wersją template’u
   
 - [ ] **Flow 5: Manual anonymization**
   1. Admin wchodzi w szczegóły klienta

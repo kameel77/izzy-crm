@@ -101,44 +101,43 @@ Umożliwienie klientom samodzielnego wypełniania wniosków o finansowanie pojaz
 ```
 
 #### ConsentTemplate
+> **Źródło prawdy:** wspólny moduł RODO – struktura musi być identyczna z `prd_rodo_module.md`.
 ```javascript
 {
   id: UUID,
-  formType: 'financing_application', // dla różnych typów formularzy
-  version: integer, // wersjonowanie zmian
-  isActive: boolean,
-  
-  consents: [{
-    id: UUID,
-    internalName: string, // 'gdpr_processing_after_contract'
-    displayText: string, // HTML - tekst zgody
-    helpText: string, // tooltip/info dla klienta
-    isRequired: boolean,
-    order: integer,
-    category: enum ['rodo', 'marketing', 'processing']
-  }],
-  
-  createdBy: UUID,
-  createdAt: timestamp,
-  updatedAt: timestamp
+  consent_type: "PARTNER_DECLARATION" | "MARKETING" | "FINANCIAL_PARTNERS" | "VEHICLE_PARTNERS",
+  form_type: 'financing_application', // pozwala filtrować szablony dla konkretnych formularzy
+  title: string,
+  content: text/HTML,
+  version: integer, // auto-increment
+  valid_from: datetime,
+  valid_to: datetime | null,
+  is_active: boolean,
+  is_required: boolean,
+  help_text: string | null,
+  tags: array<string>,
+  created_by: UUID,
+  created_at: timestamp,
+  updated_at: timestamp
 }
 ```
 
-#### ConsentLog
+#### ConsentRecord
 ```javascript
 {
   id: UUID,
   applicationFormId: UUID,
+  leadId: UUID,
   consentTemplateId: UUID,
-  consentId: UUID,
-  
-  // Audit data
-  accepted: boolean,
-  acceptedAt: timestamp,
+  consent_type: "PARTNER_DECLARATION" | "MARKETING" | "FINANCIAL_PARTNERS" | "VEHICLE_PARTNERS",
+  consent_given: boolean,
+  consent_method: "online_form", // zawsze online po stronie klienta
   ipAddress: string,
   userAgent: string,
-  
-  // RODO compliance
+  recorded_by_user_id: null, // klient zapisuje samodzielnie
+  partner_id: null,
+  acceptedAt: timestamp,
+  withdrawn_at: timestamp | null,
   consentText: string, // snapshot tekstu zgody
   version: integer // wersja szablonu
 }
@@ -334,13 +333,22 @@ Dla każdej zgody:
 - **Przycisk "Zapisz formularz"** → zapisuje stan, nie zmienia statusu
 - **Przycisk "Wyślij wniosek"** → aktywny tylko gdy wszystkie wymagane pola wypełnione i wszystkie wymagane zgody zaznaczone
   - Po kliknięciu:
-    - Zapis timestamp każdej zgody do ConsentLog (IP, User Agent)
+    - Zapis timestamp każdej zgody do ConsentRecord (IP, User Agent)
     - Zmiana statusu na `Gotowy do wysłania`
     - Blokada formularza (read-only)
     - Email potwierdzający do klienta
     - Notyfikacja do operatora w CRM
 
 **Progress: 100%**
+
+---
+
+#### 6C. Integracja z modułem RODO
+- **Pobieranie zgód:** frontend wywołuje `GET /api/consent-templates?formType=financing_application&is_active=true`, a backend cache’uje wynik przez 5 min, aby formularz zawsze pokazywał aktualną wersję (por. `prd_rodo_module.md` sekcja API).
+- **Walidacja wersji:** jeżeli backend zwróci `409 TEMPLATE_OUTDATED`, formularz musi wymusić odświeżenie danych i poinformować klienta o zmianach treści zgód.
+- **Zapis zgód:** akcja submit wysyła `POST /api/consent-records` z payloadem `{ applicationFormId, leadId, consentTemplateId, consent_given, consent_method: "online_form" }` dla każdej zgody zaznaczonej w kroku 6, a w odpowiedzi spodziewa się listy utworzonych rekordów do audytu.
+- **Idempotencja:** backend rozpoznaje duplikaty po `(applicationFormId, consentTemplateId, version)` – frontend musi przekazać wersję szablonu, aby uniknąć konfliktów po odblokowaniu formularza.
+- **Obsługa błędów:** przy `422 REQUIRED_CONSENT_MISSING` modal błędu wskazuje brakujące checkboxy i uniemożliwia przejście dalej; `401 LINK_EXPIRED` przekierowuje klienta do dedykowanego widoku z instrukcją kontaktu.
 
 ---
 
@@ -1164,9 +1172,9 @@ CREATE INDEX idx_applications_link_token ON application_forms(unique_link);
 CREATE INDEX idx_applications_expires_at ON application_forms(link_expires_at) 
   WHERE status = 'in_progress';
 
--- Consent Logs
-CREATE INDEX idx_consent_logs_app_id ON consent_logs(application_form_id);
-CREATE INDEX idx_consent_logs_timestamp ON consent_logs(accepted_at);
+ -- Consent Records
+ CREATE INDEX idx_consent_records_app_id ON consent_records(application_form_id);
+ CREATE INDEX idx_consent_records_timestamp ON consent_records(accepted_at);
 
 -- Email Logs
 CREATE INDEX idx_email_logs_app_id ON email_logs(application_form_id);
@@ -1181,6 +1189,9 @@ const FEATURE_FLAGS = {
   AUTO_SAVE: true,
   EMAIL_REMINDERS: true,
   MULTI_STEP_FORM: true,
+  RODO_ADMIN_PANEL: true, // zależność: wdrożony moduł zarządzania zgodami (por. prd_rodo_module.md)
+  CONSENT_VERSIONING: true, // wymaga aktywnych endpointów /api/consent-templates
+  AUDIT_EXPORT: true, // wykorzystuje AuditLog opisany w module RODO
   
   // Phase 2 features (gradual rollout)
   SMART_VALIDATION: false,  // PESEL auto-fill
