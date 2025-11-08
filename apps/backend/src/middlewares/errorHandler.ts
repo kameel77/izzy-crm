@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
-type ErrorWithStatus = Error & { status?: number };
+type ErrorWithStatus = Error & { status?: number; code?: string };
 
 export const errorHandler = (
   err: ErrorWithStatus,
@@ -21,5 +21,10 @@ export const errorHandler = (
     console.error(err);
   }
 
-  return res.status(status).json({ message });
+  const payload: { message: string; code?: string } = { message };
+  if (err.code) {
+    payload.code = err.code;
+  }
+
+  return res.status(status).json(payload);
 };

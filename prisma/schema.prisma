@@ -8,64 +8,70 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  hashedPassword String
-  role         UserRole
-  fullName     String
-  phone        String?
-  status       UserStatus @default(ACTIVE)
-  partner      Partner?    @relation(fields: [partnerId], references: [id])
-  partnerId    String?
-  leads        Lead[]      @relation("LeadAssignedUser")
-  createdLeads Lead[]      @relation("LeadCreatedBy")
-  auditLogs    AuditLog[]
-  reminders    Reminder[]  @relation("ReminderAssignedUser")
-  leadNotes    LeadNote[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                      String            @id @default(cuid())
+  email                   String            @unique
+  hashedPassword          String
+  role                    UserRole
+  fullName                String
+  phone                   String?
+  status                  UserStatus        @default(ACTIVE)
+  partner                 Partner?          @relation(fields: [partnerId], references: [id])
+  partnerId               String?
+  leads                   Lead[]            @relation("LeadAssignedUser")
+  createdLeads            Lead[]            @relation("LeadCreatedBy")
+  auditLogs               AuditLog[]
+  reminders               Reminder[]        @relation("ReminderAssignedUser")
+  leadNotes               LeadNote[]
+  consentTemplates        ConsentTemplate[] @relation("ConsentTemplateCreatedBy")
+  recordedConsents        ConsentRecord[]   @relation("ConsentRecordRecordedBy")
+  createdApplicationForms ApplicationForm[] @relation("ApplicationFormCreatedBy")
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
 }
 
 model Partner {
-  id         String   @id @default(cuid())
-  name       String
-  contact    Json?
-  status     PartnerStatus @default(ACTIVE)
-  slaRules   Json?
-  notes      String?
-  leads      Lead[]
-  users      User[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String          @id @default(cuid())
+  name           String
+  contact        Json?
+  status         PartnerStatus   @default(ACTIVE)
+  slaRules       Json?
+  notes          String?
+  leads          Lead[]
+  users          User[]
+  consentRecords ConsentRecord[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Lead {
-  id               String            @id @default(cuid())
-  partner          Partner           @relation(fields: [partnerId], references: [id])
-  partnerId        String
-  assignedUser     User?             @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
-  assignedUserId   String?
-  createdBy        User?             @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
-  createdByUserId  String?
-  status           LeadStatus        @default(NEW_LEAD)
-  sourceMetadata   Json?
-  notes            String?
-  leadCreatedAt    DateTime          @default(now())
-  claimedAt        DateTime?
-  lastContactAt    DateTime?
-  nextActionAt     DateTime?
-  customerProfile  CustomerProfile?
-  vehicleCurrent   VehicleCurrent?
-  vehicleDesired   VehicleDesired?
-  financingApps    FinancingApplication[]
-  documents        Document[]
-  offers           Offer[]
-  agreement        Agreement?
-  reminders        Reminder[]
-  auditLogs        AuditLog[]
-  leadNotes        LeadNote[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String                 @id @default(cuid())
+  partner         Partner                @relation(fields: [partnerId], references: [id])
+  partnerId       String
+  assignedUser    User?                  @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
+  assignedUserId  String?
+  createdBy       User?                  @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUserId String?
+  status          LeadStatus             @default(NEW_LEAD)
+  sourceMetadata  Json?
+  notes           String?
+  leadCreatedAt   DateTime               @default(now())
+  claimedAt       DateTime?
+  lastContactAt   DateTime?
+  nextActionAt    DateTime?
+  customerProfile CustomerProfile?
+  vehicleCurrent  VehicleCurrent?
+  vehicleDesired  VehicleDesired?
+  financingApps   FinancingApplication[]
+  documents       Document[]
+  offers          Offer[]
+  agreement       Agreement?
+  reminders       Reminder[]
+  auditLogs       AuditLog[]
+  leadNotes       LeadNote[]
+  consentRecords  ConsentRecord[]
+  applicationForm ApplicationForm?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 }
 
 model LeadNote {
@@ -80,9 +86,9 @@ model LeadNote {
 }
 
 model CustomerProfile {
-  id             String   @id @default(cuid())
-  lead           Lead     @relation(fields: [leadId], references: [id])
-  leadId         String   @unique
+  id             String    @id @default(cuid())
+  lead           Lead      @relation(fields: [leadId], references: [id])
+  leadId         String    @unique
   firstName      String
   lastName       String
   dateOfBirth    DateTime?
@@ -91,14 +97,14 @@ model CustomerProfile {
   phone          String?
   employmentInfo Json?
   address        Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model VehicleCurrent {
-  id              String @id @default(cuid())
-  lead            Lead   @relation(fields: [leadId], references: [id])
-  leadId          String @unique
+  id              String  @id @default(cuid())
+  lead            Lead    @relation(fields: [leadId], references: [id])
+  leadId          String  @unique
   make            String?
   model           String?
   year            Int?
@@ -107,9 +113,9 @@ model VehicleCurrent {
 }
 
 model VehicleDesired {
-  id          String @id @default(cuid())
-  lead        Lead   @relation(fields: [leadId], references: [id])
-  leadId      String @unique
+  id          String   @id @default(cuid())
+  lead        Lead     @relation(fields: [leadId], references: [id])
+  leadId      String   @unique
   make        String?
   model       String?
   year        Int?
@@ -118,97 +124,97 @@ model VehicleDesired {
 }
 
 model FinancingApplication {
-  id             String        @id @default(cuid())
-  lead           Lead          @relation(fields: [leadId], references: [id])
-  leadId         String
-  bank           String
-  loanAmount     Decimal?
-  downPayment    Decimal?
-  termMonths     Int?
-  income         Decimal?
-  expenses       Decimal?
-  creditScore    Int?
-  submittedBy    String?
-  submittedAt    DateTime?
-  bankReference  String?
-  decision       BankDecisionStatus? @default(PENDING)
-  decisionAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String              @id @default(cuid())
+  lead          Lead                @relation(fields: [leadId], references: [id])
+  leadId        String
+  bank          String
+  loanAmount    Decimal?
+  downPayment   Decimal?
+  termMonths    Int?
+  income        Decimal?
+  expenses      Decimal?
+  creditScore   Int?
+  submittedBy   String?
+  submittedAt   DateTime?
+  bankReference String?
+  decision      BankDecisionStatus? @default(PENDING)
+  decisionAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 }
 
 model Document {
-  id          String   @id @default(cuid())
-  lead        Lead     @relation(fields: [leadId], references: [id])
-  leadId      String
-  type        String
-  filePath    String
-  version     Int      @default(1)
-  uploadedBy  String
-  uploadedAt  DateTime @default(now())
-  checksum    String?
-  originalName String?
-  mimeType    String?
-  sizeBytes   Int?
+  id              String   @id @default(cuid())
+  lead            Lead     @relation(fields: [leadId], references: [id])
+  leadId          String
+  type            String
+  filePath        String
+  version         Int      @default(1)
+  uploadedBy      String
+  uploadedAt      DateTime @default(now())
+  checksum        String?
+  originalName    String?
+  mimeType        String?
+  sizeBytes       Int?
   storageProvider String?
-  storageKey  String?
+  storageKey      String?
 }
 
 model Offer {
-  id                    String        @id @default(cuid())
-  lead                  Lead          @relation(fields: [leadId], references: [id])
+  id                    String      @id @default(cuid())
+  lead                  Lead        @relation(fields: [leadId], references: [id])
   leadId                String
   title                 String
   url                   String?
   price                 Decimal?
-  currency              String?       @default("PLN")
-  availabilityStatus    OfferStatus   @default(PENDING)
+  currency              String?     @default("PLN")
+  availabilityStatus    OfferStatus @default(PENDING)
   availabilityCheckedAt DateTime?
   notes                 String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 }
 
 model Agreement {
-  id               String         @id @default(cuid())
-  lead             Lead           @relation(fields: [leadId], references: [id])
-  leadId           String         @unique
-  version          Int            @default(1)
-  draftFilePath    String?
-  signatureStatus  SignatureStatus @default(DRAFT)
-  signedFilePath   String?
-  signedAt         DateTime?
-  signatureMethod  String?
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String          @id @default(cuid())
+  lead            Lead            @relation(fields: [leadId], references: [id])
+  leadId          String          @unique
+  version         Int             @default(1)
+  draftFilePath   String?
+  signatureStatus SignatureStatus @default(DRAFT)
+  signedFilePath  String?
+  signedAt        DateTime?
+  signatureMethod String?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  lead       Lead     @relation(fields: [leadId], references: [id])
-  leadId     String
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     String?
-  action     String
-  field      String?
-  oldValue   Json?
-  newValue   Json?
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  leadId    String
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  field     String?
+  oldValue  Json?
+  newValue  Json?
+  metadata  Json?
+  createdAt DateTime @default(now())
 }
 
 model Reminder {
-  id              String    @id @default(cuid())
-  lead            Lead      @relation(fields: [leadId], references: [id])
-  leadId          String
-  assignedUser    User?     @relation("ReminderAssignedUser", fields: [assignedUserId], references: [id])
-  assignedUserId  String?
-  dueAt           DateTime
-  description     String
-  status          ReminderStatus @default(OPEN)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String         @id @default(cuid())
+  lead           Lead           @relation(fields: [leadId], references: [id])
+  leadId         String
+  assignedUser   User?          @relation("ReminderAssignedUser", fields: [assignedUserId], references: [id])
+  assignedUserId String?
+  dueAt          DateTime
+  description    String
+  status         ReminderStatus @default(OPEN)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model LeadStatusReference {
@@ -217,6 +223,88 @@ model LeadStatusReference {
   description String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+}
+
+model ApplicationForm {
+  id                 String                @id @default(cuid())
+  lead               Lead                  @relation(fields: [leadId], references: [id])
+  leadId             String                @unique
+  status             ApplicationFormStatus @default(DRAFT)
+  createdBy          User?                 @relation("ApplicationFormCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUserId    String?
+  uniqueLink         String                @unique
+  accessCodeHash     String
+  linkGeneratedAt    DateTime?
+  linkExpiresAt      DateTime?
+  isClientActive     Boolean               @default(false)
+  lastClientActivity DateTime?
+  lastAutoSave       DateTime?
+  completionPercent  Int                   @default(0)
+  currentStep        Int                   @default(1)
+  formData           Json?
+  submittedAt        DateTime?
+  submittedByClient  Boolean               @default(false)
+  unlockHistory      Json?
+  ipAddress          String?
+  userAgent          String?
+  consentRecords     ConsentRecord[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+}
+
+model ConsentTemplate {
+  id              String          @id @default(cuid())
+  consentType     ConsentType
+  formType        String          @default("financing_application")
+  title           String
+  content         String
+  helpText        String?
+  version         Int
+  validFrom       DateTime        @default(now())
+  validTo         DateTime?
+  isActive        Boolean         @default(true)
+  isRequired      Boolean         @default(false)
+  tags            String[]        @default([])
+  createdBy       User?           @relation("ConsentTemplateCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUserId String?
+  consentRecords  ConsentRecord[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([consentType, formType, version])
+  @@index([formType, isActive])
+}
+
+model ConsentRecord {
+  id                String           @id @default(cuid())
+  consentTemplate   ConsentTemplate  @relation(fields: [consentTemplateId], references: [id])
+  consentTemplateId String
+  consentType       ConsentType
+  applicationForm   ApplicationForm? @relation(fields: [applicationFormId], references: [id])
+  applicationFormId String?
+  lead              Lead?            @relation(fields: [leadId], references: [id])
+  leadId            String?
+  consentGiven      Boolean
+  consentMethod     ConsentMethod    @default(ONLINE_FORM)
+  ipAddress         String?
+  userAgent         String?
+  recordedBy        User?            @relation("ConsentRecordRecordedBy", fields: [recordedByUserId], references: [id])
+  recordedByUserId  String?
+  partner           Partner?         @relation(fields: [partnerId], references: [id])
+  partnerId         String?
+  recordedAt        DateTime         @default(now())
+  withdrawnAt       DateTime?
+  notes             String?
+  version           Int
+  consentText       String
+  accessCodeHash    String?
+  helpTextSnapshot  String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([applicationFormId, consentTemplateId, version])
+  @@index([leadId])
+  @@index([consentTemplateId])
 }
 
 enum UserRole {
@@ -277,4 +365,25 @@ enum ReminderStatus {
   OPEN
   COMPLETED
   CANCELLED
+}
+
+enum ApplicationFormStatus {
+  DRAFT
+  IN_PROGRESS
+  READY
+  SUBMITTED
+  LOCKED
+}
+
+enum ConsentType {
+  PARTNER_DECLARATION
+  MARKETING
+  FINANCIAL_PARTNERS
+  VEHICLE_PARTNERS
+}
+
+enum ConsentMethod {
+  ONLINE_FORM
+  PHONE_CALL
+  PARTNER_SUBMISSION
 }
