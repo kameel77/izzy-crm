@@ -33,6 +33,16 @@ export interface LeadSummary {
 }
 
 export interface LeadDetail extends LeadSummary {
+  applicationForm?: {
+    id: string;
+    status: string;
+    isClientActive: boolean;
+    uniqueLink?: string | null;
+    linkExpiresAt?: string | null;
+    submittedAt?: string | null;
+    lastClientActivity?: string | null;
+    unlockHistory?: unknown;
+  } | null;
   customerProfile?: LeadCustomerProfile | null;
   notes: LeadNote[];
   vehicleCurrent?: {

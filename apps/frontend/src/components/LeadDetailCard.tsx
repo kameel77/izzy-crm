@@ -18,6 +18,12 @@ import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
 
+type UnlockHistoryEntry = {
+  unlockedBy?: string | null;
+  unlockedAt?: string | null;
+  reason?: string | null;
+};
+
 type VehicleFormState = {
   current: {
     make: string;
@@ -45,6 +51,24 @@ const resolveDocumentUrl = (path: string) => {
     return `${API_BASE_URL}${path}`;
   }
   return `${API_BASE_URL}/${path}`;
+};
+
+type FormStatusTone = "neutral" | "info" | "success" | "warning" | "danger";
+
+const FORM_STATUS_META: Record<string, { label: string; tone: FormStatusTone }> = {
+  draft: { label: "Roboczy", tone: "neutral" },
+  in_progress: { label: "Wypełniany", tone: "info" },
+  ready: { label: "Gotowy do wysyłki", tone: "success" },
+  submitted: { label: "Przesłany", tone: "success" },
+  locked: { label: "Zablokowany", tone: "danger" },
+};
+
+const FORM_STATUS_TONES: Record<FormStatusTone, { background: string; color: string }> = {
+  neutral: { background: "#e2e8f0", color: "#0f172a" },
+  info: { background: "#dbeafe", color: "#1d4ed8" },
+  success: { background: "#dcfce7", color: "#15803d" },
+  warning: { background: "#fef3c7", color: "#b45309" },
+  danger: { background: "#fee2e2", color: "#b91c1c" },
 };
 
 interface LeadDetailCardProps {
@@ -109,6 +133,27 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(buildVehicleFormState);
   const [vehicleErrors, setVehicleErrors] = useState<Record<string, string>>({});
   const [isSavingVehicles, setIsSavingVehicles] = useState(false);
+  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+
+  const applicationForm = lead?.applicationForm;
+
+  const unlockHistory = useMemo<UnlockHistoryEntry[]>(() => {
+    const raw = applicationForm?.unlockHistory;
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw as UnlockHistoryEntry[];
+    }
+    if (typeof raw === "object") {
+      return [raw as UnlockHistoryEntry];
+    }
+    return [];
+  }, [applicationForm?.unlockHistory]);
+
+  const formStatusMeta = useMemo(() => {
+    if (!applicationForm?.status) return null;
+    const key = applicationForm.status.toLowerCase();
+    return FORM_STATUS_META[key] || { label: applicationForm.status, tone: "neutral" };
+  }, [applicationForm?.status]);
 
   useEffect(() => {
     setNotes(lead?.notes ?? []);
@@ -558,6 +603,76 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>Formularz klienta</h3>
+          {formStatusMeta ? (
+            <span
+              style={{
+                ...styles.formStatusBadge,
+                ...FORM_STATUS_TONES[formStatusMeta.tone],
+              }}
+            >
+              {formStatusMeta.label}
+            </span>
+          ) : null}
+        </div>
+        {applicationForm ? (
+          <>
+            {applicationForm.isClientActive ? (
+              <div style={styles.banner} role="status">
+                Klient jest obecnie aktywny w formularzu online. Edycja danych została zablokowana do czasu
+                zakończenia sesji.
+              </div>
+            ) : null}
+            <div style={styles.grid}>
+              <InfoItem
+                label="Status"
+                value={formStatusMeta ? formStatusMeta.label : "Nieznany"}
+              />
+              <InfoItem
+                label="Klient aktywny"
+                value={applicationForm.isClientActive ? "Tak" : "Nie"}
+              />
+              <InfoItem
+                label="Ostatnia aktywność klienta"
+                value={
+                  applicationForm.lastClientActivity
+                    ? new Date(applicationForm.lastClientActivity).toLocaleString()
+                    : "—"
+                }
+              />
+              <InfoItem
+                label="Ważność linku"
+                value={
+                  applicationForm.linkExpiresAt
+                    ? new Date(applicationForm.linkExpiresAt).toLocaleString()
+                    : "—"
+                }
+              />
+            </div>
+            <div style={styles.formActionsRow}>
+              <span style={styles.subtleText}>
+                {applicationForm.submittedAt
+                  ? `Ostatni submit: ${new Date(applicationForm.submittedAt).toLocaleString()}`
+                  : "Formularz nie został jeszcze przesłany"}
+              </span>
+              {unlockHistory.length ? (
+                <button
+                  type="button"
+                  style={styles.secondaryButton}
+                  onClick={() => setIsUnlockModalOpen(true)}
+                >
+                  Historia odblokowań ({unlockHistory.length})
+                </button>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p style={styles.subtleText}>Brak powiązanego formularza online.</p>
+        )}
+      </div>
+
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
           <h3 style={styles.sectionTitle}>Notes</h3>
           <button type="button" style={styles.primaryButton} onClick={() => setIsNoteModalOpen(true)}>
             New note
@@ -904,6 +1019,33 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </div>
         </form>
       </Modal>
+
+      <Modal
+        isOpen={isUnlockModalOpen}
+        onClose={() => setIsUnlockModalOpen(false)}
+        title="Historia odblokowań"
+      >
+        {unlockHistory.length ? (
+          <ul style={styles.unlockList}>
+            {unlockHistory.map((entry, index) => (
+              <li key={`${entry.unlockedAt}-${index}`} style={styles.unlockItem}>
+                <div style={styles.infoLabel}>Odblokowane</div>
+                <div style={styles.infoValue}>
+                  <strong>{entry.unlockedBy || "Nieznany użytkownik"}</strong>
+                  <span>
+                    {entry.unlockedAt
+                      ? new Date(entry.unlockedAt).toLocaleString()
+                      : "brak daty"}
+                  </span>
+                  {entry.reason ? <span style={styles.subtleText}>Powód: {entry.reason}</span> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style={styles.subtleText}>Brak historii odblokowań.</p>
+        )}
+      </Modal>
     </section>
   );
 };
@@ -1051,6 +1193,13 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: "1rem",
   },
+  banner: {
+    padding: "0.75rem 1rem",
+    borderRadius: 10,
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #fcd34d",
+  },
   sectionTitle: {
     margin: 0,
     fontSize: "1.1rem",
@@ -1076,6 +1225,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "0.25rem",
+  },
+  formStatusBadge: {
+    padding: "0.3rem 0.85rem",
+    borderRadius: 999,
+    fontWeight: 600,
+    fontSize: "0.85rem",
+  },
+  formActionsRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "0.5rem",
   },
   badge: {
     alignSelf: "flex-start",
@@ -1138,6 +1300,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.8rem",
     color: "#6b7280",
     marginTop: "0.25rem",
+  },
+  unlockList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  unlockItem: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    padding: "0.75rem 1rem",
+    background: "#f8fafc",
   },
   noteMeta: {
     display: "flex",
