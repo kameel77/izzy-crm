@@ -70,6 +70,7 @@ model Lead {
   leadNotes       LeadNote[]
   consentRecords  ConsentRecord[]
   applicationForm ApplicationForm?
+  emailLogs       EmailLog[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -248,8 +249,29 @@ model ApplicationForm {
   ipAddress          String?
   userAgent          String?
   consentRecords     ConsentRecord[]
+  emailLogs          EmailLog[]
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
+}
+
+model EmailLog {
+  id                String         @id @default(cuid())
+  applicationForm   ApplicationForm @relation(fields: [applicationFormId], references: [id])
+  applicationFormId String
+  lead              Lead           @relation(fields: [leadId], references: [id])
+  leadId            String
+  type              EmailLogType
+  status            EmailLogStatus @default(SENT)
+  sentAt            DateTime       @default(now())
+  sentTo            String?
+  payload           Json?
+  noteCreated       Boolean        @default(false)
+  noteId            String?
+  createdAt         DateTime       @default(now())
+
+  @@index([applicationFormId, type])
+  @@index([leadId])
+  @@unique([applicationFormId, type])
 }
 
 model ConsentTemplate {
@@ -386,4 +408,19 @@ enum ConsentMethod {
   ONLINE_FORM
   PHONE_CALL
   PARTNER_SUBMISSION
+}
+
+enum EmailLogType {
+  LINK_SENT
+  REMINDER_24H
+  REMINDER_5DAYS
+  UNLOCKED
+  READY_FOR_REVIEW
+}
+
+enum EmailLogStatus {
+  SENT
+  DELIVERED
+  FAILED
+  OPENED
 }

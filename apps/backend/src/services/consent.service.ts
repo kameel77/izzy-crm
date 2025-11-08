@@ -2,10 +2,12 @@ import {
   ApplicationFormStatus,
   ConsentMethod,
   ConsentTemplate,
+  ConsentType,
 } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 import { createHttpError } from "../utils/httpError.js";
+import { notifyApplicationReadyForReview } from "./crm-notification.service.js";
 
 const DEFAULT_FORM_TYPE = "financing_application";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -177,6 +179,14 @@ export const recordConsentBatch = async (payload: RecordConsentPayload) => {
       data: {
         ipAddress: payload.ipAddress ?? form.ipAddress,
         userAgent: payload.userAgent ?? form.userAgent,
+        status:
+          form.status === ApplicationFormStatus.READY ||
+          form.status === ApplicationFormStatus.SUBMITTED
+            ? form.status
+            : ApplicationFormStatus.READY,
+        submittedByClient: true,
+        submittedAt: form.submittedAt ?? new Date(),
+        isClientActive: false,
       },
     });
 
@@ -216,6 +226,19 @@ export const recordConsentBatch = async (payload: RecordConsentPayload) => {
         },
       });
     }
+  });
+
+  await notifyApplicationReadyForReview({
+    applicationFormId: payload.applicationFormId,
+    leadId: payload.leadId,
+    consents: recordsData.map((record) => ({
+      consentTemplateId: record.consentTemplateId,
+      version: record.version,
+      consentGiven: record.consentGiven,
+      consentType: record.consentType as ConsentType,
+    })),
+    ipAddress: payload.ipAddress ?? form.ipAddress,
+    userAgent: payload.userAgent ?? form.userAgent,
   });
 
   return { processed: recordsData.length };

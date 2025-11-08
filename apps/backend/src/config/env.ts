@@ -47,6 +47,8 @@ const envSchema = z.object({
     .optional()
     .transform((val) => (val ? val === "true" || val === "1" : undefined)),
   APP_BASE_URL: z.string().default("http://localhost:5173"),
+  CRM_WEBHOOK_URL: z.string().url().optional(),
+  CRM_WEBHOOK_TOKEN: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -87,5 +89,13 @@ export const env = {
       : null,
   app: {
     baseUrl: parsed.data.APP_BASE_URL,
+  },
+  integrations: {
+    crmWebhook: parsed.data.CRM_WEBHOOK_URL
+      ? {
+          url: parsed.data.CRM_WEBHOOK_URL,
+          token: parsed.data.CRM_WEBHOOK_TOKEN,
+        }
+      : null,
   },
 };
