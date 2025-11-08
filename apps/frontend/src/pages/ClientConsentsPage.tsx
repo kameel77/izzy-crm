@@ -8,6 +8,7 @@ import {
   submitConsents,
 } from "../api/consents";
 import { Modal } from "../components/Modal";
+import { useTelemetry } from "../hooks/useTelemetry";
 import { clientFormStore } from "../store/clientFormStore";
 
 const DEFAULT_FORM_TYPE = "financing_application";
@@ -40,6 +41,7 @@ type ConsentState = Record<
 export const ClientConsentsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { track } = useTelemetry();
 
   const applicationFormId = searchParams.get("applicationFormId") ?? "";
   const leadId = searchParams.get("leadId") ?? "";
@@ -120,11 +122,13 @@ export const ClientConsentsPage: React.FC = () => {
         }
         if (error instanceof ApiError && modalCopy[error.status]) {
           setErrorModal(modalCopy[error.status]);
+          track("consents_modal_shown", { reason: error.status });
         } else {
           setErrorModal({
             title: "Nie udało się pobrać zgód",
             message: "Spróbuj ponownie później.",
           });
+          track("consents_modal_shown", { reason: "unknown" });
         }
       } finally {
         setLoading(false);
@@ -224,19 +228,23 @@ export const ClientConsentsPage: React.FC = () => {
         })),
       });
       setSuccess("Zgody zostały zapisane. Możesz wrócić do formularza.");
+      track("consents_submit_success", { applicationFormId, leadId });
       setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
       if (error instanceof ApiError) {
         if (modalCopy[error.status]) {
           setErrorModal(modalCopy[error.status]);
+          track("consents_modal_shown", { reason: error.status });
           if (error.status === 409) {
             loadTemplates();
           }
         } else {
           setErrorModal({ title: "Błąd", message: error.message });
         }
+        track("consents_submit_error", { applicationFormId, leadId, reason: error.status ?? "api" });
       } else {
         setErrorModal({ title: "Błąd", message: "Nie udało się zapisać zgód." });
+        track("consents_submit_error", { applicationFormId, leadId, reason: "network" });
       }
     } finally {
       setSubmitting(false);
@@ -276,7 +284,14 @@ export const ClientConsentsPage: React.FC = () => {
           </form>
         )}
       </div>
-      <Modal isOpen={Boolean(errorModal)} onClose={() => setErrorModal(null)} title={errorModal?.title}>
+      <Modal
+        isOpen={Boolean(errorModal)}
+        onClose={() => {
+          setErrorModal(null);
+          track("consents_modal_closed", { applicationFormId, leadId });
+        }}
+        title={errorModal?.title}
+      >
         <p>{errorModal?.message}</p>
       </Modal>
     </div>
