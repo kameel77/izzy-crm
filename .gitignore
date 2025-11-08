@@ -9,6 +9,7 @@ build/
 coverage/
 .next/
 storage/
+!ops/storage/
 
 # Environment & Secrets
 .env

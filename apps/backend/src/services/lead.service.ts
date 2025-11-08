@@ -37,6 +37,66 @@ const leadSummarySelect = {
   },
 } satisfies Prisma.LeadSelect;
 
+const leadNoteAttachmentSelect = {
+  id: true,
+  leadId: true,
+  noteId: true,
+  originalName: true,
+  mimeType: true,
+  sizeBytes: true,
+  storageProvider: true,
+  storageKey: true,
+  publicUrl: true,
+  createdAt: true,
+} satisfies Prisma.LeadNoteAttachmentSelect;
+
+const leadNoteInclude = {
+  author: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+    },
+  },
+  attachments: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: leadNoteAttachmentSelect,
+  },
+} satisfies Prisma.LeadNoteInclude;
+
+const buildAttachmentDownloadUrl = (
+  leadId: string,
+  noteId: string,
+  attachmentId: string,
+) => `/api/leads/${leadId}/notes/${noteId}/attachments/${attachmentId}/download`;
+
+const mapLeadNote = (
+  leadId: string,
+  note: Prisma.LeadNoteGetPayload<{ include: typeof leadNoteInclude }>,
+) => ({
+  id: note.id,
+  content: note.content,
+  createdAt: note.createdAt,
+  updatedAt: note.updatedAt,
+  author: note.author
+    ? {
+        id: note.author.id,
+        fullName: note.author.fullName,
+        email: note.author.email,
+      }
+    : null,
+  attachments: note.attachments.map((attachment) => ({
+    id: attachment.id,
+    originalName: attachment.originalName,
+    mimeType: attachment.mimeType,
+    sizeBytes: attachment.sizeBytes,
+    downloadUrl: buildAttachmentDownloadUrl(leadId, note.id, attachment.id),
+    storageProvider: attachment.storageProvider,
+    createdAt: attachment.createdAt,
+  })),
+});
+
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
   NEW_LEAD: [LeadStatus.LEAD_TAKEN, LeadStatus.BANK_REJECTED],
   LEAD_TAKEN: [LeadStatus.GET_INFO, LeadStatus.BANK_REJECTED, LeadStatus.NEW_LEAD],
@@ -269,10 +329,24 @@ export const getLeadById = async (id: string) => {
           },
         },
       },
+      leadNotes: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        include: leadNoteInclude,
+      },
     },
   });
 
-  return lead;
+  if (!lead) {
+    return null;
+  }
+
+  const { leadNotes, ...rest } = lead;
+
+  return {
+    ...rest,
+    leadNotes: leadNotes.map((note) => mapLeadNote(lead.id, note)),
+  };
 };
 
 
@@ -606,3 +680,174 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
 
   return document;
 };
+
+export interface CreateLeadNoteInput {
+  leadId: string;
+  authorId: string;
+  content: string;
+  attachments: Array<{
+    originalName: string;
+    mimeType?: string | null;
+    sizeBytes: number;
+    storageProvider: string;
+    storageKey?: string | null;
+    publicUrl?: string | null;
+  }>;
+}
+
+export const createLeadNote = async (input: CreateLeadNoteInput) => {
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      select: { id: true },
+    });
+
+    if (!lead) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    const note = await tx.leadNote.create({
+      data: {
+        leadId: input.leadId,
+        content: input.content,
+        authorId: input.authorId,
+        attachments: input.attachments.length
+          ? {
+              create: input.attachments.map((attachment) => ({
+                leadId: input.leadId,
+                originalName: attachment.originalName,
+                mimeType: attachment.mimeType ?? null,
+                sizeBytes: attachment.sizeBytes,
+                storageProvider: attachment.storageProvider,
+                storageKey: attachment.storageKey ?? null,
+                publicUrl: attachment.publicUrl ?? null,
+              })),
+            }
+          : undefined,
+      },
+      include: leadNoteInclude,
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.authorId,
+        action: "note_created",
+        field: "leadNote",
+        newValue: {
+          id: note.id,
+          content: input.content,
+          attachments: note.attachments.map((attachment) => ({
+            id: attachment.id,
+            originalName: attachment.originalName,
+          })),
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return mapLeadNote(input.leadId, note);
+  });
+};
+
+export interface DeleteLeadNoteInput {
+  leadId: string;
+  noteId: string;
+  actorUserId: string;
+}
+
+export const deleteLeadNote = async (input: DeleteLeadNoteInput) => {
+  return prisma.$transaction(async (tx) => {
+    const note = await tx.leadNote.findFirst({
+      where: {
+        id: input.noteId,
+        leadId: input.leadId,
+        deletedAt: null,
+      },
+      include: {
+        attachments: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            storageProvider: true,
+            storageKey: true,
+          },
+        },
+      },
+    });
+
+    if (!note) {
+      const error = new Error("Lead note not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    const deletedAt = new Date();
+
+    await tx.leadNoteAttachment.updateMany({
+      where: { noteId: input.noteId },
+      data: { deletedAt },
+    });
+
+    await tx.leadNote.update({
+      where: { id: input.noteId },
+      data: { deletedAt },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.actorUserId,
+        action: "note_deleted",
+        field: "leadNote",
+        oldValue: {
+          id: note.id,
+          content: note.content,
+        } as Prisma.InputJsonValue,
+        newValue: { deletedAt: deletedAt.toISOString() } as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      deletedAt,
+      attachmentIds: note.attachments.map((attachment) => attachment.id),
+    };
+  });
+};
+
+export const findLeadNoteAttachment = async (
+  leadId: string,
+  noteId: string,
+  attachmentId: string,
+) => {
+  return prisma.leadNoteAttachment.findFirst({
+    where: {
+      id: attachmentId,
+      leadId,
+      noteId,
+      deletedAt: null,
+      note: {
+        deletedAt: null,
+      },
+    },
+    include: {
+      note: {
+        select: {
+          id: true,
+          leadId: true,
+          deletedAt: true,
+          lead: {
+            select: {
+              id: true,
+              partnerId: true,
+              createdByUserId: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export { buildAttachmentDownloadUrl };

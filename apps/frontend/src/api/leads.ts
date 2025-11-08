@@ -1,5 +1,5 @@
 import { LeadStatus } from "../constants/leadStatus";
-import { apiFetch } from "./client";
+import { API_BASE_URL, ApiError, apiFetch } from "./client";
 
 export interface LeadUser {
   id: string;
@@ -92,6 +92,26 @@ export interface LeadDetail extends LeadSummary {
       email: string;
     } | null;
   }>;
+  leadNotes: LeadNote[];
+}
+
+export interface LeadNoteAttachment {
+  id: string;
+  originalName: string;
+  mimeType?: string | null;
+  sizeBytes: number;
+  downloadUrl: string;
+  storageProvider: string;
+  createdAt: string;
+}
+
+export interface LeadNote {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  author: LeadUser | null;
+  attachments: LeadNoteAttachment[];
 }
 
 export interface LeadListFilters {
@@ -248,4 +268,77 @@ export const uploadLeadDocument = (
     token,
     body: formData,
   });
+};
+
+export interface CreateLeadNotePayload {
+  content: string;
+  attachments?: File[];
+}
+
+export const createLeadNote = async (
+  token: string,
+  leadId: string,
+  payload: CreateLeadNotePayload,
+) => {
+  const formData = new FormData();
+  formData.append("content", payload.content);
+  if (payload.attachments?.length) {
+    payload.attachments.forEach((file) => {
+      formData.append("attachments", file);
+    });
+  }
+
+  return apiFetch<LeadNote>(`/api/leads/${leadId}/notes`, {
+    method: "POST",
+    token,
+    body: formData,
+  });
+};
+
+export interface DownloadAttachmentResult {
+  blob: Blob;
+  filename: string;
+  contentType: string;
+}
+
+const parseContentDisposition = (header: string | null): string => {
+  if (!header) return "attachment";
+  const filenameStarMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (filenameStarMatch?.[1]) {
+    try {
+      return decodeURIComponent(filenameStarMatch[1]);
+    } catch (error) {
+      return filenameStarMatch[1];
+    }
+  }
+  const filenameMatch = header.match(/filename="?([^";]+)"?/i);
+  return filenameMatch?.[1] ?? "attachment";
+};
+
+export const downloadLeadNoteAttachment = async (
+  token: string,
+  leadId: string,
+  noteId: string,
+  attachmentId: string,
+): Promise<DownloadAttachmentResult> => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/leads/${leadId}/notes/${noteId}/attachments/${attachmentId}/download`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const message = `Request failed with status ${response.status}`;
+    throw new ApiError(message, response.status, await response.text());
+  }
+
+  const blob = await response.blob();
+  const filename = parseContentDisposition(response.headers.get("content-disposition"));
+  const contentType = response.headers.get("content-type") ?? "application/octet-stream";
+
+  return { blob, filename, contentType };
 };

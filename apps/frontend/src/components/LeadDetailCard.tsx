@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { LeadDetail, FinancingPayload, assignLead } from "../api/leads";
+import { LeadDetail, FinancingPayload, assignLead, createLeadNote } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
 import { FinancingForm } from "./FinancingForm";
 import { StatusUpdateForm } from "./StatusUpdateForm";
+import { LeadNotesList } from "./LeadNotesList";
+import { LeadNoteModal } from "./LeadNoteModal";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../hooks/useToasts";
 import { fetchUsers } from "../api/users";
@@ -32,6 +34,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+
+  useEffect(() => {
+    setIsNoteModalOpen(false);
+  }, [lead?.id]);
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -104,6 +111,22 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     return list;
   }, [isAdmin, operatorOptions, lead?.assignedUser]);
 
+  const handleCreateNote = async (payload: { content: string; attachments: File[] }) => {
+    if (!token || !lead) {
+      throw new Error("Brak kontekstu leada");
+    }
+
+    try {
+      await createLeadNote(token, lead.id, payload);
+      toast.success("Dodano notatkę");
+      await Promise.resolve(onRefresh());
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Nie udało się dodać notatki";
+      toast.error(message);
+      throw new Error(message);
+    }
+  };
+
   const assignedUserId = lead?.assignedUser?.id ?? "";
   const assignedEmail = lead?.assignedUser?.email || (isAdmin ? "Do przypisania" : "Unassigned");
 
@@ -150,20 +173,26 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   };
 
   return (
-    <section style={styles.container}>
-      <header style={styles.header}>
-        <div>
-          <h2 style={styles.title}>
-            {lead.customerProfile
-              ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
-              : "Lead Detail"}
-          </h2>
-          <p style={styles.subtitle}>{lead.customerProfile?.email}</p>
-        </div>
-        <button type="button" style={styles.refreshButton} onClick={onRefresh}>
-          Refresh
-        </button>
-      </header>
+    <>
+      <LeadNoteModal
+        isOpen={isNoteModalOpen}
+        onClose={() => setIsNoteModalOpen(false)}
+        onSubmit={handleCreateNote}
+      />
+      <section style={styles.container}>
+        <header style={styles.header}>
+          <div>
+            <h2 style={styles.title}>
+              {lead.customerProfile
+                ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
+                : "Lead Detail"}
+            </h2>
+            <p style={styles.subtitle}>{lead.customerProfile?.email}</p>
+          </div>
+          <button type="button" style={styles.refreshButton} onClick={onRefresh}>
+            Refresh
+          </button>
+        </header>
 
       <div style={styles.section}>
         <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
@@ -209,82 +238,97 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </div>
       </div>
 
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
-        <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
-        <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
-      </div>
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
+          <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
+          <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
+        </div>
 
-      <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
+        <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
 
-      <FinancingForm
-        application={lead.financingApps[0] ?? null}
-        onSave={async (payload) => {
-          await onSaveFinancing(payload);
-          onRefresh();
-        }}
-      />
-
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Documents</h3>
-        <ul style={styles.docList}>
-          {lead.documents.length ? (
-            lead.documents.map((doc) => (
-              <li key={doc.id} style={styles.docItem}>
-                <div>
-                  <strong>{doc.type}</strong>
-                  <div style={styles.subtleText}>
-                    <a href={doc.filePath} target="_blank" rel="noopener noreferrer">
-                      {doc.originalName || doc.filePath}
-                    </a>
-                  </div>
-                  <div style={styles.subtleText}>
-                    {doc.mimeType ? `${doc.mimeType} · ` : ""}
-                    {doc.sizeBytes ? `${Math.round(doc.sizeBytes / 1024)} KB` : ""}
-                  </div>
-                  {doc.checksum ? (
-                    <div style={styles.subtleText}>Checksum: {doc.checksum}</div>
-                  ) : null}
-                </div>
-                <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
-              </li>
-            ))
-          ) : (
-            <li style={styles.subtleText}>No documents yet.</li>
-          )}
-        </ul>
-        <DocumentForm
-          onSubmit={async (payload) => {
-            await onAddDocument(payload);
-            const refreshResult = onRefresh();
-            if (refreshResult instanceof Promise) {
-              await refreshResult;
-            }
+        <FinancingForm
+          application={lead.financingApps[0] ?? null}
+          onSave={async (payload) => {
+            await onSaveFinancing(payload);
+            onRefresh();
           }}
         />
-      </div>
 
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Recent Activity</h3>
-        <ul style={styles.auditList}>
-          {lead.auditLogs.length ? (
-            lead.auditLogs.map((log) => (
-              <li key={log.id} style={styles.auditItem}>
-                <div>
-                  <strong>{formatAuditAction(log.action, log.field)}</strong>
-                  <div style={styles.auditMeta}>
-                    {log.user?.fullName || "System"} · {new Date(log.createdAt).toLocaleString()}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <h3 style={styles.sectionTitle}>Notatki</h3>
+            <button
+              type="button"
+              style={styles.addNoteButton}
+              onClick={() => setIsNoteModalOpen(true)}
+            >
+              Dodaj notatkę
+            </button>
+          </div>
+          <LeadNotesList leadId={lead.id} notes={lead.leadNotes ?? []} />
+        </div>
+
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Documents</h3>
+          <ul style={styles.docList}>
+            {lead.documents.length ? (
+              lead.documents.map((doc) => (
+                <li key={doc.id} style={styles.docItem}>
+                  <div>
+                    <strong>{doc.type}</strong>
+                    <div style={styles.subtleText}>
+                      <a href={doc.filePath} target="_blank" rel="noopener noreferrer">
+                        {doc.originalName || doc.filePath}
+                      </a>
+                    </div>
+                    <div style={styles.subtleText}>
+                      {doc.mimeType ? `${doc.mimeType} · ` : ""}
+                      {doc.sizeBytes ? `${Math.round(doc.sizeBytes / 1024)} KB` : ""}
+                    </div>
+                    {doc.checksum ? (
+                      <div style={styles.subtleText}>Checksum: {doc.checksum}</div>
+                    ) : null}
                   </div>
-                  {renderAuditDetails(log)}
-                </div>
-              </li>
-            ))
-          ) : (
-            <li style={styles.subtleText}>No activity logged yet.</li>
-          )}
-        </ul>
-      </div>
-    </section>
+                  <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
+                </li>
+              ))
+            ) : (
+              <li style={styles.subtleText}>No documents yet.</li>
+            )}
+          </ul>
+          <DocumentForm
+            onSubmit={async (payload) => {
+              await onAddDocument(payload);
+              const refreshResult = onRefresh();
+              if (refreshResult instanceof Promise) {
+                await refreshResult;
+              }
+            }}
+          />
+        </div>
+
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Recent Activity</h3>
+          <ul style={styles.auditList}>
+            {lead.auditLogs.length ? (
+              lead.auditLogs.map((log) => (
+                <li key={log.id} style={styles.auditItem}>
+                  <div>
+                    <strong>{formatAuditAction(log.action, log.field)}</strong>
+                    <div style={styles.auditMeta}>
+                      {log.user?.fullName || "System"} · {new Date(log.createdAt).toLocaleString()}
+                    </div>
+                    {renderAuditDetails(log)}
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li style={styles.subtleText}>No activity logged yet.</li>
+            )}
+          </ul>
+        </div>
+      </section>
+    </>
   );
 };
 
@@ -415,9 +459,25 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: "0.75rem",
   },
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem",
+  },
   sectionTitle: {
     margin: 0,
     fontSize: "1.1rem",
+  },
+  addNoteButton: {
+    border: "none",
+    background: "#2563eb",
+    color: "#ffffff",
+    borderRadius: 999,
+    padding: "0.45rem 1.1rem",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "0.95rem",
   },
   grid: {
     display: "grid",
