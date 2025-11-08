@@ -1,10 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { LeadDetail, FinancingPayload, assignLead } from "../api/leads";
+import {
+  LeadNote,
+  LeadNoteTag,
+  createLeadNote,
+  deleteLeadNote,
+  fetchLeadNoteTags,
+  fetchLeadNotes,
+  updateLeadNote,
+} from "../api/leadNotes";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
 import { FinancingForm } from "./FinancingForm";
 import { StatusUpdateForm } from "./StatusUpdateForm";
+import { LeadNoteModal } from "./LeadNoteModal";
+import { LeadNotesList } from "./LeadNotesList";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../hooks/useToasts";
 import { fetchUsers } from "../api/users";
@@ -32,6 +43,14 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<LeadNote[]>([]);
+  const [noteTags, setNoteTags] = useState<LeadNoteTag[]>([]);
+  const [noteFilterTagIds, setNoteFilterTagIds] = useState<string[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<LeadNote | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   useEffect(() => {
     if (!isAdmin || !token) {
@@ -70,6 +89,143 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, token]);
 
+  useEffect(() => {
+    if (!token || !lead?.id) {
+      setNotes([]);
+      setNoteTags([]);
+      setNoteFilterTagIds([]);
+      setIsNoteModalOpen(false);
+      setEditingNote(null);
+      setNoteError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingNotes(true);
+    setNoteError(null);
+
+    const loadNotesAndTags = async () => {
+      try {
+        const [tagsResponse, notesResponse] = await Promise.all([
+          fetchLeadNoteTags(token),
+          fetchLeadNotes(token, lead.id),
+        ]);
+
+        if (!cancelled) {
+          setNoteTags(tagsResponse);
+          setNotes(notesResponse);
+          setNoteFilterTagIds([]);
+        }
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Nie udało się załadować notatek";
+        if (!cancelled) {
+          setNoteError(message);
+        }
+        toast.error(message);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingNotes(false);
+        }
+      }
+    };
+
+    loadNotesAndTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, lead?.id, toast]);
+
+  const refreshLeadNotes = async (tagIds: string[] = noteFilterTagIds) => {
+    if (!token || !lead?.id) {
+      return;
+    }
+    setIsLoadingNotes(true);
+    setNoteError(null);
+    try {
+      const data = await fetchLeadNotes(token, lead.id, {
+        tagIds: tagIds.length ? tagIds : undefined,
+      });
+      setNotes(data);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Nie udało się odświeżyć notatek";
+      setNoteError(message);
+      toast.error(message);
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  };
+
+  const handleNoteFilterChange = async (ids: string[]) => {
+    setNoteFilterTagIds(ids);
+    await refreshLeadNotes(ids);
+  };
+
+  const handleCreateNote = () => {
+    setEditingNote(null);
+    setIsNoteModalOpen(true);
+  };
+
+  const handleEditNote = (note: LeadNote) => {
+    setEditingNote(note);
+    setIsNoteModalOpen(true);
+  };
+
+  const handleDeleteNote = async (note: LeadNote) => {
+    if (!token || !lead?.id) {
+      return;
+    }
+
+    const confirmed = window.confirm("Czy na pewno chcesz usunąć tę notatkę?");
+    if (!confirmed) {
+      return;
+    }
+
+    setNoteError(null);
+    try {
+      await deleteLeadNote(token, lead.id, note.id);
+      toast.success("Notatka została usunięta");
+      await refreshLeadNotes();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Nie udało się usunąć notatki";
+      setNoteError(message);
+      toast.error(message);
+    }
+  };
+
+  const handleSaveNote = async (payload: { content: string; tagIds: string[] }) => {
+    if (!token || !lead?.id) {
+      return;
+    }
+
+    setIsSavingNote(true);
+    setNoteError(null);
+    try {
+      if (editingNote) {
+        await updateLeadNote(token, lead.id, editingNote.id, {
+          content: payload.content,
+          tagIds: payload.tagIds,
+        });
+        toast.success("Notatka została zaktualizowana");
+      } else {
+        await createLeadNote(token, lead.id, {
+          content: payload.content,
+          tagIds: payload.tagIds,
+        });
+        toast.success("Notatka została dodana");
+      }
+      setIsNoteModalOpen(false);
+      setEditingNote(null);
+      await refreshLeadNotes();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Nie udało się zapisać notatki";
+      setNoteError(message);
+      toast.error(message);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   const handleAssignmentChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     if (!token || !lead) return;
     const nextValue = event.target.value;
@@ -106,6 +262,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
   const assignedUserId = lead?.assignedUser?.id ?? "";
   const assignedEmail = lead?.assignedUser?.email || (isAdmin ? "Do przypisania" : "Unassigned");
+  const canManageNotes = Boolean(user && user.role !== "AUDITOR");
 
   if (!lead) {
     return (
@@ -226,6 +383,22 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       />
 
       <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Notatki</h3>
+        <LeadNotesList
+          notes={notes}
+          availableTags={noteTags}
+          selectedTagIds={noteFilterTagIds}
+          onSelectedTagIdsChange={handleNoteFilterChange}
+          onCreate={handleCreateNote}
+          onEdit={handleEditNote}
+          onDelete={handleDeleteNote}
+          isLoading={isLoadingNotes}
+          canManage={canManageNotes}
+          error={noteError}
+        />
+      </div>
+
+      <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Documents</h3>
         <ul style={styles.docList}>
           {lead.documents.length ? (
@@ -284,6 +457,20 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           )}
         </ul>
       </div>
+
+      <LeadNoteModal
+        isOpen={isNoteModalOpen}
+        onClose={() => {
+          setIsNoteModalOpen(false);
+          setEditingNote(null);
+        }}
+        title={editingNote ? "Edytuj notatkę" : "Dodaj notatkę"}
+        isSaving={isSavingNote}
+        onSave={handleSaveNote}
+        defaultContent={editingNote?.content}
+        defaultTagIds={editingNote ? editingNote.tags.map((tag) => tag.id) : []}
+        availableTags={noteTags}
+      />
     </section>
   );
 };
