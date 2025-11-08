@@ -8,6 +8,7 @@ import {
   submitConsents,
 } from "../api/consents";
 import { Modal } from "../components/Modal";
+import { clientFormStore } from "../store/clientFormStore";
 
 const DEFAULT_FORM_TYPE = "financing_application";
 
@@ -44,33 +45,66 @@ export const ClientConsentsPage: React.FC = () => {
   const leadId = searchParams.get("leadId") ?? "";
   const accessCodeHash = searchParams.get("code") ?? "";
 
+  const persistedSnapshot = React.useMemo(() => {
+    if (!applicationFormId || !leadId) return null;
+    return clientFormStore.load(applicationFormId, leadId);
+  }, [applicationFormId, leadId]);
+
   const [templates, setTemplates] = React.useState<ConsentTemplateDto[]>([]);
-  const [consentState, setConsentState] = React.useState<ConsentState>({});
+  const [consentState, setConsentState] = React.useState<ConsentState>(() => {
+    if (!persistedSnapshot) return {};
+    const next: ConsentState = {};
+    Object.entries(persistedSnapshot.consents).forEach(([key, stored]) => {
+      next[key] = {
+        accepted: stored.accepted,
+        version: stored.version,
+        acceptedAt: stored.acceptedAt,
+      };
+    });
+    return next;
+  });
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [errorModal, setErrorModal] = React.useState<{ title: string; message: string } | null>(
     null,
   );
   const [success, setSuccess] = React.useState<string | null>(null);
-  const [ipAddress, setIpAddress] = React.useState<string | null>(null);
+  const [ipAddress, setIpAddress] = React.useState<string | null>(persistedSnapshot?.ipAddress ?? null);
 
-  const userAgent = React.useMemo(() => (typeof navigator !== "undefined" ? navigator.userAgent : ""), []);
+  const userAgent = React.useMemo(
+    () => persistedSnapshot?.userAgent ?? (typeof navigator !== "undefined" ? navigator.userAgent : ""),
+    [persistedSnapshot],
+  );
 
-  const populateState = React.useCallback((data: ConsentTemplateDto[]) => {
-    setConsentState((prev) => {
-      const next: ConsentState = { ...prev };
-      data.forEach((tpl) => {
-        if (!next[tpl.id]) {
+  const syncConsentsWithTemplates = React.useCallback(
+    (data: ConsentTemplateDto[]) => {
+      setConsentState((prev) => {
+        const next: ConsentState = {};
+        data.forEach((tpl) => {
+          const stored = persistedSnapshot?.consents[tpl.id];
+          if (stored && stored.version === tpl.version) {
+            next[tpl.id] = {
+              accepted: stored.accepted,
+              version: stored.version,
+              acceptedAt: stored.acceptedAt,
+            };
+            return;
+          }
+          if (prev[tpl.id] && prev[tpl.id].version === tpl.version) {
+            next[tpl.id] = prev[tpl.id];
+            return;
+          }
           next[tpl.id] = {
             accepted: tpl.isRequired,
             version: tpl.version,
             acceptedAt: tpl.isRequired ? new Date().toISOString() : undefined,
           };
-        }
+        });
+        return next;
       });
-      return next;
-    });
-  }, []);
+    },
+    [persistedSnapshot],
+  );
 
   const loadTemplates = React.useCallback(
     async (retry = false) => {
@@ -78,7 +112,7 @@ export const ClientConsentsPage: React.FC = () => {
       try {
         const data = await fetchConsentTemplates(DEFAULT_FORM_TYPE);
         setTemplates(data);
-        populateState(data);
+        syncConsentsWithTemplates(data);
       } catch (error) {
         if (error instanceof ApiError && error.status === 409 && !retry) {
           await loadTemplates(true);
@@ -96,7 +130,7 @@ export const ClientConsentsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [populateState],
+    [syncConsentsWithTemplates],
   );
 
   React.useEffect(() => {
@@ -104,6 +138,31 @@ export const ClientConsentsPage: React.FC = () => {
   }, [loadTemplates]);
 
   React.useEffect(() => {
+    if (!applicationFormId || !leadId || !templates.length) return;
+    clientFormStore.save({
+      applicationFormId,
+      leadId,
+      ipAddress,
+      userAgent,
+      consents: Object.fromEntries(
+        templates.map((tpl) => [
+          tpl.id,
+          {
+            consentTemplateId: tpl.id,
+            version: consentState[tpl.id]?.version ?? tpl.version,
+            accepted: Boolean(consentState[tpl.id]?.accepted),
+            acceptedAt: consentState[tpl.id]?.acceptedAt,
+          },
+        ]),
+      ),
+      updatedAt: new Date().toISOString(),
+    });
+  }, [applicationFormId, leadId, templates, consentState, ipAddress, userAgent]);
+
+  React.useEffect(() => {
+    if (persistedSnapshot?.ipAddress) {
+      return;
+    }
     const controller = new AbortController();
     (async () => {
       try {
@@ -117,7 +176,7 @@ export const ClientConsentsPage: React.FC = () => {
       }
     })();
     return () => controller.abort();
-  }, []);
+  }, [persistedSnapshot]);
 
   const toggleConsent = (tpl: ConsentTemplateDto, value: boolean) => {
     setConsentState((prev) => ({
@@ -198,7 +257,6 @@ export const ClientConsentsPage: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={consentState[tpl.id]?.accepted ?? false}
-                    disabled={tpl.isRequired}
                     onChange={(event) => toggleConsent(tpl, event.target.checked)}
                     required={tpl.isRequired}
                   />
