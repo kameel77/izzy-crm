@@ -46,6 +46,7 @@ export const ClientConsentsPage: React.FC = () => {
   const applicationFormId = searchParams.get("applicationFormId") ?? "";
   const leadId = searchParams.get("leadId") ?? "";
   const accessCodeHash = searchParams.get("code") ?? "";
+  const isClientActive = searchParams.get("clientActive") === "true";
 
   const persistedSnapshot = React.useMemo(() => {
     if (!applicationFormId || !leadId) return null;
@@ -255,6 +256,11 @@ export const ClientConsentsPage: React.FC = () => {
     <div style={styles.screen}>
       <div style={styles.card}>
         <h1 style={styles.title}>Zgody RODO</h1>
+        {isClientActive ? (
+          <div style={styles.banner} role="status">
+            Klient jest aktualnie zalogowany w formularzu. Edycja zgód została tymczasowo zablokowana.
+          </div>
+        ) : null}
         {loading ? (
           <p>Ładuję zgody…</p>
         ) : (
@@ -267,6 +273,7 @@ export const ClientConsentsPage: React.FC = () => {
                     checked={consentState[tpl.id]?.accepted ?? false}
                     onChange={(event) => toggleConsent(tpl, event.target.checked)}
                     required={tpl.isRequired}
+                    disabled={isClientActive}
                   />
                   <span>
                     <strong>{tpl.title}</strong>
@@ -278,7 +285,15 @@ export const ClientConsentsPage: React.FC = () => {
               </div>
             ))}
             {success ? <p style={styles.success}>{success}</p> : null}
-            <button type="submit" style={styles.button} disabled={submitting || !allRequiredAccepted}>
+            <button
+              type="submit"
+              style={{
+                ...styles.button,
+                opacity: isClientActive ? 0.5 : 1,
+                cursor: isClientActive ? "not-allowed" : styles.button.cursor,
+              }}
+              disabled={submitting || !allRequiredAccepted || isClientActive}
+            >
               {submitting ? "Zapisuję…" : "Zapisz zgody"}
             </button>
           </form>
