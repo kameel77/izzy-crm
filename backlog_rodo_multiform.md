@@ -10,11 +10,11 @@
 [ ] Uzgodnić i opisać w OpenAPI scenariusze błędów (`TEMPLATE_OUTDATED`, `LINK_EXPIRED`, `REQUIRED_CONSENT_MISSING`, `CLIENT_ACTIVE`) oraz format komunikatów dla portalu i CRM
 
 ## Sprint 1 – Backend Readiness
-[ ] Wystawić 5-minutowy cache dla `GET /api/consent-templates?form_type=financing_application` + metryki hit/miss oraz ostrzeżenie, gdy lista wersji jest starsza niż 15 min
-[ ] Wymusić blokadę operatora (`409 CLIENT_ACTIVE`) przy `isClientActive = true`, logować zdarzenia do audytu i wysyłać powiadomienie do SUPERVISOR
-[ ] Wdrożyć idempotencję zapisów zgód po `(applicationFormId, consentTemplateId, version)` oraz retry politykę dla konfliktów `TEMPLATE_OUTDATED`
-[ ] Rozszerzyć webhook/notification do CRM o event `application.ready_for_review` zawierający `consent_template_id`, `version`, `client_ip`, `userAgent`
-[ ] Zsynchronizować moduł e-maili z eventami odblokowania (trigger `EmailLog.type = 'unlocked'`) i wygenerować notatkę CRM automatycznie
+[x] Wystawić 5-minutowy cache dla `GET /api/consent-templates?form_type=financing_application` + metryki hit/miss oraz ostrzeżenie, gdy lista wersji jest starsza niż 15 min
+[x] Wymusić blokadę operatora (`409 CLIENT_ACTIVE`) przy `isClientActive = true`, logować zdarzenia do audytu i wysyłać powiadomienie do SUPERVISOR
+[x] Wdrożyć idempotencję zapisów zgód po `(applicationFormId, consentTemplateId, version)` oraz retry politykę dla konfliktów `TEMPLATE_OUTDATED`
+[x] Rozszerzyć webhook/notification do CRM o event `application.ready_for_review` zawierający `consent_template_id`, `version`, `client_ip`, `userAgent`
+[x] Zsynchronizować moduł e-maili z eventami odblokowania (trigger `EmailLog.type = 'unlocked'`) i wygenerować notatkę CRM automatycznie
 
 ## Sprint 2 – Frontend Client Portal
 [ ] Podpiąć pobieranie zgód z `GET /api/consent-templates?form_type=financing_application` wraz z automatycznym re-fetchem po odpowiedzi 409 (`TEMPLATE_OUTDATED`)

@@ -27,9 +27,6 @@ CREATE INDEX "EmailLog_applicationFormId_type_idx" ON "EmailLog"("applicationFor
 -- CreateIndex
 CREATE INDEX "EmailLog_leadId_idx" ON "EmailLog"("leadId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "EmailLog_applicationFormId_type_key" ON "EmailLog"("applicationFormId", "type");
-
 -- AddForeignKey
 ALTER TABLE "EmailLog" ADD CONSTRAINT "EmailLog_applicationFormId_fkey" FOREIGN KEY ("applicationFormId") REFERENCES "ApplicationForm"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

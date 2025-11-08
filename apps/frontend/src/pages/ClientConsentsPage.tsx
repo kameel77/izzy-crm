@@ -1,0 +1,290 @@
+import React from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
+import { ApiError } from "../api/client";
+import {
+  ConsentTemplateDto,
+  fetchConsentTemplates,
+  submitConsents,
+} from "../api/consents";
+import { Modal } from "../components/Modal";
+
+const DEFAULT_FORM_TYPE = "financing_application";
+
+const modalCopy: Record<number, { title: string; message: string }> = {
+  401: {
+    title: "Link wygasł",
+    message:
+      "Link do wniosku wygasł lub został cofnięty. Skontaktuj się z doradcą, aby uzyskać nowy dostęp.",
+  },
+  409: {
+    title: "Wersja formularza nieaktualna",
+    message: "Odśwież stronę – pojawiła się nowsza wersja zgód, którą musisz zaakceptować.",
+  },
+  422: {
+    title: "Brakuje wymaganych zgód",
+    message: "Zaznacz wszystkie zgody oznaczone jako wymagane, aby przejść dalej.",
+  },
+};
+
+type ConsentState = Record<
+  string,
+  {
+    accepted: boolean;
+    version: number;
+    acceptedAt?: string;
+  }
+>;
+
+export const ClientConsentsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const applicationFormId = searchParams.get("applicationFormId") ?? "";
+  const leadId = searchParams.get("leadId") ?? "";
+  const accessCodeHash = searchParams.get("code") ?? "";
+
+  const [templates, setTemplates] = React.useState<ConsentTemplateDto[]>([]);
+  const [consentState, setConsentState] = React.useState<ConsentState>({});
+  const [loading, setLoading] = React.useState(true);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [errorModal, setErrorModal] = React.useState<{ title: string; message: string } | null>(
+    null,
+  );
+  const [success, setSuccess] = React.useState<string | null>(null);
+  const [ipAddress, setIpAddress] = React.useState<string | null>(null);
+
+  const userAgent = React.useMemo(() => (typeof navigator !== "undefined" ? navigator.userAgent : ""), []);
+
+  const populateState = React.useCallback((data: ConsentTemplateDto[]) => {
+    setConsentState((prev) => {
+      const next: ConsentState = { ...prev };
+      data.forEach((tpl) => {
+        if (!next[tpl.id]) {
+          next[tpl.id] = {
+            accepted: tpl.isRequired,
+            version: tpl.version,
+            acceptedAt: tpl.isRequired ? new Date().toISOString() : undefined,
+          };
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  const loadTemplates = React.useCallback(
+    async (retry = false) => {
+      setLoading(true);
+      try {
+        const data = await fetchConsentTemplates(DEFAULT_FORM_TYPE);
+        setTemplates(data);
+        populateState(data);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409 && !retry) {
+          await loadTemplates(true);
+          return;
+        }
+        if (error instanceof ApiError && modalCopy[error.status]) {
+          setErrorModal(modalCopy[error.status]);
+        } else {
+          setErrorModal({
+            title: "Nie udało się pobrać zgód",
+            message: "Spróbuj ponownie później.",
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [populateState],
+  );
+
+  React.useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json", { signal: controller.signal });
+        if (res.ok) {
+          const payload = await res.json();
+          setIpAddress(payload.ip ?? null);
+        }
+      } catch {
+        setIpAddress(null);
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  const toggleConsent = (tpl: ConsentTemplateDto, value: boolean) => {
+    setConsentState((prev) => ({
+      ...prev,
+      [tpl.id]: {
+        accepted: value,
+        version: tpl.version,
+        acceptedAt: value ? new Date().toISOString() : undefined,
+      },
+    }));
+  };
+
+  const allRequiredAccepted = templates.every((tpl) => !tpl.isRequired || consentState[tpl.id]?.accepted);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!applicationFormId || !leadId || !accessCodeHash) {
+      setErrorModal({
+        title: "Brak danych formularza",
+        message: "Link jest niekompletny – wróć do wiadomości i otwórz formularz ponownie.",
+      });
+      return;
+    }
+
+    if (!allRequiredAccepted) {
+      setErrorModal(modalCopy[422]);
+      return;
+    }
+
+    setSubmitting(true);
+    setSuccess(null);
+    try {
+      await submitConsents({
+        applicationFormId,
+        leadId,
+        accessCodeHash,
+        ipAddress,
+        userAgent,
+        consents: templates.map((tpl) => ({
+          consentTemplateId: tpl.id,
+          version: tpl.version,
+          consentGiven: Boolean(consentState[tpl.id]?.accepted),
+          consentText: tpl.content,
+          acceptedAt: consentState[tpl.id]?.acceptedAt,
+        })),
+      });
+      setSuccess("Zgody zostały zapisane. Możesz wrócić do formularza.");
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (modalCopy[error.status]) {
+          setErrorModal(modalCopy[error.status]);
+          if (error.status === 409) {
+            loadTemplates();
+          }
+        } else {
+          setErrorModal({ title: "Błąd", message: error.message });
+        }
+      } else {
+        setErrorModal({ title: "Błąd", message: "Nie udało się zapisać zgód." });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={styles.screen}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Zgody RODO</h1>
+        {loading ? (
+          <p>Ładuję zgody…</p>
+        ) : (
+          <form onSubmit={handleSubmit} style={styles.form}>
+            {templates.map((tpl) => (
+              <div key={tpl.id} style={styles.template}>
+                <label style={styles.label}>
+                  <input
+                    type="checkbox"
+                    checked={consentState[tpl.id]?.accepted ?? false}
+                    disabled={tpl.isRequired}
+                    onChange={(event) => toggleConsent(tpl, event.target.checked)}
+                    required={tpl.isRequired}
+                  />
+                  <span>
+                    <strong>{tpl.title}</strong>
+                    {tpl.isRequired ? <span style={styles.required}> (wymagana)</span> : null}
+                  </span>
+                </label>
+                <p style={styles.content}>{tpl.content}</p>
+                {tpl.helpText ? <p style={styles.help}>{tpl.helpText}</p> : null}
+              </div>
+            ))}
+            {success ? <p style={styles.success}>{success}</p> : null}
+            <button type="submit" style={styles.button} disabled={submitting || !allRequiredAccepted}>
+              {submitting ? "Zapisuję…" : "Zapisz zgody"}
+            </button>
+          </form>
+        )}
+      </div>
+      <Modal isOpen={Boolean(errorModal)} onClose={() => setErrorModal(null)} title={errorModal?.title}>
+        <p>{errorModal?.message}</p>
+      </Modal>
+    </div>
+  );
+};
+
+const styles: Record<string, React.CSSProperties> = {
+  screen: {
+    minHeight: "100vh",
+    padding: "2rem",
+    background: "linear-gradient(135deg, #1d3557, #457b9d)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  card: {
+    width: "min(960px, 100%)",
+    background: "#fff",
+    borderRadius: "1rem",
+    padding: "2rem",
+    boxShadow: "0 32px 60px rgba(15, 23, 42, 0.25)",
+  },
+  title: {
+    marginTop: 0,
+    marginBottom: "1.5rem",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.2rem",
+  },
+  template: {
+    border: "1px solid #e2e8f0",
+    borderRadius: "0.8rem",
+    padding: "1rem",
+    background: "#f8fafc",
+  },
+  label: {
+    display: "flex",
+    gap: "0.9rem",
+    alignItems: "center",
+  },
+  content: {
+    marginTop: "0.6rem",
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+  },
+  help: {
+    marginTop: "0.3rem",
+    color: "#475569",
+  },
+  required: {
+    color: "#dc2626",
+  },
+  button: {
+    marginTop: "1rem",
+    padding: "0.9rem 1.2rem",
+    borderRadius: "0.75rem",
+    border: "none",
+    background: "#0f172a",
+    color: "#fff",
+    fontSize: "1rem",
+    cursor: "pointer",
+  },
+  success: {
+    color: "#16a34a",
+    fontWeight: 600,
+  },
+};

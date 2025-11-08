@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../middlewares/authenticate.js";
 
 import { analyticsRouter } from "./analytics.routes.js";
+import { applicationFormRouter } from "./application-form.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { consentRouter } from "./consent.routes.js";
 import { leadRouter } from "./lead.routes.js";
@@ -18,6 +19,7 @@ router.use(consentRouter);
 router.use("/auth", authRouter);
 router.use("/analytics", authenticate, analyticsRouter);
 router.use("/leads", authenticate, leadRouter);
+router.use("/application-forms", authenticate, applicationFormRouter);
 router.use("/users", authenticate, userRouter);
 
 export { router };

@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ClientConsentsPage } from "./pages/ClientConsentsPage";
 import { UserAdminPage } from "./pages/UserAdminPage";
 import { AppLayout } from "./components/AppLayout";
 import { ToastProvider } from "./providers/ToastProvider";
@@ -17,6 +18,7 @@ export const App: React.FC = () => {
     <>
       <ToastProvider />
       <Routes>
+        <Route path="/client-form/consents" element={<ClientConsentsPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/leads" replace /> : <LoginPage />}

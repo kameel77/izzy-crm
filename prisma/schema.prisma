@@ -271,7 +271,6 @@ model EmailLog {
 
   @@index([applicationFormId, type])
   @@index([leadId])
-  @@unique([applicationFormId, type])
 }
 
 model ConsentTemplate {
