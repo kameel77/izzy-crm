@@ -312,6 +312,22 @@ export const uploadLeadDocument = (
   });
 };
 
+export async function generateApplicationFormLink(
+  token: string,
+  leadId: string,
+  accessCode: string,
+) {
+  return apiFetch<{ applicationFormId: string; link: string }>(
+    `/api/leads/${leadId}/application-form`,
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({ accessCode }),
+    },
+  );
+}
+
+
 export interface UpdateLeadVehiclesPayload {
   current?: {
     make?: string;

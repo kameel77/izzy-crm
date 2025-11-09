@@ -13,9 +13,21 @@ export type ConsentTemplateDto = {
   tags: string[];
 };
 
-export async function fetchConsentTemplates(formType = "financing_application") {
+export async function fetchConsentTemplates(params: {
+  formType?: string;
+  applicationFormId: string;
+  leadId: string;
+}) {
+  const query = new URLSearchParams();
+  if (params.formType) {
+    query.set("form_type", params.formType);
+  }
+  query.set("applicationFormId", params.applicationFormId);
+  query.set("leadId", params.leadId);
+
   const response = await apiFetch<{ data: ConsentTemplateDto[] }>(
-    `/api/consent-templates?form_type=${encodeURIComponent(formType)}`,
+    `/api/consent-templates?${query.toString()}`,
+    { token: null },
   );
   return response.data;
 }
@@ -47,6 +59,7 @@ export async function logUnlockAttempt(applicationFormId: string, success: boole
     await apiFetch(`/api/application-forms/${applicationFormId}/log-unlock-attempt`, {
       method: "POST",
       body: JSON.stringify({ success }),
+      token: null, // Ensure this is an unauthenticated call
     });
   } catch (error) {
     // Fail silently on the client side

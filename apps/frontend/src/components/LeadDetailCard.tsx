@@ -7,7 +7,7 @@ import {
   createLeadNote,
   updateLeadVehicles,
   LeadNote,
-  createApplicationFormLink,
+  generateApplicationFormLink,
   CreateApplicationFormLinkResponse,
 } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
@@ -25,6 +25,7 @@ type UnlockHistoryEntry = {
   unlockedAt?: string | null;
   reason?: string | null;
 };
+
 
 type VehicleFormState = {
   current: {
@@ -287,10 +288,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     setIsGeneratingFormLink(true);
     setGenerateLinkError(null);
     try {
-      const result = await createApplicationFormLink(token, lead.id, {
-        accessCode: sanitized,
-        expiresInDays,
-      });
+      const result = await generateApplicationFormLink(token, lead.id, sanitized);
       setGeneratedLinkResult(result);
       toast.success("Link do formularza został wygenerowany");
       await Promise.resolve(onRefresh());
@@ -785,6 +783,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         )}
       </div>
 
+      {lead.applicationForm?.formData ? (
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Postęp formularza klienta</h3>
+          <pre style={styles.formDataPre}>
+            {JSON.stringify(lead.applicationForm.formData, null, 2)}
+          </pre>
+        </div>
+      ) : null}
+
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div style={styles.sectionTitleGroup}>
@@ -1171,7 +1178,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               </button>
             </div>
             <p>
-              Kod dostępu: <strong>{generatedLinkResult.accessCode}</strong>
+              Kod dostępu: <strong>{accessCodeInput}</strong>
             </p>
             <p>Ważny do: {new Date(generatedLinkResult.expiresAt).toLocaleString()}</p>
             <div style={styles.modalActions}>
@@ -1671,5 +1678,16 @@ const styles: Record<string, React.CSSProperties> = {
   additionalInfo: {
     fontSize: "0.85rem",
     color: "#475569",
+  },
+  formDataPre: {
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    padding: "1rem",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-all",
+    fontSize: "0.875rem",
+    maxHeight: "400px",
+    overflowY: "auto",
   },
 };

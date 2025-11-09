@@ -33,7 +33,9 @@ export async function apiFetch<TResponse>(
     mergedHeaders.set("Content-Type", "application/json");
   }
 
-  if (token) {
+  if (token === null) {
+    mergedHeaders.delete("Authorization");
+  } else if (token) {
     mergedHeaders.set("Authorization", `Bearer ${token}`);
   }
 

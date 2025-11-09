@@ -19,7 +19,7 @@ router.use(consentRouter);
 router.use("/auth", authRouter);
 router.use("/analytics", authenticate, analyticsRouter);
 router.use("/leads", authenticate, leadRouter);
-router.use("/application-forms", authenticate, applicationFormRouter);
+router.use("/application-forms", applicationFormRouter);
 router.use("/users", authenticate, userRouter);
 
 export { router };

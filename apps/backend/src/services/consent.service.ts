@@ -37,6 +37,8 @@ export const getConsentTemplateCacheStats = () => ({
 export type ListConsentTemplatesParams = {
   formType?: string;
   includeInactive?: boolean;
+  applicationFormId?: string;
+  leadId?: string;
 };
 
 export const listConsentTemplates = async (

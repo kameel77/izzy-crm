@@ -325,6 +325,48 @@ export const unlockApplicationForm = async (params: {
   return updatedForm;
 };
 
+export const saveApplicationFormProgress = async (params: {
+  applicationFormId: string;
+  formData: object;
+  currentStep: number;
+  completionPercent: number;
+}) => {
+  const { applicationFormId, formData, currentStep, completionPercent } = params;
+
+  const form = await prisma.applicationForm.findUnique({
+    where: { id: applicationFormId },
+    select: { id: true, status: true },
+  });
+
+  if (!form) {
+    throw createHttpError({ status: 404, message: "Application form not found" });
+  }
+
+  if (form.status === ApplicationFormStatus.SUBMITTED || form.status === ApplicationFormStatus.LOCKED) {
+    throw createHttpError({ status: 409, message: "Form is locked and cannot be edited" });
+  }
+
+  const now = new Date();
+  const updatedForm = await prisma.applicationForm.update({
+    where: { id: applicationFormId },
+    data: {
+      formData,
+      currentStep,
+      completionPercent,
+      isClientActive: true,
+      lastClientActivity: now,
+      lastAutoSave: now,
+      status: ApplicationFormStatus.IN_PROGRESS,
+    },
+    select: {
+      id: true,
+      lastAutoSave: true,
+    },
+  });
+
+  return updatedForm;
+};
+
 export const logUnlockAttempt = async (params: {
   applicationFormId: string;
   success: boolean;

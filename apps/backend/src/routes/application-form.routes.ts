@@ -4,8 +4,10 @@ import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { authenticate } from "../middlewares/authenticate.js";
 import {
   logUnlockAttempt,
+  saveApplicationFormProgress,
   unlockApplicationForm,
 } from "../services/application-form.service.js";
 
@@ -20,8 +22,15 @@ const logUnlockAttemptSchema = z.object({
   success: z.boolean(),
 });
 
+const saveProgressSchema = z.object({
+  formData: z.record(z.unknown()),
+  currentStep: z.number().int().min(1),
+  completionPercent: z.number().min(0).max(100),
+});
+
 router.post(
   "/:id/unlock",
+  authenticate,
   authorize(UserRole.ADMIN, UserRole.SUPERVISOR),
   asyncHandler(async (req, res) => {
     const { id } = formIdSchema.parse(req.params);
@@ -38,6 +47,21 @@ router.post(
     });
 
     return res.json(form);
+  }),
+);
+
+router.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = formIdSchema.parse(req.params);
+    const body = saveProgressSchema.parse(req.body);
+
+    const result = await saveApplicationFormProgress({
+      applicationFormId: id,
+      ...body,
+    });
+
+    return res.json(result);
   }),
 );
 

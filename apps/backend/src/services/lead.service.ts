@@ -243,18 +243,19 @@ export const getLeadById = async (id: string) => {
       customerProfile: true,
       vehicleCurrent: true,
       vehicleDesired: true,
-      applicationForm: {
-        select: {
-          id: true,
-          status: true,
-          isClientActive: true,
-          uniqueLink: true,
-          linkExpiresAt: true,
-          submittedAt: true,
-          lastClientActivity: true,
-          unlockHistory: true,
-        },
-      },
+            applicationForm: {
+              select: {
+                id: true,
+                status: true,
+                isClientActive: true,
+                uniqueLink: true,
+                linkExpiresAt: true,
+                submittedAt: true,
+                lastClientActivity: true,
+                unlockHistory: true,
+                formData: true,
+              },
+            },
       financingApps: {
         orderBy: { createdAt: "desc" },
       },

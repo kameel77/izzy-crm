@@ -24,6 +24,8 @@ const parseBoolean = (value: unknown): boolean | undefined => {
 const listQuerySchema = z.object({
   form_type: z.string().trim().min(1).optional(),
   include_inactive: z.union([z.string(), z.boolean()]).optional(),
+  applicationFormId: z.string().cuid().optional(),
+  leadId: z.string().cuid().optional(),
 });
 
 const consentRecordSchema = z.object({
@@ -64,6 +66,8 @@ router.get(
     const includeInactive = parseBoolean(query.include_inactive) ?? false;
     const templates = await listConsentTemplates({
       formType: query.form_type ?? undefined,
+      applicationFormId: query.applicationFormId,
+      leadId: query.leadId,
       includeInactive,
     });
 

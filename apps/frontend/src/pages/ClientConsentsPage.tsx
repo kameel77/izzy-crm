@@ -99,6 +99,7 @@ export const ClientConsentsPage: React.FC = () => {
       setPinInput("");
       setPinError(null);
       setPinModalOpen(false);
+      navigate(`/client-form/${applicationFormId}`);
     } catch (error) {
       setPinError("Nie udało się przetworzyć kodu. Spróbuj ponownie");
     }
@@ -162,9 +163,21 @@ export const ClientConsentsPage: React.FC = () => {
 
   const loadTemplates = React.useCallback(
     async (retry = false) => {
+      if (!applicationFormId || !leadId) {
+        setErrorModal({
+          title: "Brak danych",
+          message: "Link do formularza jest niekompletny.",
+        });
+        return;
+      }
+
       setLoading(true);
       try {
-        const data = await fetchConsentTemplates(DEFAULT_FORM_TYPE);
+        const data = await fetchConsentTemplates({
+          formType: DEFAULT_FORM_TYPE,
+          applicationFormId,
+          leadId,
+        });
         setTemplates(data);
         syncConsentsWithTemplates(data);
       } catch (error) {
@@ -186,12 +199,13 @@ export const ClientConsentsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [syncConsentsWithTemplates],
+    [applicationFormId, leadId, syncConsentsWithTemplates, track],
   );
 
   React.useEffect(() => {
+    if (requiresAccessCode) return;
     loadTemplates();
-  }, [loadTemplates]);
+  }, [loadTemplates, requiresAccessCode]);
 
   React.useEffect(() => {
     if (!expectedHash) {

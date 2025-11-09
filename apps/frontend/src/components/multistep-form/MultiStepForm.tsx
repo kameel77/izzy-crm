@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { useDebounce } from "use-debounce";
+import { saveApplicationFormProgress } from "../../api/application-forms";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -10,7 +12,6 @@ import { Step5_Budget, Step5Ref } from "./steps/Step5_Budget";
 import { Step6_Summary } from "./steps/Step6_Summary";
 
 const TOTAL_STEPS = 6;
-const STORAGE_KEY = "multiStepFormData";
 
 type StepRef = Step1Ref | Step2Ref | Step3Ref | Step4Ref | Step5Ref;
 
@@ -51,15 +52,18 @@ const AutoSaveStatus: React.FC<{ status: string }> = ({ status }) => (
   <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.875rem', height: '20px' }}>
     {status === 'saving' && 'Zapisywanie...'}
     {status === 'saved' && 'Zapisano.'}
+    {status === 'error' && 'Błąd zapisu.'}
   </div>
 );
 
 export const MultiStepForm: React.FC = () => {
+  const { applicationFormId } = useParams<{ applicationFormId: string }>();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [isStepValid, setIsStepValid] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
+  const isSavingRef = useRef(false);
 
   const [debouncedFormData] = useDebounce(formData, 3000);
 
@@ -67,31 +71,31 @@ export const MultiStepForm: React.FC = () => {
   stepRefs.current = Array(TOTAL_STEPS).fill(null).map((_, i) => stepRefs.current[i] ?? React.createRef<StepRef>());
 
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        const { formData: savedFormData, currentStep: savedStep } = JSON.parse(savedData);
-        setFormData(savedFormData);
-        setCurrentStep(savedStep);
+    const performSave = async () => {
+      if (isSavingRef.current || !applicationFormId || Object.keys(debouncedFormData).length === 0) {
+        return;
       }
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-    }
-  }, []);
 
-  useEffect(() => {
-    if (Object.keys(debouncedFormData).length > 0) {
+      isSavingRef.current = true;
       setSaveStatus('saving');
       try {
-        const dataToSave = JSON.stringify({ formData: debouncedFormData, currentStep });
-        localStorage.setItem(STORAGE_KEY, dataToSave);
-        setTimeout(() => setSaveStatus('saved'), 500);
+        const completionPercent = Math.round(((currentStep - 1) / TOTAL_STEPS) * 100);
+        await saveApplicationFormProgress(applicationFormId, {
+          formData: debouncedFormData,
+          currentStep,
+          completionPercent,
+        });
+        setSaveStatus('saved');
       } catch (error) {
-        console.error("Failed to save data to localStorage", error);
-        setSaveStatus('idle');
+        console.error("Failed to save data to backend", error);
+        setSaveStatus('error');
+      } finally {
+        isSavingRef.current = false;
       }
-    }
-  }, [debouncedFormData, currentStep]);
+    };
+
+    performSave();
+  }, [debouncedFormData, currentStep, applicationFormId]);
 
   const handleNext = async () => {
     const currentStepRef = stepRefs.current[currentStep - 1]?.current;
@@ -122,7 +126,6 @@ export const MultiStepForm: React.FC = () => {
     if (areAllStepsValid && isStepValid) {
       console.log("Form submitted:", formData);
       alert("Wniosek wysłany! (sprawdź konsolę)");
-      localStorage.removeItem(STORAGE_KEY);
     } else {
       console.log("Form invalid, submission blocked.");
       alert("Proszę uzupełnić wszystkie wymagane pola i zgody.");
