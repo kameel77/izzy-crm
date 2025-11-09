@@ -44,13 +44,22 @@ if (isEmailConfigured && mailConfig) {
 
 export const sendMail = async (options: MailOptions) => {
   if (!transporter || !isEmailConfigured) {
+    console.warn("[mail] Transport not configured, skipping message to", options.to);
     return;
   }
 
-  await transporter.sendMail({
-    from: mailConfig?.from,
-    ...options,
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: mailConfig?.from,
+      ...options,
+    });
+    console.info(
+      `[mail] Sent message "${options.subject}" to ${options.to} (id: ${info.messageId ?? "n/a"})`,
+    );
+  } catch (error) {
+    console.error("[mail] Failed to send message", { to: options.to, subject: options.subject, error });
+    throw error;
+  }
 };
 
 export const sendUserInviteEmail = async (options: {

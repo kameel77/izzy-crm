@@ -51,6 +51,33 @@ docker compose up --build
 ```
 This starts Caddy reverse proxy on port 80/443 (adjust DNS/hosts accordingly).
 
+### System Email Delivery
+
+System notifications (consent links, reminders) rely on the backend `MailService`. Configure them early so the Sprint 2/3 flows stay testable end-to-end.
+
+#### 1. Local setup (Mailhog)
+1. Install Mailhog (macOS: `brew install mailhog`; Linux: download from https://github.com/mailhog/MailHog/MailHog/releases and place it on `$PATH`).
+2. Run it in a dedicated terminal:
+   ```bash
+   mailhog
+   # SMTP socket :1025, Web UI :8025
+   ```
+3. Export SMTP variables before `npm run dev` (or add them to `.env`):
+   ```bash
+   export SMTP_HOST=127.0.0.1
+   export SMTP_PORT=1025
+   export SMTP_USER=demo          # Mailhog ignores auth – values are arbitrary
+   export SMTP_PASSWORD=demo
+   export SMTP_SECURE=false
+   export EMAIL_FROM=test@example.com
+   ```
+4. Start backend/frontend as usual. Each email sent by the app shows up in `http://localhost:8025`.
+
+#### 2. Production / staging SMTP
+- For Coolify/Hetzner deploys, provide the same variables in `.env` / `apps/backend/.env` (or platform secrets) with the real SMTP host, port, credentials, and `EMAIL_FROM`.
+- Backend logs include `[mail] Transport not configured` or `[mail] Failed to send message …` – use `docker compose logs -f backend | grep mail` to diagnose connectivity/auth issues after rollouts.
+- Maintain separate credentials per environment; never commit real data to Git.
+
 ---
 
 ## 2. Deploying to the VPS
