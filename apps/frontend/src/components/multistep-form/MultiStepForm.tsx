@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useDebounce } from "use-debounce";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -9,6 +10,7 @@ import { Step5_Budget, Step5Ref } from "./steps/Step5_Budget";
 import { Step6_Summary } from "./steps/Step6_Summary";
 
 const TOTAL_STEPS = 6;
+const STORAGE_KEY = "multiStepFormData";
 
 type StepRef = Step1Ref | Step2Ref | Step3Ref | Step4Ref | Step5Ref;
 
@@ -20,6 +22,7 @@ const renderStep = (
   onValidityChange: (isValid: boolean) => void,
   submitAttempted: boolean,
 ) => {
+  // Component mapping logic remains the same
   switch (step) {
     case 1:
       return <Step1_PersonalData ref={ref as React.Ref<Step1Ref>} onFormChange={handleFormChange} formData={formData} />;
@@ -44,25 +47,55 @@ const renderStep = (
   }
 };
 
+const AutoSaveStatus: React.FC<{ status: string }> = ({ status }) => (
+  <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.875rem', height: '20px' }}>
+    {status === 'saving' && 'Zapisywanie...'}
+    {status === 'saved' && 'Zapisano.'}
+  </div>
+);
+
 export const MultiStepForm: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [isStepValid, setIsStepValid] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('idle');
+
+  const [debouncedFormData] = useDebounce(formData, 3000);
 
   const stepRefs = useRef<Array<React.RefObject<StepRef>>>([]);
   stepRefs.current = Array(TOTAL_STEPS).fill(null).map((_, i) => stepRefs.current[i] ?? React.createRef<StepRef>());
 
   useEffect(() => {
-    if (currentStep < 6) {
-      setIsStepValid(true);
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const { formData: savedFormData, currentStep: savedStep } = JSON.parse(savedData);
+        setFormData(savedFormData);
+        setCurrentStep(savedStep);
+      }
+    } catch (error) {
+      console.error("Failed to load data from localStorage", error);
     }
-  }, [currentStep]);
+  }, []);
+
+  useEffect(() => {
+    if (Object.keys(debouncedFormData).length > 0) {
+      setSaveStatus('saving');
+      try {
+        const dataToSave = JSON.stringify({ formData: debouncedFormData, currentStep });
+        localStorage.setItem(STORAGE_KEY, dataToSave);
+        setTimeout(() => setSaveStatus('saved'), 500);
+      } catch (error) {
+        console.error("Failed to save data to localStorage", error);
+        setSaveStatus('idle');
+      }
+    }
+  }, [debouncedFormData, currentStep]);
 
   const handleNext = async () => {
     const currentStepRef = stepRefs.current[currentStep - 1]?.current;
     if (currentStepRef) {
-      // Trigger validation to show errors, but don't block navigation
       await currentStepRef.triggerValidation();
     }
     setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
@@ -75,21 +108,21 @@ export const MultiStepForm: React.FC = () => {
 
   const handleFormChange = useCallback((newData: object) => {
     setFormData((prev) => ({ ...prev, ...newData }));
+    setSaveStatus('idle');
   }, []);
 
   const handleSubmit = async () => {
     setSubmitAttempted(true);
-
     const stepValidationPromises = stepRefs.current
-      .slice(0, 5) // Validate steps 1-5
+      .slice(0, 5)
       .map(ref => ref.current?.triggerValidation() ?? Promise.resolve(false));
-
     const validationResults = await Promise.all(stepValidationPromises);
     const areAllStepsValid = validationResults.every(isValid => isValid);
 
     if (areAllStepsValid && isStepValid) {
       console.log("Form submitted:", formData);
       alert("Wniosek wysłany! (sprawdź konsolę)");
+      localStorage.removeItem(STORAGE_KEY);
     } else {
       console.log("Form invalid, submission blocked.");
       alert("Proszę uzupełnić wszystkie wymagane pola i zgody.");
@@ -99,7 +132,8 @@ export const MultiStepForm: React.FC = () => {
   return (
     <div>
       <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
-
+      <AutoSaveStatus status={saveStatus} />
+      
       <div style={{ minHeight: "300px", padding: "1rem 0" }}>
         {renderStep(
           currentStep,
@@ -117,7 +151,7 @@ export const MultiStepForm: React.FC = () => {
         onBack={handleBack}
         onNext={handleNext}
         onSubmit={handleSubmit}
-        isSubmittable={currentStep === TOTAL_STEPS && isStepValid}
+        isSubmittable={currentStep === TOTAL_STEPS}
       />
     </div>
   );
