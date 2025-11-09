@@ -10,6 +10,7 @@ import { UserAdminPage } from "./pages/UserAdminPage";
 import { AppLayout } from "./components/AppLayout";
 import { ToastProvider } from "./providers/ToastProvider";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { ApplicationFormPage } from "./pages/ApplicationFormPage";
 
 export const App: React.FC = () => {
   const { user } = useAuth();
@@ -49,6 +50,16 @@ export const App: React.FC = () => {
             <ProtectedRoute roles={['ADMIN', 'SUPERVISOR']}>
               <AppLayout>
                 <UserAdminPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/application-form"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ApplicationFormPage />
               </AppLayout>
             </ProtectedRoute>
           }
