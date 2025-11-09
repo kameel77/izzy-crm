@@ -11,6 +11,7 @@ export type ClientFormSnapshot = {
   ipAddress?: string | null;
   userAgent?: string | null;
   consents: Record<string, StoredConsent>;
+  accessCodeHash?: string | null;
   updatedAt: string;
 };
 

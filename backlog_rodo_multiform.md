@@ -24,6 +24,8 @@
 [x] Zintegrować stan blokady `isClientActive` z bannerem/CTA disable w UI, zgodnie z handshake ze Sprintu 1
 
 ## Sprint 3 – Admin & QA
+[x] Wygenerować ApplicationForm i link klienta z poziomu panelu operatora (`POST /leads/:id/application-form`), wysłać e-mail/SMS z linkiem
+[ ] Zaimplementować odświeżanie linku po `unlock` oraz obsłużyć `accessCodeHash`/expiry w CRM
 [x] Zaktualizować panel admina tak, by pokazywał statusy `draft/in_progress/ready/submitted/locked`, blokadę `isClientActive` oraz historię unlocków
 [ ] Rozszerzyć Flow 4 testów E2E o przypadki: (a) blokada operatora, (b) ponowne zebranie zgód po unlock, (c) eksport audytu z nowymi metadanymi
 [ ] Przygotować dashboard monitorujący feature flagi (`RODO_ADMIN_PANEL`, `CONSENT_VERSIONING`, `AUDIT_EXPORT`) + alerty na brak synchronizacji wersji zgód

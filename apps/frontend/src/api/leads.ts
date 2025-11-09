@@ -195,6 +195,29 @@ export const assignLead = (token: string, leadId: string, userId: string | null)
     body: JSON.stringify({ userId }),
   });
 
+export interface CreateApplicationFormLinkPayload {
+  accessCode: string;
+  expiresInDays?: number;
+}
+
+export interface CreateApplicationFormLinkResponse {
+  applicationFormId: string;
+  link: string;
+  expiresAt: string;
+  accessCode: string;
+}
+
+export const createApplicationFormLink = (
+  token: string,
+  leadId: string,
+  payload: CreateApplicationFormLinkPayload,
+) =>
+  apiFetch<CreateApplicationFormLinkResponse>(`/api/leads/${leadId}/application-form`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
 export interface UpdateLeadStatusPayload {
   status: LeadStatus;
   notes?: string;

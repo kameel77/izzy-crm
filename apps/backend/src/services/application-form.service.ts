@@ -5,9 +5,10 @@ import {
   UserRole,
   UserStatus,
 } from "@prisma/client";
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 
 import { prisma } from "../lib/prisma.js";
+import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
 import { sendMail } from "./mail.service.js";
 
@@ -94,6 +95,143 @@ const buildUnlockHistory = (existing: unknown, entry: unknown) => {
     return [existing, entry];
   }
   return [entry];
+};
+
+const hashAccessCode = (code: string) => createHash("sha256").update(code).digest("hex");
+
+type GenerateLinkInput = {
+  leadId: string;
+  actorUserId: string;
+  accessCode: string;
+  expiresInDays?: number;
+};
+
+export const generateApplicationFormLink = async ({
+  leadId,
+  actorUserId,
+  accessCode,
+  expiresInDays = 7,
+}: GenerateLinkInput) => {
+  if (!accessCode || accessCode.trim().length < 4) {
+    throw createHttpError({ status: 400, message: "Access code must have at least 4 characters" });
+  }
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      id: true,
+      customerProfile: {
+        select: {
+          email: true,
+          firstName: true,
+        },
+      },
+    },
+  });
+
+  if (!lead) {
+    throw createHttpError({ status: 404, message: "Lead not found" });
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000);
+  const uniqueToken = randomBytes(24).toString("hex");
+  const accessCodeHash = hashAccessCode(accessCode);
+
+  const form = await prisma.applicationForm.upsert({
+    where: { leadId },
+    update: {
+      status: ApplicationFormStatus.DRAFT,
+      uniqueLink: uniqueToken,
+      accessCodeHash,
+      linkGeneratedAt: now,
+      linkExpiresAt: expiresAt,
+      createdByUserId: actorUserId,
+      isClientActive: false,
+      lastClientActivity: null,
+      submittedByClient: false,
+      submittedAt: null,
+      completionPercent: 0,
+      currentStep: 1,
+    },
+    create: {
+      leadId,
+      status: ApplicationFormStatus.DRAFT,
+      uniqueLink: uniqueToken,
+      accessCodeHash,
+      linkGeneratedAt: now,
+      linkExpiresAt: expiresAt,
+      createdByUserId: actorUserId,
+    },
+    select: {
+      id: true,
+      leadId: true,
+      uniqueLink: true,
+      linkExpiresAt: true,
+    },
+  });
+
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}&hash=${accessCodeHash}`;
+
+  await prisma.leadNote.create({
+    data: {
+      leadId,
+      authorId: actorUserId,
+      content: [
+        "Wygenerowano link do formularza",
+        `Ważny do: ${expiresAt.toISOString()}`,
+      ].join("\n"),
+    },
+  });
+
+  await prisma.emailLog.create({
+    data: {
+      applicationFormId: form.id,
+      leadId,
+      type: EmailLogType.LINK_SENT,
+      status: EmailLogStatus.SENT,
+      sentTo: lead.customerProfile?.email ?? null,
+      payload: {
+        link: linkUrl,
+        expiresAt: expiresAt.toISOString(),
+      },
+      noteCreated: false,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      leadId,
+      userId: actorUserId,
+      action: "APPLICATION_FORM_CREATED",
+      metadata: {
+        applicationFormId: form.id,
+        expiresAt,
+      },
+    },
+  });
+
+  if (lead.customerProfile?.email) {
+    await sendMail({
+      to: lead.customerProfile.email,
+      subject: "Twój link do formularza finansowania",
+      text: [
+        `Cześć ${lead.customerProfile.firstName ?? ""}`.trim(),
+        "",
+        "Poniżej znajdziesz link do formularza oraz kod dostępu:",
+        linkUrl,
+        `Kod: ${accessCode}`,
+        `Link wygasa: ${expiresAt.toLocaleString()}`,
+      ].join("\n"),
+    });
+  }
+
+  return {
+    applicationFormId: form.id,
+    link: linkUrl,
+    expiresAt,
+    accessCode,
+  };
 };
 
 export const unlockApplicationForm = async (params: {

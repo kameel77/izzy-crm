@@ -57,7 +57,13 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, width = "m
   };
 
   return createPortal(
-    <div style={styles.backdrop} onClick={handleBackdropClick} role="dialog" aria-modal="true">
+    <div
+      style={styles.backdrop}
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <div
         style={{
           ...styles.panel,

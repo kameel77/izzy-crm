@@ -7,6 +7,8 @@ import {
   createLeadNote,
   updateLeadVehicles,
   LeadNote,
+  createApplicationFormLink,
+  CreateApplicationFormLinkResponse,
 } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
@@ -134,6 +136,12 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [vehicleErrors, setVehicleErrors] = useState<Record<string, string>>({});
   const [isSavingVehicles, setIsSavingVehicles] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+  const [isGenerateFormModalOpen, setIsGenerateFormModalOpen] = useState(false);
+  const [accessCodeInput, setAccessCodeInput] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState(7);
+  const [generateLinkError, setGenerateLinkError] = useState<string | null>(null);
+  const [isGeneratingFormLink, setIsGeneratingFormLink] = useState(false);
+  const [generatedLinkResult, setGeneratedLinkResult] = useState<CreateApplicationFormLinkResponse | null>(null);
 
   const applicationForm = lead?.applicationForm;
 
@@ -148,6 +156,16 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     }
     return [];
   }, [applicationForm?.unlockHistory]);
+
+  const canGenerateFormLink =
+    user?.role === "ADMIN" || user?.role === "SUPERVISOR" || user?.role === "OPERATOR";
+
+  const defaultAccessCode = useMemo(() => {
+    const phone = lead?.customerProfile?.phone;
+    if (!phone) return "";
+    const digits = phone.replace(/[^0-9]/g, "");
+    return digits.slice(-4);
+  }, [lead?.customerProfile?.phone]);
 
   const formStatusMeta = useMemo(() => {
     if (!applicationForm?.status) return null;
@@ -245,6 +263,55 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         [field]: value,
       },
     }));
+  };
+
+  const handleOpenGenerateFormModal = () => {
+    setAccessCodeInput(defaultAccessCode || "");
+    setExpiresInDays(7);
+    setGeneratedLinkResult(null);
+    setGenerateLinkError(null);
+    setIsGenerateFormModalOpen(true);
+  };
+
+  const handleGenerateFormLink = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!token || !lead) return;
+    const sanitized = accessCodeInput.trim();
+    if (!/^[0-9]{4}$/.test(sanitized)) {
+      setGenerateLinkError("Kod musi mieć dokładnie 4 cyfry");
+      return;
+    }
+
+    setIsGeneratingFormLink(true);
+    setGenerateLinkError(null);
+    try {
+      const result = await createApplicationFormLink(token, lead.id, {
+        accessCode: sanitized,
+        expiresInDays,
+      });
+      setGeneratedLinkResult(result);
+      toast.success("Link do formularza został wygenerowany");
+      await Promise.resolve(onRefresh());
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Nie udało się wygenerować linku";
+      setGenerateLinkError(message);
+      toast.error(message);
+    } finally {
+      setIsGeneratingFormLink(false);
+    }
+  };
+
+  const handleCopyFormLink = async () => {
+    if (!generatedLinkResult) return;
+    try {
+      if (!navigator?.clipboard) {
+        throw new Error("Clipboard API unavailable");
+      }
+      await navigator.clipboard.writeText(generatedLinkResult.link);
+      toast.success("Skopiowano link do schowka");
+    } catch {
+      toast.error("Nie udało się skopiować linku");
+    }
   };
 
   const buildVehiclePayload = () => {
@@ -603,16 +670,23 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Formularz klienta</h3>
-          {formStatusMeta ? (
-            <span
-              style={{
-                ...styles.formStatusBadge,
-                ...FORM_STATUS_TONES[formStatusMeta.tone],
-              }}
-            >
-              {formStatusMeta.label}
-            </span>
+          <div style={styles.formHeaderLeft}>
+            <h3 style={styles.sectionTitle}>Formularz klienta</h3>
+            {formStatusMeta ? (
+              <span
+                style={{
+                  ...styles.formStatusBadge,
+                  ...FORM_STATUS_TONES[formStatusMeta.tone],
+                }}
+              >
+                {formStatusMeta.label}
+              </span>
+            ) : null}
+          </div>
+          {canGenerateFormLink ? (
+            <button type="button" style={styles.primaryButton} onClick={handleOpenGenerateFormModal}>
+              Wyślij formularz
+            </button>
           ) : null}
         </div>
         {applicationForm ? (
@@ -1046,6 +1120,73 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           <p style={styles.subtleText}>Brak historii odblokowań.</p>
         )}
       </Modal>
+
+      <Modal
+        isOpen={isGenerateFormModalOpen}
+        onClose={() => setIsGenerateFormModalOpen(false)}
+        title="Wyślij formularz klientowi"
+      >
+        {generatedLinkResult ? (
+          <div style={styles.generatedLinkBox}>
+            <p>Link do formularza:</p>
+            <div style={styles.linkField}>
+              <span>{generatedLinkResult.link}</span>
+              <button type="button" style={styles.copyButton} onClick={handleCopyFormLink}>
+                Kopiuj
+              </button>
+            </div>
+            <p>
+              Kod dostępu: <strong>{generatedLinkResult.accessCode}</strong>
+            </p>
+            <p>Ważny do: {new Date(generatedLinkResult.expiresAt).toLocaleString()}</p>
+            <div style={styles.modalActions}>
+              <button type="button" style={styles.primaryButton} onClick={() => setIsGenerateFormModalOpen(false)}>
+                Zamknij
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleGenerateFormLink} style={styles.modalForm}>
+            <label style={styles.modalLabel}>
+              Kod dostępu (4 cyfry)
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={accessCodeInput}
+                onChange={(event) => setAccessCodeInput(event.target.value.replace(/[^0-9]/g, ""))}
+                style={styles.modalInput}
+                placeholder="np. 1234"
+              />
+              <span style={styles.helperText}>Podpowiedź: ostatnie 4 cyfry telefonu klienta.</span>
+            </label>
+            <label style={styles.modalLabel}>
+              Ważność linku (dni)
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={expiresInDays}
+                onChange={(event) => setExpiresInDays(Number(event.target.value))}
+                style={styles.modalInput}
+              />
+            </label>
+            {generateLinkError ? <span style={styles.errorText}>{generateLinkError}</span> : null}
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={() => setIsGenerateFormModalOpen(false)}
+              >
+                Anuluj
+              </button>
+              <button type="submit" style={styles.primaryButton} disabled={isGeneratingFormLink}>
+                {isGeneratingFormLink ? "Wysyłam…" : "Wyślij link"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </section>
   );
 };
@@ -1192,6 +1333,13 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: "1rem",
+    flexWrap: "wrap",
+  },
+  formHeaderLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    flexWrap: "wrap",
   },
   banner: {
     padding: "0.75rem 1rem",
@@ -1314,6 +1462,29 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 10,
     padding: "0.75rem 1rem",
     background: "#f8fafc",
+  },
+  generatedLinkBox: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  linkField: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.5rem 0.75rem",
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    background: "#f8fafc",
+    wordBreak: "break-all",
+  },
+  copyButton: {
+    border: "1px solid #1d4ed8",
+    background: "#1d4ed8",
+    color: "#fff",
+    borderRadius: 8,
+    padding: "0.3rem 0.75rem",
+    cursor: "pointer",
   },
   noteMeta: {
     display: "flex",

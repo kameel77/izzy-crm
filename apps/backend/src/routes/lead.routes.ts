@@ -3,7 +3,10 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
-import { ensureOperatorCanMutateLead } from "../services/application-form.service.js";
+import {
+  ensureOperatorCanMutateLead,
+  generateApplicationFormLink,
+} from "../services/application-form.service.js";
 import {
   addLeadDocument,
   addLeadNote,
@@ -136,6 +139,11 @@ const leadNoteSchema = z.object({
 const uploadDocumentBodySchema = z.object({
   type: z.string().min(1).optional(),
   checksum: z.string().optional(),
+});
+
+const createApplicationFormSchema = z.object({
+  accessCode: z.string().trim().min(4).max(32),
+  expiresInDays: z.number().int().min(1).max(30).optional(),
 });
 
 
@@ -673,6 +681,28 @@ router.post(
     });
 
     res.status(201).json(document);
+  }),
+);
+
+router.post(
+  "/:id/application-form",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = createApplicationFormSchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const result = await generateApplicationFormLink({
+      leadId: id,
+      actorUserId: req.user.id,
+      accessCode: body.accessCode,
+      expiresInDays: body.expiresInDays,
+    });
+
+    return res.status(201).json(result);
   }),
 );
 

@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 const APPLICATION_FORM_ID = "cjld2cjxh0000qzrmn831i7rn";
 const LEAD_ID = "cjld2cjxh0001qzrmn831i7rn";
 const ACCESS_CODE = "1234";
+const ACCESS_CODE_HASH = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
 
 const consentTemplatesResponse = {
   data: [
@@ -33,6 +34,22 @@ const consentTemplatesResponse = {
   ],
 };
 
+const seedClientStore = async (page) => {
+  const snapshot = [
+    {
+      applicationFormId: APPLICATION_FORM_ID,
+      leadId: LEAD_ID,
+      accessCodeHash: ACCESS_CODE_HASH,
+      consents: {},
+      updatedAt: new Date().toISOString(),
+    },
+  ];
+
+  await page.addInitScript(([key, data]) => {
+    window.sessionStorage.setItem(key, JSON.stringify(data));
+  }, ["client-form:consents", snapshot]);
+};
+
 test("client consents flow stores state and handles submit", async ({ page, context }) => {
   await context.route("**/api/consent-templates?**", (route) => {
     route.fulfill({
@@ -52,9 +69,11 @@ test("client consents flow stores state and handles submit", async ({ page, cont
     });
   });
 
+  await seedClientStore(page);
   await page.goto(
-    `/client-form/consents?applicationFormId=${APPLICATION_FORM_ID}&leadId=${LEAD_ID}&code=${ACCESS_CODE}`,
+    `/client-form/consents?applicationFormId=${APPLICATION_FORM_ID}&leadId=${LEAD_ID}&hash=${ACCESS_CODE_HASH}`,
   );
+  await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("heading", { name: "Zgody RODO" })).toBeVisible();
   await expect(page.getByText("Zgoda marketingowa")).toBeVisible();
@@ -100,9 +119,11 @@ test("shows modal when submit returns 409 and triggers refetch", async ({ page, 
     });
   });
 
+  await seedClientStore(page);
   await page.goto(
-    `/client-form/consents?applicationFormId=${APPLICATION_FORM_ID}&leadId=${LEAD_ID}&code=${ACCESS_CODE}`,
+    `/client-form/consents?applicationFormId=${APPLICATION_FORM_ID}&leadId=${LEAD_ID}&hash=${ACCESS_CODE_HASH}`,
   );
+  await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "Zapisz zgody" }).click();
   await expect(page.getByText("Wersja formularza nieaktualna")).toBeVisible();
