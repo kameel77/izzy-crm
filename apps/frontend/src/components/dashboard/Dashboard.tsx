@@ -1,13 +1,17 @@
 import React from "react";
+import { DashboardMonitoringDataResponse } from "../../api/analytics";
 
+import { FailedPinAttemptsWidget } from "./FailedPinAttemptsWidget";
 import { LeadConversionRateChart } from "./LeadConversionRateChart";
 import { LeadFunnelChart } from "./LeadFunnelChart";
 import { LeadVolumeChart } from "./LeadVolumeChart";
+import { StuckFormsWidget } from "./StuckFormsWidget";
 
 interface DashboardProps {
   leadVolume: Array<{ date: string; count: number }>;
   conversionRate: Array<{ name: string; value: number }>;
   funnel: Array<{ name: string; value: number }>;
+  monitoringData: DashboardMonitoringDataResponse | null;
   isLoading?: boolean;
 }
 
@@ -17,10 +21,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
   leadVolume,
   conversionRate,
   funnel,
+  monitoringData,
   isLoading = false,
 }) => {
   return (
     <div style={styles.wrapper}>
+      <section style={styles.section}>
+        <header style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>System Monitoring</h3>
+          <p style={styles.sectionSubtitle}>
+            Surface operational issues and potential client friction points.
+          </p>
+        </header>
+        <div style={styles.monitoringGrid}>
+          <FailedPinAttemptsWidget
+            count={monitoringData?.failedPinAttempts.count ?? 0}
+            rangeDays={monitoringData?.failedPinAttempts.rangeDays ?? 7}
+            loading={isLoading}
+          />
+          <StuckFormsWidget
+            forms={monitoringData?.stuckForms ?? []}
+            loading={isLoading}
+          />
+        </div>
+      </section>
+
       <section style={styles.section}>
         <header style={styles.sectionHeader}>
           <h3 style={styles.sectionTitle}>Lead Volume Over Time</h3>
@@ -85,6 +110,11 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "1.75rem",
     boxShadow: "0 18px 35px rgba(15, 23, 42, 0.08)",
     border: "1px solid rgba(15, 23, 42, 0.05)",
+  },
+  monitoringGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "1.5rem",
   },
   sectionHeader: {
     marginBottom: "1.5rem",

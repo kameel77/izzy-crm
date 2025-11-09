@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import {
   ConsentTemplateDto,
   fetchConsentTemplates,
+  logUnlockAttempt,
   submitConsents,
 } from "../api/consents";
 import { Modal } from "../components/Modal";
@@ -90,8 +91,10 @@ export const ClientConsentsPage: React.FC = () => {
       const hash = await hashAccessCode(sanitized);
       if (!expectedHash || hash !== expectedHash) {
         setPinError("Nieprawidłowy kod dostępu");
+        logUnlockAttempt(applicationFormId, false);
         return;
       }
+      logUnlockAttempt(applicationFormId, true);
       setResolvedAccessCodeHash(hash);
       setPinInput("");
       setPinError(null);

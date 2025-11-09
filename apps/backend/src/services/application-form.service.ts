@@ -324,3 +324,36 @@ export const unlockApplicationForm = async (params: {
 
   return updatedForm;
 };
+
+export const logUnlockAttempt = async (params: {
+  applicationFormId: string;
+  success: boolean;
+  ipAddress?: string;
+  userAgent?: string;
+}) => {
+  const form = await prisma.applicationForm.findUnique({
+    where: { id: params.applicationFormId },
+    select: { id: true, unlockHistory: true },
+  });
+
+  if (!form) {
+    // Fail silently, as this is a non-critical logging operation.
+    console.warn(`logUnlockAttempt: ApplicationForm not found with id ${params.applicationFormId}`);
+    return;
+  }
+
+  const unlockEntry = {
+    type: "CLIENT_ATTEMPT",
+    timestamp: new Date().toISOString(),
+    success: params.success,
+    ipAddress: params.ipAddress,
+    userAgent: params.userAgent,
+  };
+
+  await prisma.applicationForm.update({
+    where: { id: params.applicationFormId },
+    data: {
+      unlockHistory: buildUnlockHistory(form.unlockHistory, unlockEntry),
+    },
+  });
+};

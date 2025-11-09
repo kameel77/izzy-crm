@@ -4,6 +4,8 @@ import { ApiError } from "../api/client";
 import {
   DashboardAnalyticsResponse,
   fetchDashboardAnalytics,
+  fetchDashboardMonitoringData,
+  DashboardMonitoringDataResponse,
 } from "../api/analytics";
 import { Dashboard } from "../components/dashboard/Dashboard";
 import { LEAD_STATUS_LABELS } from "../constants/leadStatus";
@@ -70,6 +72,8 @@ export const AnalyticsPage: React.FC = () => {
 
   const [rangeDays, setRangeDays] = useState(30);
   const [analytics, setAnalytics] = useState<DashboardAnalyticsResponse | null>(null);
+  const [monitoringData, setMonitoringData] =
+    useState<DashboardMonitoringDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,9 +89,14 @@ export const AnalyticsPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetchDashboardAnalytics(token, { rangeDays });
+        const [analyticsResponse, monitoringResponse] = await Promise.all([
+          fetchDashboardAnalytics(token, { rangeDays }),
+          fetchDashboardMonitoringData(token),
+        ]);
+
         if (!isCancelled) {
-          setAnalytics(response);
+          setAnalytics(analyticsResponse);
+          setMonitoringData(monitoringResponse);
         }
       } catch (err) {
         if (isCancelled) {
@@ -211,6 +220,7 @@ export const AnalyticsPage: React.FC = () => {
         leadVolume={analytics?.leadVolume ?? []}
         conversionRate={conversionData}
         funnel={funnelData}
+        monitoringData={monitoringData}
         isLoading={isLoading}
       />
     </div>

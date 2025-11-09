@@ -4,13 +4,20 @@ import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { unlockApplicationForm } from "../services/application-form.service.js";
+import {
+  logUnlockAttempt,
+  unlockApplicationForm,
+} from "../services/application-form.service.js";
 
 const router = Router();
 
 const formIdSchema = z.object({ id: z.string().cuid() });
 const unlockSchema = z.object({
   reason: z.string().trim().max(500).optional(),
+});
+
+const logUnlockAttemptSchema = z.object({
+  success: z.boolean(),
 });
 
 router.post(
@@ -31,6 +38,23 @@ router.post(
     });
 
     return res.json(form);
+  }),
+);
+
+router.post(
+  "/:id/log-unlock-attempt",
+  asyncHandler(async (req, res) => {
+    const { id } = formIdSchema.parse(req.params);
+    const { success } = logUnlockAttemptSchema.parse(req.body);
+
+    await logUnlockAttempt({
+      applicationFormId: id,
+      success,
+      ipAddress: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
+
+    res.status(204).send();
   }),
 );
 

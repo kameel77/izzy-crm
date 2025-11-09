@@ -61,3 +61,28 @@ export const fetchDashboardAnalytics = (
 
   return apiFetch<DashboardAnalyticsResponse>(path, { token });
 };
+
+export interface StuckForm {
+  id: string;
+  leadId: string;
+  updatedAt: string;
+  completionPercent: number;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string | null;
+  } | null;
+}
+
+export interface DashboardMonitoringDataResponse {
+  stuckForms: StuckForm[];
+  failedPinAttempts: {
+    count: number;
+    rangeDays: number;
+  };
+}
+
+export const fetchDashboardMonitoringData = (token: string) => {
+  const path = "/api/analytics/monitoring";
+  return apiFetch<DashboardMonitoringDataResponse>(path, { token });
+};

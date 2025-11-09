@@ -41,3 +41,15 @@ export async function submitConsents(payload: SubmitConsentRequest) {
     body: JSON.stringify(payload),
   });
 }
+
+export async function logUnlockAttempt(applicationFormId: string, success: boolean) {
+  try {
+    await apiFetch(`/api/application-forms/${applicationFormId}/log-unlock-attempt`, {
+      method: "POST",
+      body: JSON.stringify({ success }),
+    });
+  } catch (error) {
+    // Fail silently on the client side
+    console.warn("Failed to log unlock attempt", error);
+  }
+}

@@ -211,3 +211,107 @@ export const getDashboardAnalytics = async (
     },
   };
 };
+
+export interface StuckForm {
+  id: string;
+  leadId: string;
+  updatedAt: Date;
+  completionPercent: number;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string | null;
+  } | null;
+}
+
+export interface DashboardMonitoringData {
+  stuckForms: StuckForm[];
+  failedPinAttempts: {
+    count: number;
+    rangeDays: number;
+  };
+}
+
+export const getDashboardMonitoringData = async (): Promise<DashboardMonitoringData> => {
+  const stuckThreshold = new Date();
+  stuckThreshold.setHours(stuckThreshold.getHours() - 24);
+
+  const stuckForms = await prisma.applicationForm.findMany({
+    where: {
+      status: "IN_PROGRESS",
+      updatedAt: { lt: stuckThreshold },
+    },
+    select: {
+      id: true,
+      leadId: true,
+      updatedAt: true,
+      completionPercent: true,
+      lead: {
+        select: {
+          customerProfile: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      updatedAt: "asc",
+    },
+  });
+
+  const pinFailRangeDays = 7;
+  const pinFailThreshold = new Date();
+  pinFailThreshold.setDate(pinFailThreshold.getDate() - pinFailRangeDays);
+
+  const recentFormsWithHistory = await prisma.applicationForm.findMany({
+    where: {
+      updatedAt: { gt: pinFailThreshold },
+      unlockHistory: { not: Prisma.JsonNull },
+    },
+    select: {
+      unlockHistory: true,
+    },
+  });
+
+  let failedPinAttempts = 0;
+  for (const form of recentFormsWithHistory) {
+    if (Array.isArray(form.unlockHistory)) {
+      for (const entry of form.unlockHistory) {
+        if (
+          typeof entry === "object" &&
+          entry !== null &&
+          "type" in entry &&
+          entry.type === "CLIENT_ATTEMPT" &&
+          "success" in entry &&
+          entry.success === false
+        ) {
+          failedPinAttempts++;
+        }
+      }
+    }
+  }
+
+  return {
+    stuckForms: stuckForms.map((form) => ({
+      id: form.id,
+      leadId: form.leadId,
+      updatedAt: form.updatedAt,
+      completionPercent: form.completionPercent,
+      customer: form.lead?.customerProfile
+        ? {
+            firstName: form.lead.customerProfile.firstName,
+            lastName: form.lead.customerProfile.lastName,
+            email: form.lead.customerProfile.email,
+          }
+        : null,
+    })),
+    failedPinAttempts: {
+      count: failedPinAttempts,
+      rangeDays: pinFailRangeDays,
+    },
+  };
+};

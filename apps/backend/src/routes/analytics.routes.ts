@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { getDashboardAnalytics } from "../services/analytics.service.js";
+import {
+  getDashboardAnalytics,
+  getDashboardMonitoringData,
+} from "../services/analytics.service.js";
 
 const router = Router();
 
@@ -31,6 +34,15 @@ router.get(
     });
 
     res.json(analytics);
+  }),
+);
+
+router.get(
+  "/monitoring",
+  authorize(UserRole.ADMIN, UserRole.SUPERVISOR),
+  asyncHandler(async (req, res) => {
+    const data = await getDashboardMonitoringData();
+    res.json(data);
   }),
 );
 
