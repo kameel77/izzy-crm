@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,15 +28,27 @@ interface Step4Props {
   formData: Partial<FormValues>;
 }
 
-export const Step4_Employment: React.FC<Step4Props> = ({ onFormChange, formData }) => {
+export interface Step4Ref {
+  triggerValidation: () => Promise<boolean>;
+}
+
+export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
+    handleSubmit,
     watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
+    mode: "onBlur",
   });
+
+  useImperativeHandle(ref, () => ({
+    triggerValidation: async () => {
+      return await handleSubmit(() => true, () => false)();
+    },
+  }));
 
   const watchedData = watch();
   useEffect(() => {
@@ -133,7 +145,7 @@ export const Step4_Employment: React.FC<Step4Props> = ({ onFormChange, formData 
       </fieldset>
     </form>
   );
-};
+});
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {

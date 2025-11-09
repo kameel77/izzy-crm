@@ -1,15 +1,17 @@
-import React, { useEffect } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { validatePESEL } from "../../../utils/pesel";
 
-// Define the Zod schema based on PRD for Step 1
 const schema = z.object({
   pesel: z.string().length(11, "PESEL musi mieć 11 cyfr"),
   firstName: z.string().min(1, "Imię jest wymagane"),
   lastName: z.string().min(1, "Nazwisko jest wymagane"),
   mobilePhone: z.string().min(9, "Numer telefonu jest wymagany"),
   email: z.string().email("Nieprawidłowy format email"),
+  birthDate: z.string().min(1, "Data urodzenia jest wymagana"),
+  gender: z.string().min(1, "Płeć jest wymagana"),
   birthPlace: z.string().min(1, "Miejsce urodzenia jest wymagane"),
   countryOfBirth: z.string().min(1, "Kraj urodzenia jest wymagany"),
   citizenship: z.string().min(1, "Obywatelstwo jest wymagane"),
@@ -20,6 +22,9 @@ const schema = z.object({
   mothersMaidenName: z.string().min(1, "Nazwisko panieńskie matki jest wymagane"),
   isTaxResident: z.boolean().optional(),
   childrenCount: z.coerce.number().min(0, "Liczba dzieci nie może być ujemna").optional(),
+}).refine(data => validatePESEL(data.pesel).valid, {
+  message: "Nieprawidłowy numer PESEL",
+  path: ["pesel"],
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -29,22 +34,45 @@ interface Step1Props {
   formData: Partial<FormValues>;
 }
 
-export const Step1_PersonalData: React.FC<Step1Props> = ({ onFormChange, formData }) => {
+export interface Step1Ref {
+  triggerValidation: () => Promise<boolean>;
+}
+
+export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
+    mode: "onBlur",
   });
 
+  useImperativeHandle(ref, () => ({
+    triggerValidation: async () => {
+      return await handleSubmit(() => true, () => false)();
+    },
+  }));
+
   const watchedData = watch();
+  const peselValue = watch("pesel");
+
   useEffect(() => {
     onFormChange(watchedData);
   }, [JSON.stringify(watchedData), onFormChange]);
 
+  useEffect(() => {
+    if (peselValue && peselValue.length === 11) {
+      const validationResult = validatePESEL(peselValue);
+      if (validationResult.valid && validationResult.birthDate && validationResult.gender) {
+        setValue("birthDate", validationResult.birthDate.toISOString().split("T")[0]);
+        setValue("gender", validationResult.gender);
+      }
+    }
+  }, [peselValue, setValue]);
 
   return (
     <form>
@@ -57,8 +85,9 @@ export const Step1_PersonalData: React.FC<Step1Props> = ({ onFormChange, formDat
           {errors.pesel && <span style={styles.error}>{errors.pesel.message}</span>}
         </div>
         <div style={styles.field}>
-          <label>Płeć</label>
-          <input disabled placeholder="autouzupełnione z PESEL" />
+          <label htmlFor="gender">Płeć</label>
+          <input id="gender" {...register("gender")} disabled />
+          {errors.gender && <span style={styles.error}>{errors.gender.message}</span>}
         </div>
 
         {/* Row 2 */}
@@ -87,8 +116,9 @@ export const Step1_PersonalData: React.FC<Step1Props> = ({ onFormChange, formDat
         
         {/* Row 4 */}
         <div style={styles.field}>
-          <label>Data urodzenia</label>
-          <input disabled placeholder="autouzupełnione z PESEL" />
+          <label htmlFor="birthDate">Data urodzenia</label>
+          <input id="birthDate" {...register("birthDate")} disabled />
+          {errors.birthDate && <span style={styles.error}>{errors.birthDate.message}</span>}
         </div>
         <div style={styles.field}>
           <label htmlFor="birthPlace">Miejsce urodzenia</label>
@@ -159,7 +189,7 @@ export const Step1_PersonalData: React.FC<Step1Props> = ({ onFormChange, formDat
       </div>
     </form>
   );
-};
+});
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {
