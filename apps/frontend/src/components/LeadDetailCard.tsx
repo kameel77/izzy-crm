@@ -103,6 +103,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [noteLink, setNoteLink] = useState("");
   const [noteErrors, setNoteErrors] = useState<{ content?: string; link?: string }>({});
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [areNotesExpanded, setAreNotesExpanded] = useState(false);
   const buildVehicleFormState = useCallback((): VehicleFormState => {
     const preferences = lead?.vehicleDesired?.preferences;
     const desiredNotes =
@@ -175,6 +176,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
   useEffect(() => {
     setNotes(lead?.notes ?? []);
+    setAreNotesExpanded(false);
   }, [lead]);
 
   useEffect(() => {
@@ -608,6 +610,16 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     return summary;
   };
 
+  const formatPhoneNumber = (value?: string | null) => {
+    if (!value) return null;
+    return value.trim();
+  };
+
+  const displayedNotes = areNotesExpanded ? notes : notes.slice(0, 3);
+  const canToggleNotes = notes.length > 3;
+
+  const formattedPhone = formatPhoneNumber(lead.customerProfile?.phone);
+
   return (
     <section style={styles.container}>
       <header style={styles.header}>
@@ -617,7 +629,22 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
               : "Lead Detail"}
           </h2>
-          <p style={styles.subtitle}>{lead.customerProfile?.email}</p>
+          {lead.customerProfile?.email ? (
+            <p style={styles.subtitle}>
+              Email:{" "}
+              <a href={`mailto:${lead.customerProfile.email}`} style={styles.contactLink}>
+                {lead.customerProfile.email}
+              </a>
+            </p>
+          ) : null}
+          {formattedPhone ? (
+            <p style={styles.subtitle}>
+              Telefon:{" "}
+              <a href={`tel:${lead.customerProfile?.phone ?? ""}`} style={styles.contactLink}>
+                {formattedPhone}
+              </a>
+            </p>
+          ) : null}
         </div>
         <button type="button" style={styles.refreshButton} onClick={onRefresh}>
           Refresh
@@ -666,6 +693,19 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             value={lead.lastContactAt ? new Date(lead.lastContactAt).toLocaleString() : "—"}
           />
         </div>
+      </div>
+
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
+          {canEditVehicles ? (
+            <button type="button" style={styles.secondaryButton} onClick={handleVehicleModalOpen}>
+              Edit
+            </button>
+          ) : null}
+        </div>
+        <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
+        <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
       </div>
 
       <div style={styles.section}>
@@ -747,14 +787,17 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Notes</h3>
+          <div style={styles.sectionTitleGroup}>
+            <h3 style={styles.sectionTitle}>Notes</h3>
+            <span style={styles.noteCount}>({notes.length})</span>
+          </div>
           <button type="button" style={styles.primaryButton} onClick={() => setIsNoteModalOpen(true)}>
             New note
           </button>
         </div>
         <ul style={styles.noteList}>
-          {notes.length ? (
-            notes.map((note) => (
+          {displayedNotes.length ? (
+            displayedNotes.map((note) => (
               <li key={note.id} style={styles.noteItem}>
                 <div style={styles.noteMeta}>
                   <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
@@ -777,23 +820,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             <li style={styles.noteEmpty}>No notes yet.</li>
           )}
         </ul>
-      </div>
-
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
-          {canEditVehicles ? (
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={handleVehicleModalOpen}
-            >
-              Edit
-            </button>
-          ) : null}
-        </div>
-        <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
-        <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
+        {canToggleNotes ? (
+          <button
+            type="button"
+            style={{ ...styles.ghostButton, alignSelf: "flex-start" }}
+            onClick={() => setAreNotesExpanded((prev) => !prev)}
+          >
+            {areNotesExpanded ? "Pokaż mniej" : "Pokaż wszystkie notatki"}
+          </button>
+        ) : null}
       </div>
 
       <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
@@ -1316,6 +1351,10 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0.25rem 0 0",
     color: "#6b7280",
   },
+  contactLink: {
+    color: "#2563eb",
+    textDecoration: "none",
+  },
   refreshButton: {
     padding: "0.5rem 0.75rem",
     borderRadius: 8,
@@ -1505,6 +1544,15 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#2563eb",
     textDecoration: "underline",
   },
+  sectionTitleGroup: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: "0.35rem",
+  },
+  noteCount: {
+    color: "#94a3b8",
+    fontSize: "0.9rem",
+  },
   noteEmpty: {
     color: "#64748b",
     fontStyle: "italic",
@@ -1543,6 +1591,15 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     borderRadius: 8,
     padding: "0.5rem 1rem",
+    cursor: "pointer",
+    fontWeight: 500,
+  },
+  ghostButton: {
+    background: "transparent",
+    color: "#2563eb",
+    border: "1px solid rgba(37, 99, 235, 0.3)",
+    borderRadius: 8,
+    padding: "0.45rem 0.9rem",
     cursor: "pointer",
     fontWeight: 500,
   },
