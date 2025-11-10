@@ -90,7 +90,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   onAddDocument,
 }) => {
   const { token, user } = useAuth();
-  const toast = useToasts();
+  const { addToast } = useToasts();
   const isAdmin = user?.role === "ADMIN";
   const canEditVehicles =
     user?.role === "ADMIN" || user?.role === "SUPERVISOR" || user?.role === "OPERATOR";
@@ -208,7 +208,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         if (!cancelled) {
           setAssignmentError(message);
         }
-        toast.error(message);
+        addToast(message, "error");
       } finally {
         if (!cancelled) {
           setIsLoadingOperators(false);
@@ -233,13 +233,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     setAssignmentError(null);
     try {
       await assignLead(token, lead.id, userId);
-      toast.success(userId ? "Lead assigned" : "Lead marked as unassigned");
+      addToast(userId ? "Lead assigned" : "Lead marked as unassigned", "success");
       await Promise.resolve(onRefresh());
       window.dispatchEvent(new CustomEvent("lead-assignment-updated", { detail: { leadId: lead.id } }));
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update assignment";
       setAssignmentError(message);
-      toast.error(message);
+      addToast(message, "error");
     } finally {
       setIsUpdatingAssignment(false);
     }
@@ -292,12 +292,12 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     try {
       const result = await generateApplicationFormLink(token, lead.id, sanitized);
       setGeneratedLinkResult(result);
-      toast.success("Link do formularza został wygenerowany");
+      addToast("Link do formularza został wygenerowany", "success");
       await Promise.resolve(onRefresh());
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Nie udało się wygenerować linku";
       setGenerateLinkError(message);
-      toast.error(message);
+      addToast(message, "error");
     } finally {
       setIsGeneratingFormLink(false);
     }
@@ -310,9 +310,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         throw new Error("Clipboard API unavailable");
       }
       await navigator.clipboard.writeText(generatedLinkResult.link);
-      toast.success("Skopiowano link do schowka");
+      addToast("Skopiowano link do schowka", "success");
     } catch {
-      toast.error("Nie udało się skopiować linku");
+      addToast("Nie udało się skopiować linku", "error");
     }
   };
 
@@ -450,7 +450,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     setIsSavingVehicles(true);
     try {
       await updateLeadVehicles(token, lead.id, payload);
-      toast.success("Vehicle details updated");
+      addToast("Vehicle details updated", "success");
       setIsVehicleModalOpen(false);
       const refreshResult = onRefresh();
       if (refreshResult instanceof Promise) {
@@ -458,7 +458,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       }
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to update vehicle details";
-      toast.error(message);
+      addToast(message, "error");
     } finally {
       setIsSavingVehicles(false);
     }
@@ -538,11 +538,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         link: validation.link,
       });
       setNotes((prev) => [createdNote, ...prev]);
-      toast.success("Note added");
+      addToast("Note added", "success");
       handleCloseNoteModal();
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to add note";
-      toast.error(message);
+      addToast(message, "error");
     } finally {
       setIsSavingNote(false);
     }
