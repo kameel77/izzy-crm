@@ -35,7 +35,17 @@ export async function apiFetch<TResponse>(
 
   let token = tokenOption;
   if (token === undefined) {
-    token = localStorage.getItem("izzy-crm-auth");
+    const rawAuth = localStorage.getItem("izzy-crm-auth");
+    if (rawAuth) {
+      try {
+        const parsedAuth = JSON.parse(rawAuth);
+        token = parsedAuth.token;
+      } catch {
+        token = null;
+      }
+    } else {
+      token = null;
+    }
   }
 
   if (token === null) {
@@ -43,6 +53,8 @@ export async function apiFetch<TResponse>(
   } else if (token) {
     mergedHeaders.set("Authorization", `Bearer ${token}`);
   }
+
+  console.log("Using token for auth:", token);
 
   init.headers = mergedHeaders;
 

@@ -2,6 +2,7 @@ import { ConsentMethod, ConsentType, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 
+import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import {
   createConsentTemplate,
@@ -95,6 +96,7 @@ router.get(
 
 router.post(
   "/consent-templates",
+  authenticate,
   authorize(UserRole.ADMIN),
   asyncHandler(async (req, res) => {
     const payload = templateCreateSchema.parse(req.body);
@@ -108,6 +110,7 @@ router.post(
 
 router.put(
   "/consent-templates/:id",
+  authenticate,
   authorize(UserRole.ADMIN),
   asyncHandler(async (req, res) => {
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
@@ -119,6 +122,7 @@ router.put(
 
 router.delete(
   "/consent-templates/:id",
+  authenticate,
   authorize(UserRole.ADMIN),
   asyncHandler(async (req, res) => {
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);

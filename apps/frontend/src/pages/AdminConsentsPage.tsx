@@ -17,7 +17,7 @@ const ConsentTemplateForm: React.FC<{
   onCancel: () => void;
 }> = ({ template, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
-    consentType: template?.consentType || "GENERAL",
+    consentType: template?.consentType || "PARTNER_DECLARATION",
     formType: template?.formType || "",
     title: template?.title || "",
     content: template?.content || "",
@@ -45,9 +45,10 @@ const ConsentTemplateForm: React.FC<{
       <label>
         Consent Type:
         <select name="consentType" value={formData.consentType} onChange={handleChange}>
-          <option value="GENERAL">General</option>
+          <option value="PARTNER_DECLARATION">Partner Declaration</option>
           <option value="MARKETING">Marketing</option>
-          <option value="DATA_SHARING">Data Sharing</option>
+          <option value="FINANCIAL_PARTNERS">Financial Partners</option>
+          <option value="VEHICLE_PARTNERS">Vehicle Partners</option>
         </select>
       </label>
       <label>
@@ -114,27 +115,25 @@ export const AdminConsentsPage: React.FC = () => {
     try {
       if (editingTemplate) {
         await updateConsentTemplate(editingTemplate.id, payload);
-        addToast({ message: "Template updated successfully!", type: "success" });
+        addToast("Template updated successfully!", "success");
       } else {
         await createConsentTemplate(payload as CreateConsentTemplatePayload);
-        addToast({ message: "Template created successfully!", type: "success" });
+        addToast("Template created successfully!", "success");
       }
       setIsModalOpen(false);
       setEditingTemplate(null);
       loadTemplates();
-    } catch (err) {
-      addToast({ message: "Failed to save template.", type: "error" });
-    }
+    } catch (error) { addToast("Failed to save template.", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this template?")) {
       try {
         await deleteConsentTemplate(id);
-        addToast({ message: "Template deleted successfully!", type: "success" });
+        addToast("Template deleted successfully!", "success");
         loadTemplates();
       } catch (err) {
-        addToast({ message: "Failed to delete template.", type: "error" });
+        addToast("Failed to delete template.", "error");
       }
     }
   };
