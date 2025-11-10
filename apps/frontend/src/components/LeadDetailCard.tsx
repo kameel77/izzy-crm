@@ -929,7 +929,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                     <span style={{ color: "#dc2626", fontWeight: 600 }}>Not Given</span>
                   )}
                   {record.recordedBy ? (
-                    <span style={styles.subtleText}>by {record.recordedBy.fullName || record.recordedBy.email}</span>
+                    <span style={styles.subtleText}>
+                      by {record.recordedBy.fullName}
+                      {record.recordedBy.fullName && record.recordedBy.email ? ` (${record.recordedBy.email})` : record.recordedBy.email ? ` ${record.recordedBy.email}` : ""}
+                    </span>
                   ) : null}
                   {record.partner ? (
                     <span style={styles.subtleText}>via {record.partner.name}</span>
