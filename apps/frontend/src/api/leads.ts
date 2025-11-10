@@ -43,6 +43,7 @@ export interface LeadDetail extends LeadSummary {
     submittedAt?: string | null;
     lastClientActivity?: string | null;
     unlockHistory?: unknown;
+    formData?: unknown;
   } | null;
   customerProfile?: LeadCustomerProfile | null;
   notes: LeadNote[];
