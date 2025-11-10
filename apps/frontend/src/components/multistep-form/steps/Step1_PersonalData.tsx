@@ -4,11 +4,17 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validatePESEL } from "../../../utils/pesel";
 
+const phoneRegex = /^(?:\+?48)?(?:[ -]?)?(?:\d[ -]?){9}$/;
+
 const schema = z.object({
   pesel: z.string().length(11, "PESEL musi mieć 11 cyfr"),
   firstName: z.string().min(1, "Imię jest wymagane"),
   lastName: z.string().min(1, "Nazwisko jest wymagane"),
-  mobilePhone: z.string().min(9, "Numer telefonu jest wymagany"),
+  mobilePhone: z
+    .string()
+    .min(1, "Numer telefonu jest wymagany")
+    .regex(phoneRegex, "Nieprawidłowy format numeru telefonu")
+    .transform(val => val.replace(/[\s-]+/g, "")),
   email: z.string().email("Nieprawidłowy format email"),
   birthDate: z.string().min(1, "Data urodzenia jest wymagana"),
   gender: z.string().min(1, "Płeć jest wymagana"),
@@ -64,6 +70,7 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 
   const watchedData = watch();
   const peselValue = watch("pesel");
+  const watchedPhone = watch("mobilePhone");
 
   useEffect(() => {
     onFormChange(watchedData);
@@ -78,6 +85,17 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
       }
     }
   }, [peselValue, setValue]);
+
+  useEffect(() => {
+    const phone = watchedPhone?.replace(/[\s-]+/g, "");
+    if (phone && phone.length >= 9) {
+      const digitsOnly = phone.replace(/\D/g, "").slice(-9);
+      const formatted = `+48 ${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6, 9)}`;
+      if (formatted !== watchedPhone) {
+        setValue("mobilePhone", formatted, { shouldValidate: true });
+      }
+    }
+  }, [watchedPhone, setValue]);
 
   return (
     <form>

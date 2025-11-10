@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { ConsentTemplateDto, fetchAuthenticatedConsentTemplates } from "../api/consents";
 
 interface CreateLeadFormProps {
@@ -20,17 +21,20 @@ interface CreateLeadFormProps {
     }>;
   }) => Promise<void>;
   defaultPartnerId?: string | null;
-  hidePartnerField?: boolean;
 }
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^(?:\+?48)?(?:[ -]?)?(?:\d[ -]?){9}$/;
 
 export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   onCreate,
   defaultPartnerId,
-  hidePartnerField = false,
 }) => {
+  const { user } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [downPayment, setDownPayment] = useState("");
   const [currentMake, setCurrentMake] = useState("");
   const [currentModel, setCurrentModel] = useState("");
@@ -42,11 +46,27 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [desiredNotes, setDesiredNotes] = useState("");
   const [partnerId, setPartnerId] = useState(defaultPartnerId ?? "");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [consentTemplates, setConsentTemplates] = useState<ConsentTemplateDto[]>([]);
   const [consentState, setConsentState] = useState<Record<string, boolean>>({});
   const [consentsLoading, setConsentsLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.partner) {
+      setPartnerId(user.partner.id);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const phoneDigits = phone.replace(/\D/g, "").slice(-9);
+    if (phoneDigits.length > 0) {
+      const formatted = `+48 ${phoneDigits.slice(0, 3)} ${phoneDigits.slice(3, 6)} ${phoneDigits.slice(6, 9)}`;
+      if (formatted !== phone) {
+        setPhone(formatted);
+      }
+    }
+  }, [phone]);
 
   useEffect(() => {
     const loadConsents = async () => {
@@ -61,7 +81,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         });
         setConsentState(initialState);
       } catch (error) {
-        setError("Failed to load consent templates.");
+        setErrors(prev => ({ ...prev, consents: "Failed to load consent templates." }));
       } finally {
         setConsentsLoading(false);
       }
@@ -73,41 +93,31 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     setConsentState(prev => ({ ...prev, [consentId]: isChecked }));
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (email && !emailRegex.test(email)) {
+      newErrors.email = "Invalid email format (e.g., user@example.com).";
+    }
+    if (phone && !phoneRegex.test(phone.replace(/[\s-]+/g, ""))) {
+      newErrors.phone = "Invalid phone number format (e.g., +48 123 456 789).";
+    }
     const allRequiredConsentsGiven = consentTemplates
       .filter(t => t.isRequired)
       .every(t => consentState[t.id]);
-
     if (!allRequiredConsentsGiven) {
-      setError("All required consents must be accepted.");
-      return;
+      newErrors.consents = "All required consents must be accepted.";
     }
-
     const parsedDownPayment = Number(downPayment);
     if (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0) {
-      setError("Amount available for down payment must be zero or a positive number.");
-      return;
+      newErrors.downPayment = "Amount available must be zero or a positive number.";
     }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    const parsedYear = currentYear ? Number(currentYear) : undefined;
-    const parsedMileage = currentMileage ? Number(currentMileage) : undefined;
-    const parsedDesiredYear = desiredYear ? Number(desiredYear) : undefined;
-
-    if (parsedYear !== undefined && !Number.isFinite(parsedYear)) {
-      setError("Vehicle year must be a valid number.");
-      return;
-    }
-
-    if (parsedMileage !== undefined && !Number.isFinite(parsedMileage)) {
-      setError("Vehicle mileage must be a valid number.");
-      return;
-    }
-
-    if (parsedDesiredYear !== undefined && !Number.isFinite(parsedDesiredYear)) {
-      setError("Desired vehicle year must be a valid number.");
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!validate()) {
       return;
     }
 
@@ -119,9 +129,10 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           firstName,
           lastName,
           email: email || undefined,
+          phone: phone.replace(/[\s-]+/g, "") || undefined,
         },
         financing: {
-          downPayment: parsedDownPayment,
+          downPayment: Number(downPayment),
         },
         consents: consentTemplates.map(t => ({
           templateId: t.id,
@@ -130,27 +141,20 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         })),
       };
 
-      if (currentMake || currentModel || parsedYear !== undefined || parsedMileage !== undefined) {
+      if (currentMake || currentModel || currentYear || currentMileage) {
         payload.currentVehicle = {
           make: currentMake || undefined,
           model: currentModel || undefined,
-          year: parsedYear,
-          mileage: parsedMileage,
+          year: currentYear ? Number(currentYear) : undefined,
+          mileage: currentMileage ? Number(currentMileage) : undefined,
         };
       }
 
-      const trimmedNotes = desiredNotes.trim();
-
-      if (
-        desiredMake ||
-        desiredModel ||
-        parsedDesiredYear !== undefined ||
-        trimmedNotes.length > 0
-      ) {
+      if (desiredMake || desiredModel || desiredYear || desiredNotes) {
         payload.desiredVehicle = {
           make: desiredMake || undefined,
           model: desiredModel || undefined,
-          year: parsedDesiredYear,
+          year: desiredYear ? Number(desiredYear) : undefined,
         };
       }
 
@@ -160,6 +164,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       setFirstName("");
       setLastName("");
       setEmail("");
+      setPhone("");
       setDownPayment("");
       setCurrentMake("");
       setCurrentModel("");
@@ -170,7 +175,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       setDesiredYear("");
       setDesiredNotes("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create lead");
+      setErrors({ form: err instanceof Error ? err.message : "Failed to create lead" });
     } finally {
       setLoading(false);
     }
@@ -198,6 +203,16 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             required
           />
         </label>
+        <label style={styles.label}>
+          Partner
+          <input
+            style={{ ...styles.input, background: user?.role !== "ADMIN" ? "#f3f4f6" : "white" }}
+            value={user?.partner?.name ?? partnerId}
+            readOnly={user?.role !== "ADMIN"}
+            onChange={(e) => setPartnerId(e.target.value)}
+            placeholder="seed-partner"
+          />
+        </label>
       </div>
       <div style={styles.row}>
         <label style={styles.label}>
@@ -207,7 +222,20 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             value={email}
             type="email"
             onChange={(event) => setEmail(event.target.value)}
+            onBlur={validate}
           />
+          {errors.email && <span style={styles.fieldError}>{errors.email}</span>}
+        </label>
+        <label style={styles.label}>
+          Phone
+          <input
+            style={styles.input}
+            value={phone}
+            type="tel"
+            onChange={(event) => setPhone(event.target.value)}
+            onBlur={validate}
+          />
+          {errors.phone && <span style={styles.fieldError}>{errors.phone}</span>}
         </label>
         <label style={styles.label}>
           Amount Available (PLN)
@@ -220,18 +248,8 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             onChange={(event) => setDownPayment(event.target.value)}
             required
           />
+          {errors.downPayment && <span style={styles.fieldError}>{errors.downPayment}</span>}
         </label>
-        {!hidePartnerField && !defaultPartnerId ? (
-          <label style={styles.label}>
-            Partner ID
-            <input
-              style={styles.input}
-              value={partnerId}
-              onChange={(event) => setPartnerId(event.target.value)}
-              placeholder="seed-partner"
-            />
-          </label>
-        ) : null}
       </div>
       <div style={styles.row}>
         <label style={styles.label}>
@@ -319,7 +337,6 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           />
         </label>
       </div>
-
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Consents</legend>
         {consentsLoading ? (
@@ -338,9 +355,10 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             </div>
           ))
         )}
+        {errors.consents && <div style={styles.error}>{errors.consents}</div>}
       </fieldset>
 
-      {error ? <div style={styles.error}>{error}</div> : null}
+      {errors.form ? <div style={styles.error}>{errors.form}</div> : null}
       <button type="submit" style={styles.submit} disabled={loading || consentsLoading}>
         {loading ? "Creating..." : "Create Lead"}
       </button>
@@ -393,6 +411,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#b91c1c",
     padding: "0.5rem",
     borderRadius: 8,
+  },
+  fieldError: {
+    color: "#b91c1c",
+    fontSize: "0.8rem",
   },
   fieldset: {
     border: "1px solid #d1d5db",

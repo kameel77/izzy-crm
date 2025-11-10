@@ -238,7 +238,6 @@ export const DashboardPage: React.FC = () => {
         <CreateLeadForm
           onCreate={handleCreateLead}
           defaultPartnerId={user?.partnerId}
-          hidePartnerField={user?.role !== "ADMIN"}
         />
       </Modal>
 
