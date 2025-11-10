@@ -1,12 +1,5 @@
-import {
-  ApplicationFormStatus,
-  EmailLogStatus,
-  EmailLogType,
-  UserRole,
-  UserStatus,
-} from "@prisma/client";
-import { createHash, randomBytes } from "crypto";
-
+import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus } from "@prisma/client";
+import { randomBytes, createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
@@ -420,6 +413,29 @@ export const logUnlockAttempt = async (params: {
     where: { id: params.applicationFormId },
     data: {
       unlockHistory: buildUnlockHistory(form.unlockHistory, unlockEntry),
+    },
+  });
+};
+
+export const submitApplicationForm = async (id: string, formData: Prisma.JsonObject) => {
+  const form = await prisma.applicationForm.findUnique({ where: { id } });
+
+  if (!form) {
+    throw createHttpError({ status: 404, message: 'Application form not found' });
+  }
+
+  if (form.status === 'SUBMITTED') {
+    // Idempotency: if already submitted, just return the form without changes
+    return form;
+  }
+
+  return prisma.applicationForm.update({
+    where: { id },
+    data: {
+      formData,
+      status: 'SUBMITTED',
+      submittedAt: new Date(),
+      isClientActive: false,
     },
   });
 };

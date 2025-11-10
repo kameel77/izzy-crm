@@ -9,6 +9,7 @@ import {
   getApplicationFormById,
   logUnlockAttempt,
   saveApplicationFormProgress,
+  submitApplicationForm,
   unlockApplicationForm,
 } from "../services/application-form.service.js";
 
@@ -35,6 +36,16 @@ router.get(
     const { id } = formIdSchema.parse(req.params);
     const form = await getApplicationFormById({ applicationFormId: id });
     return res.json(form);
+  }),
+);
+
+router.post(
+  "/:id/submit",
+  asyncHandler(async (req, res) => {
+    const { id } = formIdSchema.parse(req.params);
+    const { formData } = req.body;
+    const result = await submitApplicationForm(id, formData);
+    res.status(200).json(result);
   }),
 );
 

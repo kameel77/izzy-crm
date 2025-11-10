@@ -22,3 +22,11 @@ export async function saveApplicationFormProgress(
 export async function getApplicationForm(applicationFormId: string) {
   return apiFetch(`/api/application-forms/${applicationFormId}`);
 }
+
+export const submitApplicationForm = (applicationFormId: string, formData: Record<string, unknown>) => {
+  return apiFetch(`/api/application-forms/${applicationFormId}/submit`, {
+    method: 'POST',
+    body: JSON.stringify({ formData }),
+  });
+};
+

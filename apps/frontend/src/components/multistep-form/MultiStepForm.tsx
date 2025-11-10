@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDebounce } from "use-debounce";
-import { getApplicationForm, saveApplicationFormProgress } from "../../api/application-forms";
+import { getApplicationForm, saveApplicationFormProgress, submitApplicationForm } from "../../api/application-forms";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -124,9 +124,18 @@ export const MultiStepForm: React.FC = () => {
     const areAllStepsValid = validationResults.every((isValid) => isValid);
 
     if (areAllStepsValid) {
-      console.log("Form submitted successfully:", formData);
-      // TODO: Add actual form submission logic here
-      navigate('/thank-you');
+      if (!applicationFormId) {
+        alert("Błąd: Brak ID formularza.");
+        return;
+      }
+      try {
+        await submitApplicationForm(applicationFormId, formData);
+        console.log("Form submitted successfully:", formData);
+        navigate('/thank-you');
+      } catch (error) {
+        console.error("Failed to submit form", error);
+        alert("Wystąpił błąd podczas wysyłania formularza. Proszę spróbować ponownie.");
+      }
     } else {
       const firstInvalidStep = validationResults.findIndex(isValid => !isValid) + 1;
       console.log(`Validation failed. First invalid step: ${firstInvalidStep}`);
