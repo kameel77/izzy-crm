@@ -44,12 +44,17 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
     watch,
     setValue,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    reset(formData);
+  }, [formData, reset]);
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {

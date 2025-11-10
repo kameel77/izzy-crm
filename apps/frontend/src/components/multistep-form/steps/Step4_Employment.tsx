@@ -37,12 +37,17 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
     register,
     watch,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    reset(formData);
+  }, [formData, reset]);
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {

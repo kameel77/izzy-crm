@@ -25,9 +25,9 @@ export interface Step2Ref {
 export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
-    handleSubmit,
     watch,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -35,16 +35,21 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
     mode: "onBlur",
   });
 
+  useEffect(() => {
+    reset(formData);
+  }, [formData, reset]);
+
+  const watchedData = watch();
+
+  useEffect(() => {
+    onFormChange(watchedData);
+  }, [JSON.stringify(watchedData), onFormChange]);
+
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
       return await trigger();
     },
   }));
-
-  const watchedData = watch();
-  useEffect(() => {
-    onFormChange(watchedData);
-  }, [JSON.stringify(watchedData), onFormChange]);
 
   return (
     <form>

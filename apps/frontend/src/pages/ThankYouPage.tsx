@@ -12,6 +12,9 @@ export const ThankYouPage: React.FC = () => {
         <Link to="/" style={styles.button}>
           Wróć na stronę główną
         </Link>
+        <a href="https://salon.izzylease.pl" target="_blank" rel="noopener noreferrer" style={styles.externalLink}>
+          Odwiedź nasz salon
+        </a>
       </div>
     </div>
   );
@@ -56,5 +59,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '0.5rem',
     fontWeight: 500,
     transition: 'background-color 0.2s',
+  },
+  externalLink: {
+    display: 'block',
+    marginTop: '1rem',
+    color: '#2563eb',
+    textDecoration: 'underline',
+    fontSize: '0.9rem',
   },
 };

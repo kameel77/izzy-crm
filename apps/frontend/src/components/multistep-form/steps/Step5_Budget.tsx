@@ -29,12 +29,17 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
     register,
     watch,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    reset(formData);
+  }, [formData, reset]);
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {

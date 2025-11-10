@@ -35,12 +35,17 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
     register,
     watch,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    reset(formData);
+  }, [formData, reset]);
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {

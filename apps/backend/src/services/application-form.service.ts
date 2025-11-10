@@ -1,4 +1,4 @@
-import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus } from "@prisma/client";
+import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus, ConsentMethod } from "@prisma/client";
 import { randomBytes, createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
@@ -418,24 +418,61 @@ export const logUnlockAttempt = async (params: {
 };
 
 export const submitApplicationForm = async (id: string, formData: Prisma.JsonObject) => {
-  const form = await prisma.applicationForm.findUnique({ where: { id } });
+  return prisma.$transaction(async (tx) => {
+    const form = await tx.applicationForm.findUnique({
+      where: { id },
+      select: { id: true, status: true, leadId: true },
+    });
 
-  if (!form) {
-    throw createHttpError({ status: 404, message: 'Application form not found' });
-  }
+    if (!form) {
+      throw createHttpError({ status: 404, message: 'Application form not found' });
+    }
 
-  if (form.status === 'SUBMITTED') {
-    // Idempotency: if already submitted, just return the form without changes
-    return form;
-  }
+    if (form.status === 'SUBMITTED') {
+      return form;
+    }
 
-  return prisma.applicationForm.update({
-    where: { id },
-    data: {
-      formData,
-      status: 'SUBMITTED',
-      submittedAt: new Date(),
-      isClientActive: false,
-    },
+    const consents = (formData.consents as Prisma.JsonArray) || [];
+    if (consents.length > 0) {
+      const templateIds = consents.map((c: any) => c.templateId as string);
+      const templates = await tx.consentTemplate.findMany({
+        where: { id: { in: templateIds } },
+      });
+      const templateMap = new Map(templates.map(t => [t.id, t]));
+
+      const consentRecordsData = consents.map((c: any) => {
+        const template = templateMap.get(c.templateId as string);
+        if (!template) {
+          throw createHttpError({ status: 400, message: `Consent template ${c.templateId} not found` });
+        }
+        return {
+          leadId: form.leadId,
+          applicationFormId: form.id,
+          consentTemplateId: template.id,
+          version: template.version,
+          consentGiven: c.given as boolean,
+          consentMethod: ConsentMethod.ONLINE_FORM,
+          consentType: template.consentType,
+          consentText: template.content,
+          ipAddress: "unknown", // TODO: Capture IP
+        };
+      });
+
+      await tx.consentRecord.createMany({
+        data: consentRecordsData,
+      });
+    }
+
+    const updatedForm = await tx.applicationForm.update({
+      where: { id },
+      data: {
+        formData,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+        isClientActive: false,
+      },
+    });
+
+    return updatedForm;
   });
 };
