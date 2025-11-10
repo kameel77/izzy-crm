@@ -261,7 +261,7 @@ export const unlockApplicationForm = async (params: {
   const updatedForm = await prisma.applicationForm.update({
     where: { id: params.applicationFormId },
     data: {
-      status: ApplicationFormStatus.IN_PROGRESS,
+      status: ApplicationFormStatus.UNLOCKED,
       isClientActive: false,
       lastClientActivity: null,
       uniqueLink: randomBytes(UNLOCK_TOKEN_BYTES).toString("hex"),

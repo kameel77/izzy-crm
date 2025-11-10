@@ -394,6 +394,7 @@ enum ApplicationFormStatus {
   READY
   SUBMITTED
   LOCKED
+  UNLOCKED
 }
 
 enum ConsentType {
