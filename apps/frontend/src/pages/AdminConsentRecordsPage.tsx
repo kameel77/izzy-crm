@@ -42,7 +42,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <AppLayout>
+    <>
       <h1>Consent Records Archive</h1>
 
       {loading && <p>Loading...</p>}
@@ -91,6 +91,6 @@ export const AdminConsentRecordsPage: React.FC = () => {
           </div>
         </div>
       )}
-    </AppLayout>
+    </>
   );
 };
