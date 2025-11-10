@@ -143,6 +143,8 @@ export interface CreateLeadInput {
   sourceMetadata?: Record<string, unknown>;
   notes?: string;
   createdByUserId?: string | null;
+  ipAddress?: string;
+  userAgent?: string;
   customer: {
     firstName: string;
     lastName: string;
@@ -279,6 +281,9 @@ export const createLead = async (input: CreateLeadInput) => {
               recordedByUserId: input.createdByUserId as string,
               consentType: template.consentType,
               consentText: template.content,
+              partnerId: input.partnerId,
+              ipAddress: input.ipAddress,
+              userAgent: input.userAgent,
             };
           }),
         });

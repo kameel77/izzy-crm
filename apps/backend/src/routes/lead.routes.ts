@@ -221,6 +221,8 @@ router.post(
       ...payload,
       partnerId,
       createdByUserId: req.user?.id ?? null,
+      ipAddress: req.ip,
+      userAgent: req.get("User-Agent"),
     });
 
     return res.status(201).json({
