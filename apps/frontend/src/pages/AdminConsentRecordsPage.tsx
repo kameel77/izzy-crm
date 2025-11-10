@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { ConsentRecordDto, fetchConsentRecords, FetchConsentRecordsParams } from "../api/consents";
+import { ConsentRecordDto, fetchConsentRecords, FetchConsentRecordsParams, withdrawConsent } from "../api/consents";
 import { useToasts } from "../providers/ToastProvider";
 import { useDebounce } from "../hooks/useDebounce";
 import { API_BASE_URL } from "../api/client";
@@ -18,8 +18,6 @@ const buildExportUrl = (params: Omit<FetchConsentRecordsParams, "skip" | "take">
     }
   }
   query.set("format", format);
-  // This assumes the API can handle the token from the cookie, which is standard for a browser context.
-  // If the API required a token in the URL, it would need to be added here.
   return `${API_BASE_URL}/api/consent-records/export?${query.toString()}`;
 };
 
@@ -29,10 +27,10 @@ export const AdminConsentRecordsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State for modal
   const [selectedRecord, setSelectedRecord] = useState<ConsentRecordDto | null>(null);
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  // State for pagination, filtering, and sorting
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [clientSearch, setClientSearch] = useState("");
@@ -106,6 +104,23 @@ export const AdminConsentRecordsPage: React.FC = () => {
     addToast(`Exporting records to ${format.toUpperCase()}...`, "success");
   };
 
+  const handleWithdrawConfirm = async () => {
+    if (!selectedRecord) return;
+
+    setIsWithdrawing(true);
+    try {
+      await withdrawConsent(selectedRecord.id);
+      addToast("Consent withdrawn successfully.", "success");
+      setIsWithdrawModalOpen(false);
+      setSelectedRecord(null);
+      loadRecords(); // Refresh the list
+    } catch (err) {
+      addToast("Failed to withdraw consent.", "error");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
@@ -158,7 +173,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
                   <th onClick={() => handleSortChange("clientName")} style={styles.th}>Client</th>
                   <th onClick={() => handleSortChange("consentType")} style={styles.th}>Consent Type</th>
                   <th style={styles.th}>Template</th>
-                  <th style={styles.th}>Given</th>
+                  <th style={styles.th}>Status</th>
                   <th style={styles.th}>Method</th>
                   <th style={styles.th}>Recorded By</th>
                   <th onClick={() => handleSortChange("recordedAt")} style={styles.th}>Recorded At</th>
@@ -176,9 +191,13 @@ export const AdminConsentRecordsPage: React.FC = () => {
                     <td style={styles.td}>{record.consentType}</td>
                     <td style={styles.td}>{record.consentTemplate.title} (v{record.consentTemplate.version})</td>
                     <td style={styles.td}>
-                      <span style={record.consentGiven ? styles.badgeSuccess : styles.badgeDanger}>
-                        {record.consentGiven ? "Yes" : "No"}
-                      </span>
+                      {record.withdrawnAt ? (
+                        <span style={styles.badgeWithdrawn}>Withdrawn</span>
+                      ) : (
+                        <span style={record.consentGiven ? styles.badgeSuccess : styles.badgeDanger}>
+                          {record.consentGiven ? "Given" : "Not Given"}
+                        </span>
+                      )}
                     </td>
                     <td style={styles.td}>{record.consentMethod}</td>
                     <td style={styles.td}>{record.recordedBy?.fullName || record.recordedBy?.email || "Client"}</td>
@@ -211,7 +230,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
               <InfoItem label="Lead ID" value={<Link to={`/leads/${selectedRecord.lead.id}`}>{selectedRecord.lead.id}</Link>} />
               <InfoItem label="Consent Title" value={selectedRecord.consentTemplate.title} />
               <InfoItem label="Template Version" value={selectedRecord.version} />
-              <InfoItem label="Status" value={selectedRecord.consentGiven ? "Given" : "Not Given"} />
+              <InfoItem label="Status" value={selectedRecord.withdrawnAt ? `Withdrawn at ${new Date(selectedRecord.withdrawnAt).toLocaleString()}` : selectedRecord.consentGiven ? "Given" : "Not Given"} />
               <InfoItem label="Method" value={selectedRecord.consentMethod} />
               <InfoItem label="Recorded At" value={new Date(selectedRecord.recordedAt).toLocaleString()} />
               <InfoItem label="Recorded By" value={selectedRecord.recordedBy?.fullName || selectedRecord.recordedBy?.email || "Client / Automated"} />
@@ -223,6 +242,25 @@ export const AdminConsentRecordsPage: React.FC = () => {
             <div>
               <h4 style={styles.modalSubheading}>Full Consent Text (Snapshot)</h4>
               <pre style={styles.consentTextPre}>{selectedRecord.consentText}</pre>
+            </div>
+            {!selectedRecord.withdrawnAt && (
+              <div style={styles.modalActions}>
+                <button onClick={() => setIsWithdrawModalOpen(true)} style={styles.withdrawButton}>Withdraw Consent</button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {isWithdrawModalOpen && (
+        <Modal isOpen={isWithdrawModalOpen} onClose={() => setIsWithdrawModalOpen(false)} title="Confirm Withdrawal">
+          <div>
+            <p>Are you sure you want to withdraw this consent? This action cannot be undone.</p>
+            <div style={styles.modalActions}>
+              <button onClick={() => setIsWithdrawModalOpen(false)} style={styles.button}>Cancel</button>
+              <button onClick={handleWithdrawConfirm} disabled={isWithdrawing} style={styles.withdrawButton}>
+                {isWithdrawing ? "Withdrawing..." : "Confirm Withdraw"}
+              </button>
             </div>
           </div>
         </Modal>
@@ -253,6 +291,7 @@ const styles: Record<string, React.CSSProperties> = {
   detailsButton: { padding: "0.25rem 0.5rem", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer", background: "#f0f0f0" },
   badgeSuccess: { backgroundColor: "#dcfce7", color: "#166534", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   badgeDanger: { backgroundColor: "#fee2e2", color: "#991b1b", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
+  badgeWithdrawn: { backgroundColor: "#e5e7eb", color: "#4b5563", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   modalContent: { display: "flex", flexDirection: "column", gap: "1rem" },
   modalGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" },
   infoLabel: { marginRight: "0.5rem", color: "#555" },
@@ -267,5 +306,14 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "4px",
     maxHeight: "200px",
     overflowY: "auto",
+  },
+  modalActions: { display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "1rem" },
+  withdrawButton: {
+    backgroundColor: "#ef4444",
+    color: "white",
+    border: "none",
+    padding: "0.5rem 1rem",
+    borderRadius: "4px",
+    cursor: "pointer",
   },
 };

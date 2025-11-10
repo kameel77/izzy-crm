@@ -12,6 +12,7 @@ import {
   recordConsentBatch,
   updateConsentTemplate,
   exportConsentRecords,
+  withdrawConsent,
 } from "../services/consent.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -186,6 +187,20 @@ router.get(
     res.setHeader("Content-Type", format === "csv" ? "text/csv" : "application/json");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(data);
+  }),
+);
+
+router.post(
+  "/consent-records/:id/withdraw",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPERVISOR),
+  asyncHandler(async (req, res) => {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const actorUserId = req.user!.id;
+
+    const withdrawnRecord = await withdrawConsent({ consentRecordId: id, actorUserId });
+
+    res.json(withdrawnRecord);
   }),
 );
 

@@ -174,6 +174,12 @@ export async function fetchConsentRecords(params: FetchConsentRecordsParams) {
   return response;
 }
 
+export async function withdrawConsent(consentRecordId: string) {
+  return apiFetch<ConsentRecordDto>(`/api/consent-records/${consentRecordId}/withdraw`, {
+    method: "POST",
+  });
+}
+
 export async function logUnlockAttempt(applicationFormId: string, success: boolean) {
   try {
     await apiFetch(`/api/application-forms/${applicationFormId}/log-unlock-attempt`, {

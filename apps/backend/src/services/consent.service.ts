@@ -505,3 +505,42 @@ export const exportConsentRecords = async (
     filename,
   };
 };
+
+export const withdrawConsent = async (params: { consentRecordId: string; actorUserId: string }) => {
+  const { consentRecordId, actorUserId } = params;
+
+  return prisma.$transaction(async (tx) => {
+    const consentRecord = await tx.consentRecord.findUnique({
+      where: { id: consentRecordId },
+      select: { id: true, withdrawnAt: true, leadId: true },
+    });
+
+    if (!consentRecord) {
+      throw createHttpError({ status: 404, message: "Consent record not found" });
+    }
+
+    if (consentRecord.withdrawnAt) {
+      throw createHttpError({ status: 409, message: "Consent has already been withdrawn" });
+    }
+
+    const now = new Date();
+    const updatedRecord = await tx.consentRecord.update({
+      where: { id: consentRecordId },
+      data: { withdrawnAt: now },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: consentRecord.leadId,
+        userId: actorUserId,
+        action: "CONSENT_WITHDRAWN",
+        metadata: {
+          consentRecordId: consentRecord.id,
+          withdrawnAt: now.toISOString(),
+        },
+      },
+    });
+
+    return updatedRecord;
+  });
+};
