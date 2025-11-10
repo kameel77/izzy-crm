@@ -1,10 +1,14 @@
-import { ConsentMethod } from "@prisma/client";
+import { ConsentMethod, ConsentType, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 
+import { authorize } from "../middlewares/authorize.js";
 import {
+  createConsentTemplate,
+  deleteConsentTemplate,
   listConsentTemplates,
   recordConsentBatch,
+  updateConsentTemplate,
 } from "../services/consent.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -50,6 +54,20 @@ const consentRecordSchema = z.object({
     .min(1),
 });
 
+const templateCreateSchema = z.object({
+  consentType: z.nativeEnum(ConsentType),
+  formType: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  content: z.string().trim().min(1),
+  helpText: z.string().trim().optional(),
+  version: z.number().int().positive(),
+  isActive: z.boolean().optional(),
+  isRequired: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const templateUpdateSchema = templateCreateSchema.partial();
+
 const consentMethodMap: Record<
   "online_form" | "phone_call" | "partner_submission",
   ConsentMethod
@@ -72,6 +90,40 @@ router.get(
     });
 
     res.json({ data: templates });
+  }),
+);
+
+router.post(
+  "/consent-templates",
+  authorize(UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const payload = templateCreateSchema.parse(req.body);
+    const template = await createConsentTemplate({
+      ...payload,
+      createdByUserId: req.user!.id,
+    });
+    res.status(201).json(template);
+  }),
+);
+
+router.put(
+  "/consent-templates/:id",
+  authorize(UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const payload = templateUpdateSchema.parse(req.body);
+    const template = await updateConsentTemplate(id, payload);
+    res.json(template);
+  }),
+);
+
+router.delete(
+  "/consent-templates/:id",
+  authorize(UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    await deleteConsentTemplate(id);
+    res.status(204).send();
   }),
 );
 

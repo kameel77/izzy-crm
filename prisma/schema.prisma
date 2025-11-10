@@ -303,14 +303,14 @@ model ConsentRecord {
   consentType       ConsentType
   applicationForm   ApplicationForm? @relation(fields: [applicationFormId], references: [id])
   applicationFormId String?
-  lead              Lead?            @relation(fields: [leadId], references: [id])
-  leadId            String?
+  lead              Lead             @relation(fields: [leadId], references: [id])
+  leadId            String
   consentGiven      Boolean
   consentMethod     ConsentMethod    @default(ONLINE_FORM)
   ipAddress         String?
   userAgent         String?
-  recordedBy        User?            @relation("ConsentRecordRecordedBy", fields: [recordedByUserId], references: [id])
-  recordedByUserId  String?
+  recordedBy        User             @relation("ConsentRecordRecordedBy", fields: [recordedByUserId], references: [id])
+  recordedByUserId  String
   partner           Partner?         @relation(fields: [partnerId], references: [id])
   partnerId         String?
   recordedAt        DateTime         @default(now())

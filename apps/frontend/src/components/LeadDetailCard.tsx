@@ -15,7 +15,7 @@ import { DocumentForm } from "./DocumentForm";
 import { FinancingForm } from "./FinancingForm";
 import { StatusUpdateForm } from "./StatusUpdateForm";
 import { useAuth } from "../hooks/useAuth";
-import { useToasts } from "../hooks/useToasts";
+import { useToasts } from "../providers/ToastProvider";
 import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";

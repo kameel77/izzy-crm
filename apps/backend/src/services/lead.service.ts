@@ -165,6 +165,9 @@ export const createLead = async (input: CreateLeadInput) => {
       });
 
       if (input.consents && input.consents.length > 0) {
+        if (!input.createdByUserId) {
+          throw new Error("User ID is required to record consents.");
+        }
         const templateIds = input.consents.map(c => c.templateId);
         const templates = await tx.consentTemplate.findMany({
           where: { id: { in: templateIds } },
@@ -184,7 +187,7 @@ export const createLead = async (input: CreateLeadInput) => {
               version: c.version,
               consentGiven: c.given,
               consentMethod: "PARTNER_SUBMISSION",
-              userId: input.createdByUserId,
+              recordedByUserId: input.createdByUserId as string,
               consentType: template.consentType,
               consentText: template.content,
             };

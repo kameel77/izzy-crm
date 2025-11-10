@@ -10,7 +10,7 @@ import {
 import { Dashboard } from "../components/dashboard/Dashboard";
 import { LEAD_STATUS_LABELS } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
-import { useToasts } from "../hooks/useToasts";
+import { useToasts } from "../providers/ToastProvider";
 
 const RANGE_OPTIONS = [
   { label: "Last 7 days", value: 7 },

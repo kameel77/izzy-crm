@@ -19,7 +19,7 @@ import { LeadList } from "../components/LeadList";
 import { Modal } from "../components/Modal";
 import { LeadStatus } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
-import { useToasts } from "../hooks/useToasts";
+import { useToasts } from "../providers/ToastProvider";
 
 export const DashboardPage: React.FC = () => {
   const { token, user } = useAuth();

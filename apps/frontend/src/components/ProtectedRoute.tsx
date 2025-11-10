@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
-import { useToasts } from "../hooks/useToasts";
+import { useToasts } from "../providers/ToastProvider";
 
 interface ProtectedRouteProps {
   children: React.ReactElement;

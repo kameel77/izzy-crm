@@ -43,6 +43,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed }) => {
       roles: ["ADMIN", "SUPERVISOR"],
       icon: <UsersIcon />,
     },
+    {
+      to: "/admin/consents",
+      label: "Consent Management",
+      description: "Manage consent templates for all forms",
+      roles: ["ADMIN"],
+      icon: <ShieldIcon />,
+    },
   ];
 
   return (
@@ -197,5 +204,11 @@ const UsersIcon: React.FC = () => (
     <path d="M15 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
     <path d="M3 20c.6-3.4 3.3-6 6-6s5.4 2.6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M15.5 14c2.5 0 4.8 2 5.5 5" strokeLinecap="round" />
+  </svg>
+);
+
+const ShieldIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );

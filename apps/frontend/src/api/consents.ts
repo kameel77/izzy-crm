@@ -32,14 +32,40 @@ export async function fetchConsentTemplates(params: {
   return response.data;
 }
 
-export async function fetchAuthenticatedConsentTemplates(params: { formType: string }) {
+export async function fetchAuthenticatedConsentTemplates(params: { formType: string, includeInactive?: boolean }) {
   const query = new URLSearchParams();
   query.set("form_type", params.formType);
+  if (params.includeInactive) {
+    query.set("include_inactive", "true");
+  }
 
   const response = await apiFetch<{ data: ConsentTemplateDto[] }>(
     `/api/consent-templates?${query.toString()}`,
   );
   return response.data;
+}
+
+export type CreateConsentTemplatePayload = Omit<ConsentTemplateDto, "id" | "tags"> & { tags?: string[] };
+export type UpdateConsentTemplatePayload = Partial<CreateConsentTemplatePayload>;
+
+export async function createConsentTemplate(payload: CreateConsentTemplatePayload) {
+  return apiFetch<ConsentTemplateDto>("/api/consent-templates", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateConsentTemplate(id: string, payload: UpdateConsentTemplatePayload) {
+  return apiFetch<ConsentTemplateDto>(`/api/consent-templates/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteConsentTemplate(id: string) {
+  return apiFetch(`/api/consent-templates/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export type SubmitConsentRequest = {

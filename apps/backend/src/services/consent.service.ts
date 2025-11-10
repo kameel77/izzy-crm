@@ -3,6 +3,7 @@ import {
   ConsentMethod,
   ConsentTemplate,
   ConsentType,
+  Prisma,
 } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
@@ -82,6 +83,47 @@ export const listConsentTemplates = async (
   });
 
   return templates;
+};
+
+export type CreateConsentTemplateInput = Omit<
+  Prisma.ConsentTemplateCreateInput,
+  "createdBy"
+> & { createdByUserId: string };
+
+export const createConsentTemplate = async (
+  data: CreateConsentTemplateInput,
+) => {
+  const { createdByUserId, ...rest } = data;
+  const template = await prisma.consentTemplate.create({
+    data: {
+      ...rest,
+      createdBy: { connect: { id: createdByUserId } },
+    },
+  });
+  templateCache.clear();
+  return template;
+};
+
+export type UpdateConsentTemplateInput = Omit<
+  Prisma.ConsentTemplateUpdateInput,
+  "createdBy"
+>;
+
+export const updateConsentTemplate = async (
+  id: string,
+  data: UpdateConsentTemplateInput,
+) => {
+  const template = await prisma.consentTemplate.update({
+    where: { id },
+    data,
+  });
+  templateCache.clear();
+  return template;
+};
+
+export const deleteConsentTemplate = async (id: string) => {
+  await prisma.consentTemplate.delete({ where: { id } });
+  templateCache.clear();
 };
 
 export type RecordConsentInput = {
@@ -225,6 +267,7 @@ export const recordConsentBatch = async (payload: RecordConsentPayload) => {
           consentText: record.consentText,
           accessCodeHash: payload.accessCodeHash,
           helpTextSnapshot: record.helpTextSnapshot,
+          recordedByUserId: form.createdByUserId!,
         },
       });
     }

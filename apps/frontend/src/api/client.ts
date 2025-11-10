@@ -24,13 +24,18 @@ export async function apiFetch<TResponse>(
   path: string,
   options: ApiFetchOptions = {},
 ): Promise<TResponse> {
-  const { token, headers, ...rest } = options;
+  const { token: tokenOption, headers, ...rest } = options;
   const init: RequestInit = { ...rest };
   const mergedHeaders = new Headers(headers as HeadersInit | undefined);
   const isFormData = init.body instanceof FormData;
 
   if (!isFormData && init.body !== undefined && !mergedHeaders.has("Content-Type")) {
     mergedHeaders.set("Content-Type", "application/json");
+  }
+
+  let token = tokenOption;
+  if (token === undefined) {
+    token = localStorage.getItem("izzy-crm-auth");
   }
 
   if (token === null) {
