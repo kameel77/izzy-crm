@@ -32,6 +32,16 @@ export async function fetchConsentTemplates(params: {
   return response.data;
 }
 
+export async function fetchAuthenticatedConsentTemplates(params: { formType: string }) {
+  const query = new URLSearchParams();
+  query.set("form_type", params.formType);
+
+  const response = await apiFetch<{ data: ConsentTemplateDto[] }>(
+    `/api/consent-templates?${query.toString()}`,
+  );
+  return response.data;
+}
+
 export type SubmitConsentRequest = {
   applicationFormId: string;
   leadId: string;

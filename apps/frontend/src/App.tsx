@@ -20,7 +20,7 @@ export const App: React.FC = () => {
       <ToastProvider />
       <Routes>
         <Route path="/client-form/consents" element={<ClientConsentsPage />} />
-        <Route path="/client-form/:applicationFormId" element={<ApplicationFormPage />} />
+        <Route path="/client-form/:applicationFormId/:leadId" element={<ApplicationFormPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/leads" replace /> : <LoginPage />}

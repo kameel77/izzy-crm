@@ -71,6 +71,15 @@ const createLeadSchema = z.object({
       expenses: z.number().min(0).optional(),
     })
     .optional(),
+  consents: z
+    .array(
+      z.object({
+        templateId: z.string(),
+        version: z.number(),
+        given: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 const listQuerySchema = z.object({

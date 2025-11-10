@@ -99,7 +99,7 @@ export const ClientConsentsPage: React.FC = () => {
       setPinInput("");
       setPinError(null);
       setPinModalOpen(false);
-      navigate(`/client-form/${applicationFormId}`);
+      navigate(`/client-form/${applicationFormId}/${leadId}`);
     } catch (error) {
       setPinError("Nie udało się przetworzyć kodu. Spróbuj ponownie");
     }

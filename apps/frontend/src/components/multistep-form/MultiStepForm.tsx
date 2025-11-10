@@ -41,6 +41,7 @@ const renderStep = (
           formData={formData}
           onValidityChange={onValidityChange}
           submitAttempted={submitAttempted}
+          onFormChange={handleFormChange}
         />
       );
     default:

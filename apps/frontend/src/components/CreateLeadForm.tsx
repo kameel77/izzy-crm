@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { ConsentTemplateDto, fetchAuthenticatedConsentTemplates } from "../api/consents";
 
 interface CreateLeadFormProps {
   onCreate: (payload: {
@@ -12,6 +13,11 @@ interface CreateLeadFormProps {
     };
     desiredVehicle?: { make?: string; model?: string; year?: number; budget?: number };
     financing: { downPayment: number };
+    consents: Array<{
+      templateId: string;
+      version: number;
+      given: boolean;
+    }>;
   }) => Promise<void>;
   defaultPartnerId?: string | null;
   hidePartnerField?: boolean;
@@ -38,9 +44,47 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [consentTemplates, setConsentTemplates] = useState<ConsentTemplateDto[]>([]);
+  const [consentState, setConsentState] = useState<Record<string, boolean>>({});
+  const [consentsLoading, setConsentsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadConsents = async () => {
+      try {
+        const templates = await fetchAuthenticatedConsentTemplates({ formType: "lead_creation" });
+        setConsentTemplates(templates);
+        const initialState: Record<string, boolean> = {};
+        templates.forEach(t => {
+          if (t.isRequired) {
+            initialState[t.id] = true;
+          }
+        });
+        setConsentState(initialState);
+      } catch (error) {
+        setError("Failed to load consent templates.");
+      } finally {
+        setConsentsLoading(false);
+      }
+    };
+    loadConsents();
+  }, []);
+
+  const handleConsentChange = (consentId: string, isChecked: boolean) => {
+    setConsentState(prev => ({ ...prev, [consentId]: isChecked }));
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    const allRequiredConsentsGiven = consentTemplates
+      .filter(t => t.isRequired)
+      .every(t => consentState[t.id]);
+
+    if (!allRequiredConsentsGiven) {
+      setError("All required consents must be accepted.");
+      return;
+    }
 
     const parsedDownPayment = Number(downPayment);
     if (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0) {
@@ -79,6 +123,11 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         financing: {
           downPayment: parsedDownPayment,
         },
+        consents: consentTemplates.map(t => ({
+          templateId: t.id,
+          version: t.version,
+          given: consentState[t.id] || false,
+        })),
       };
 
       if (currentMake || currentModel || parsedYear !== undefined || parsedMileage !== undefined) {
@@ -103,10 +152,6 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           model: desiredModel || undefined,
           year: parsedDesiredYear,
         };
-
-        if (trimmedNotes.length > 0) {
-          payload.desiredVehicle.preferences = { notes: trimmedNotes };
-        }
       }
 
       await onCreate({
@@ -274,8 +319,29 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           />
         </label>
       </div>
+
+      <fieldset style={styles.fieldset}>
+        <legend style={styles.legend}>Consents</legend>
+        {consentsLoading ? (
+          <p>Loading consents...</p>
+        ) : (
+          consentTemplates.map(consent => (
+            <div key={consent.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={consentState[consent.id] || false}
+                  onChange={e => handleConsentChange(consent.id, e.target.checked)}
+                />
+                {consent.title} {consent.isRequired && "*"}
+              </label>
+            </div>
+          ))
+        )}
+      </fieldset>
+
       {error ? <div style={styles.error}>{error}</div> : null}
-      <button type="submit" style={styles.submit} disabled={loading}>
+      <button type="submit" style={styles.submit} disabled={loading || consentsLoading}>
         {loading ? "Creating..." : "Create Lead"}
       </button>
     </form>
@@ -327,5 +393,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#b91c1c",
     padding: "0.5rem",
     borderRadius: 8,
+  },
+  fieldset: {
+    border: "1px solid #d1d5db",
+    borderRadius: 8,
+    padding: "1rem",
+  },
+  legend: {
+    fontWeight: "bold",
+    padding: "0 0.5rem",
   },
 };
