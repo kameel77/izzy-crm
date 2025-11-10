@@ -27,8 +27,8 @@ export interface Step5Ref {
 export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
-    handleSubmit,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -38,7 +38,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
-      return await handleSubmit(() => true, () => false)();
+      return await trigger();
     },
   }));
 

@@ -27,6 +27,7 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
     register,
     handleSubmit,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -36,7 +37,7 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
-      return await handleSubmit(() => true, () => false)();
+      return await trigger();
     },
   }));
 

@@ -41,9 +41,9 @@ export interface Step1Ref {
 export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
-    handleSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -53,7 +53,7 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
-      return await handleSubmit(() => true, () => false)();
+      return await trigger();
     },
   }));
 

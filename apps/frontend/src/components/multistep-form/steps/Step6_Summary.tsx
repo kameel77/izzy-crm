@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useParams } from "react-router-dom";
 import { ConsentTemplateDto, fetchConsentTemplates } from "../../../api/consents";
 
+export interface Step6Ref {
+  triggerValidation: () => Promise<boolean>;
+}
+
 interface Step6Props {
   formData: Record<string, unknown>;
-  onValidityChange: (isValid: boolean) => void;
   onFormChange: (data: Record<string, unknown>) => void;
   submitAttempted: boolean;
 }
@@ -16,17 +19,26 @@ const SummaryItem: React.FC<{ label: string; value: unknown }> = ({ label, value
   </div>
 );
 
-export const Step6_Summary: React.FC<Step6Props> = ({
+export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
   formData,
-  onValidityChange,
   onFormChange,
   submitAttempted,
-}) => {
+}, ref) => {
   const { applicationFormId, leadId } = useParams<{ applicationFormId: string; leadId: string }>();
   const [templates, setTemplates] = useState<ConsentTemplateDto[]>([]);
   const [consentState, setConsentState] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    triggerValidation: async () => {
+      const requiredConsents = templates.filter((c) => c.isRequired);
+      if (requiredConsents.length === 0) return true; 
+      const allRequiredAccepted = requiredConsents.every((c) => consentState[c.id]);
+      return allRequiredAccepted;
+    },
+  }));
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -53,18 +65,29 @@ export const Step6_Summary: React.FC<Step6Props> = ({
   }, [applicationFormId, leadId]);
 
   useEffect(() => {
-    const requiredConsents = templates.filter((c) => c.isRequired);
-    const allRequiredAccepted = requiredConsents.every((c) => consentState[c.id]);
-    onValidityChange(allRequiredAccepted);
+    if (templates.length > 0 && !isInitialized) {
+      const initialConsentState: Record<string, boolean> = {};
+      const savedConsents = formData.consents as Array<{ templateId: string; given: boolean }> | undefined;
 
+      templates.forEach(template => {
+        const saved = savedConsents?.find(c => c.templateId === template.id);
+        initialConsentState[template.id] = saved ? saved.given : false;
+      });
+
+      setConsentState(initialConsentState);
+      setIsInitialized(true);
+    }
+  }, [templates, formData, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
     const consentsForForm = templates.map(t => ({
       templateId: t.id,
       version: t.version,
       given: consentState[t.id] || false,
     }));
     onFormChange({ consents: consentsForForm });
-
-  }, [consentState, templates, onValidityChange, onFormChange]);
+  }, [consentState, templates, onFormChange, isInitialized]);
 
   const handleConsentChange = (consentId: string, isChecked: boolean) => {
     setConsentState((prev) => ({ ...prev, [consentId]: isChecked }));
@@ -89,9 +112,6 @@ export const Step6_Summary: React.FC<Step6Props> = ({
         <legend style={styles.legend}>Zgody</legend>
         {isLoading && <p>Ładowanie zgód...</p>}
         {error && <p style={styles.error}>{error}</p>}
-        {submitAttempted && !onValidityChange && (
-          <p style={styles.error}>Proszę zaakceptować wszystkie wymagane zgody.</p>
-        )}
         {templates.map((consent) => {
           const hasError = submitAttempted && consent.isRequired && !consentState[consent.id];
           return (
@@ -111,7 +131,7 @@ export const Step6_Summary: React.FC<Step6Props> = ({
       </fieldset>
     </div>
   );
-};
+});
 
 const styles: Record<string, React.CSSProperties> = {
   fieldset: {

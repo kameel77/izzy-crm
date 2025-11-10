@@ -33,8 +33,8 @@ export interface Step3Ref {
 export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
-    handleSubmit,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -44,7 +44,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
-      return await handleSubmit(() => true, () => false)();
+      return await trigger();
     },
   }));
 

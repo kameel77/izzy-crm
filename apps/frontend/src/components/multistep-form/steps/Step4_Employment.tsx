@@ -35,8 +35,8 @@ export interface Step4Ref {
 export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange, formData }, ref) => {
   const {
     register,
-    handleSubmit,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -46,7 +46,7 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
-      return await handleSubmit(() => true, () => false)();
+      return await trigger();
     },
   }));
 

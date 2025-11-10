@@ -11,6 +11,7 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { ApplicationFormPage } from "./pages/ApplicationFormPage";
 import { AdminConsentsPage } from "./pages/AdminConsentsPage";
 import { AdminConsentRecordsPage } from "./pages/AdminConsentRecordsPage";
+import { ThankYouPage } from "./pages/ThankYouPage";
 
 export const App: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -87,6 +88,7 @@ export const App: React.FC = () => {
           </ProtectedRoute>
         }
       />
+      <Route path="/thank-you" element={<ThankYouPage />} />
       <Route path="/" element={<Navigate to={user ? "/leads" : "/login"} replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

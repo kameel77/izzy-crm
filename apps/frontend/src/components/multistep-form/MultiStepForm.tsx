@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useDebounce } from "use-debounce";
 import { getApplicationForm, saveApplicationFormProgress } from "../../api/application-forms";
 import { FormNavigator } from "./FormNavigator";
@@ -9,45 +9,11 @@ import { Step2_IdentityDocument, Step2Ref } from "./steps/Step2_IdentityDocument
 import { Step3_Addresses, Step3Ref } from "./steps/Step3_Addresses";
 import { Step4_Employment, Step4Ref } from "./steps/Step4_Employment";
 import { Step5_Budget, Step5Ref } from "./steps/Step5_Budget";
-import { Step6_Summary } from "./steps/Step6_Summary";
+import { Step6_Summary, Step6Ref } from "./steps/Step6_Summary";
 
 const TOTAL_STEPS = 6;
 
-type StepRef = Step1Ref | Step2Ref | Step3Ref | Step4Ref | Step5Ref;
-
-const renderStep = (
-  step: number,
-  ref: React.Ref<StepRef>,
-  formData: Record<string, unknown>,
-  handleFormChange: (data: Record<string, unknown>) => void,
-  onValidityChange: (isValid: boolean) => void,
-  submitAttempted: boolean,
-) => {
-  // Component mapping logic remains the same
-  switch (step) {
-    case 1:
-      return <Step1_PersonalData ref={ref as React.Ref<Step1Ref>} onFormChange={handleFormChange} formData={formData} />;
-    case 2:
-      return <Step2_IdentityDocument ref={ref as React.Ref<Step2Ref>} onFormChange={handleFormChange} formData={formData} />;
-    case 3:
-      return <Step3_Addresses ref={ref as React.Ref<Step3Ref>} onFormChange={handleFormChange} formData={formData} />;
-    case 4:
-      return <Step4_Employment ref={ref as React.Ref<Step4Ref>} onFormChange={handleFormChange} formData={formData} />;
-    case 5:
-      return <Step5_Budget ref={ref as React.Ref<Step5Ref>} onFormChange={handleFormChange} formData={formData} />;
-    case 6:
-      return (
-        <Step6_Summary
-          formData={formData}
-          onValidityChange={onValidityChange}
-          submitAttempted={submitAttempted}
-          onFormChange={handleFormChange}
-        />
-      );
-    default:
-      return <p>Nieznany krok</p>;
-  }
-};
+type StepRef = Step1Ref | Step2Ref | Step3Ref | Step4Ref | Step5Ref | Step6Ref;
 
 const AutoSaveStatus: React.FC<{ status: string }> = ({ status }) => (
   <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.875rem', height: '20px' }}>
@@ -59,9 +25,9 @@ const AutoSaveStatus: React.FC<{ status: string }> = ({ status }) => (
 
 export const MultiStepForm: React.FC = () => {
   const { applicationFormId } = useParams<{ applicationFormId: string }>();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
-  const [isStepValid, setIsStepValid] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
   const [isLoading, setIsLoading] = useState(true);
@@ -69,8 +35,9 @@ export const MultiStepForm: React.FC = () => {
 
   const [debouncedFormData] = useDebounce(formData, 3000);
 
-  const stepRefs = useRef<Array<React.RefObject<StepRef>>>([]);
-  stepRefs.current = Array(TOTAL_STEPS).fill(null).map((_, i) => stepRefs.current[i] ?? React.createRef<StepRef>());
+  const stepRefs = useRef<Array<React.RefObject<StepRef>>>(
+    Array.from({ length: TOTAL_STEPS }, () => React.createRef<StepRef>())
+  );
 
   useEffect(() => {
     const loadFormData = async () => {
@@ -126,14 +93,21 @@ export const MultiStepForm: React.FC = () => {
   const handleNext = async () => {
     const currentStepRef = stepRefs.current[currentStep - 1]?.current;
     if (currentStepRef) {
-      await currentStepRef.triggerValidation();
+      const isValid = await currentStepRef.triggerValidation();
+      if (isValid && currentStep < TOTAL_STEPS) {
+        setSubmitAttempted(false);
+        setCurrentStep(currentStep + 1);
+      } else {
+        setSubmitAttempted(true);
+      }
     }
-    setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
   };
 
   const handleBack = () => {
     setSubmitAttempted(false);
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleFormChange = useCallback((newData: object) => {
@@ -143,18 +117,23 @@ export const MultiStepForm: React.FC = () => {
 
   const handleSubmit = async () => {
     setSubmitAttempted(true);
-    const stepValidationPromises = stepRefs.current
-      .slice(0, 5)
-      .map(ref => ref.current?.triggerValidation() ?? Promise.resolve(false));
-    const validationResults = await Promise.all(stepValidationPromises);
-    const areAllStepsValid = validationResults.every(isValid => isValid);
+    const validationPromises = stepRefs.current.map(
+      (ref) => ref.current?.triggerValidation() ?? Promise.resolve(false)
+    );
+    const validationResults = await Promise.all(validationPromises);
+    const areAllStepsValid = validationResults.every((isValid) => isValid);
 
-    if (areAllStepsValid && isStepValid) {
-      console.log("Form submitted:", formData);
-      alert("Wniosek wysłany! (sprawdź konsolę)");
+    if (areAllStepsValid) {
+      console.log("Form submitted successfully:", formData);
+      // TODO: Add actual form submission logic here
+      navigate('/thank-you');
     } else {
-      console.log("Form invalid, submission blocked.");
+      const firstInvalidStep = validationResults.findIndex(isValid => !isValid) + 1;
+      console.log(`Validation failed. First invalid step: ${firstInvalidStep}`);
       alert("Proszę uzupełnić wszystkie wymagane pola i zgody.");
+      if (firstInvalidStep > 0) {
+        setCurrentStep(firstInvalidStep);
+      }
     }
   };
 
@@ -162,20 +141,31 @@ export const MultiStepForm: React.FC = () => {
     return <div>Ładowanie...</div>;
   }
 
+  const steps = [
+    <Step1_PersonalData ref={stepRefs.current[0] as React.Ref<Step1Ref>} onFormChange={handleFormChange} formData={formData} />,
+    <Step2_IdentityDocument ref={stepRefs.current[1] as React.Ref<Step2Ref>} onFormChange={handleFormChange} formData={formData} />,
+    <Step3_Addresses ref={stepRefs.current[2] as React.Ref<Step3Ref>} onFormChange={handleFormChange} formData={formData} />,
+    <Step4_Employment ref={stepRefs.current[3] as React.Ref<Step4Ref>} onFormChange={handleFormChange} formData={formData} />,
+    <Step5_Budget ref={stepRefs.current[4] as React.Ref<Step5Ref>} onFormChange={handleFormChange} formData={formData} />,
+    <Step6_Summary
+      ref={stepRefs.current[5] as React.Ref<Step6Ref>}
+      formData={formData}
+      submitAttempted={submitAttempted}
+      onFormChange={handleFormChange}
+    />
+  ];
+
   return (
     <div>
       <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
       <AutoSaveStatus status={saveStatus} />
       
       <div style={{ minHeight: "300px", padding: "1rem 0" }}>
-        {renderStep(
-          currentStep,
-          stepRefs.current[currentStep - 1],
-          formData,
-          handleFormChange,
-          setIsStepValid,
-          submitAttempted,
-        )}
+        {steps.map((step, index) => (
+          <div key={index} style={{ display: currentStep === index + 1 ? 'block' : 'none' }}>
+            {step}
+          </div>
+        ))}
       </div>
 
       <FormNavigator
