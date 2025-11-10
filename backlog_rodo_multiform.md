@@ -45,3 +45,26 @@
 2. **Self-hosted runner na VPS Hetzner (Coolify)** – dedykowany agent do ciężkich Playwright/E2E + jobów monitorujących; wymaga utrzymania i izolacji od instancji produkcyjnej.
 3. **Harmonogram w Coolify/cron na VPS** – nocne joby QA/monitoringu (porównanie wersji, alerty cache) poza pipeline CI.
 4. **Manual/triggered pipelines** – workflow uruchamiany na żądanie przed release (pełny zestaw E2E + checklisty compliance), aby nie blokować codziennego developmentu.
+
+## Sprint 4 – Jakość i Usprawnienia UX
+[ ] **Implementacja zapisu adresu IP przy zgodach (RODO)**
+    - *Cel:* Zapewnienie pełnej zgodności z `US-17` (`prd_multiform_financing.md`) poprzez zapisywanie adresu IP i User Agent w `ConsentRecord`.
+    - *Kryteria akceptacji:* Adres IP jest pobierany z nagłówków żądania w backendzie i poprawnie zapisywany w bazie danych podczas wysyłania formularza przez klienta.
+
+[ ] **Automatyczne testy E2E dla formularza wieloetapowego**
+    - *Cel:* Zabezpieczenie kluczowego procesu biznesowego przed regresją, zgodnie z `10.3 E2E Tests` (`prd_multiform_financing.md`).
+    - *Kryteria akceptacji:* Stworzenie scenariusza testowego w Playwright, który weryfikuje:
+        1. Poprawne wypełnianie wszystkich 6 kroków.
+        2. Działanie walidacji na każdym kroku.
+        3. Pomyślne wysłanie formularza i przekierowanie na stronę z podziękowaniem.
+        4. Zapisanie `ConsentRecord` w bazie danych po wysłaniu.
+
+[ ] **Powiadomienie dla operatora po złożeniu wniosku przez klienta**
+    - *Cel:* Realizacja `US-02` i `6B. Akcje` (`prd_multiform_financing.md`) poprzez informowanie operatorów o nowych, gotowych do przejrzenia wnioskach.
+    - *Kryteria akceptacji:* Po pomyślnym wysłaniu formularza przez klienta, system wysyła powiadomienie (w aplikacji lub e-mail) do przypisanego operatora lub ogólnej grupy.
+
+[ ] **Refaktoryzacja formularza tworzenia leada i walidacja "na żywo"**
+    - *Cel:* Ujednolicenie technologii formularzy i poprawa UX zgodnie z `7.2 Validation Feedback` (`prd_multiform_financing.md`).
+    - *Kryteria akceptacji:*
+        1. Formularz `CreateLeadForm` zostaje przepisany na `react-hook-form` i `zod`.
+        2. Walidacja pól "Email" i "Phone" odbywa się w czasie rzeczywistym, a nie tylko `onBlur`.

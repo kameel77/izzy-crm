@@ -11,6 +11,7 @@ import {
   listConsentRecords,
   recordConsentBatch,
   updateConsentTemplate,
+  exportConsentRecords,
 } from "../services/consent.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -45,6 +46,9 @@ const consentRecordListQuerySchema = z.object({
   recordedAtEnd: z.coerce.date().optional(),
   withdrawnAtStart: z.coerce.date().optional(),
   withdrawnAtEnd: z.coerce.date().optional(),
+  clientSearch: z.string().trim().min(1).optional(), // New: for searching client name, email, phone
+  sortBy: z.enum(["recordedAt", "consentType", "clientName"]).default("recordedAt"), // New: sorting
+  sortOrder: z.enum(["asc", "desc"]).default("desc"), // New: sorting order
   skip: z.coerce.number().int().min(0).default(0),
   take: z.coerce.number().int().min(1).max(100).default(50),
 });
@@ -159,6 +163,29 @@ router.get(
       consentGiven: parseBoolean(consentGiven),
     });
     res.json({ data: records.records, count: records.count });
+  }),
+);
+
+router.get(
+  "/consent-records/export",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPERVISOR),
+  asyncHandler(async (req, res) => {
+    const query = consentRecordListQuerySchema.parse(req.query);
+    const { consentGiven, sortBy, sortOrder, ...rest } = query;
+    const format = z.enum(["csv", "json"]).parse(req.query.format ?? "csv");
+
+    const { data, filename } = await exportConsentRecords({
+      ...rest,
+      consentGiven: parseBoolean(consentGiven),
+      sortBy,
+      sortOrder,
+      // No skip/take for export
+    }, format);
+
+    res.setHeader("Content-Type", format === "csv" ? "text/csv" : "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(data);
   }),
 );
 

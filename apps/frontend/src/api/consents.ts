@@ -147,6 +147,9 @@ export type FetchConsentRecordsParams = {
   recordedAtEnd?: Date;
   withdrawnAtStart?: Date;
   withdrawnAtEnd?: Date;
+  clientSearch?: string;
+  sortBy?: "recordedAt" | "consentType" | "clientName";
+  sortOrder?: "asc" | "desc";
   skip?: number;
   take?: number;
 };

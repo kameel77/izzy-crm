@@ -300,12 +300,15 @@ export type ListConsentRecordsParams = {
   recordedAtEnd?: Date;
   withdrawnAtStart?: Date;
   withdrawnAtEnd?: Date;
+  clientSearch?: string; // New: for searching client name, email, phone
+  sortBy?: "recordedAt" | "consentType" | "clientName"; // New: sorting field
+  sortOrder?: "asc" | "desc"; // New: sorting order
   skip?: number;
   take?: number;
 };
 
 export const listConsentRecords = async (params: ListConsentRecordsParams) => {
-  const { skip, take, recordedAtStart, recordedAtEnd, withdrawnAtStart, withdrawnAtEnd, ...whereParams } = params;
+  const { skip, take, recordedAtStart, recordedAtEnd, withdrawnAtStart, withdrawnAtEnd, clientSearch, sortBy, sortOrder, ...whereParams } = params;
 
   const where: Prisma.ConsentRecordWhereInput = {
     ...whereParams,
@@ -319,11 +322,61 @@ export const listConsentRecords = async (params: ListConsentRecordsParams) => {
     },
   };
 
+  if (clientSearch) {
+    where.OR = [
+      {
+        lead: {
+          customerProfile: {
+            firstName: { contains: clientSearch, mode: "insensitive" },
+          },
+        },
+      },
+      {
+        lead: {
+          customerProfile: {
+            lastName: { contains: clientSearch, mode: "insensitive" },
+          },
+        },
+      },
+      {
+        lead: {
+          customerProfile: {
+            email: { contains: clientSearch, mode: "insensitive" },
+          },
+        },
+      },
+      {
+        lead: {
+          customerProfile: {
+            phone: { contains: clientSearch, mode: "insensitive" },
+          },
+        },
+      },
+    ];
+  }
+
+  let orderBy: Prisma.ConsentRecordOrderByWithRelationInput;
+  switch (sortBy) {
+    case "clientName":
+      orderBy = [
+        { lead: { customerProfile: { lastName: sortOrder } } },
+        { lead: { customerProfile: { firstName: sortOrder } } },
+      ];
+      break;
+    case "consentType":
+      orderBy = { consentType: sortOrder };
+      break;
+    case "recordedAt":
+    default:
+      orderBy = { recordedAt: sortOrder };
+      break;
+  }
+
   const records = await prisma.consentRecord.findMany({
     where,
     skip,
     take,
-    orderBy: { recordedAt: "desc" },
+    orderBy,
     include: {
       lead: { select: { id: true, customerProfile: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
       recordedBy: { select: { id: true, email: true, fullName: true } },
@@ -335,4 +388,120 @@ export const listConsentRecords = async (params: ListConsentRecordsParams) => {
   const count = await prisma.consentRecord.count({ where });
 
   return { records, count };
+};
+
+const flattenConsentRecordForCsv = (record: Prisma.ConsentRecordGetPayload<{
+  include: {
+    lead: { select: { id: true, customerProfile: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+    recordedBy: { select: { id: true, email: true, fullName: true } },
+    partner: { select: { id: true, name: true } },
+    consentTemplate: { select: { id: true, title: true, version: true } },
+  }
+}>) => ({
+  recordId: record.id,
+  recordedAt: record.recordedAt.toISOString(),
+  leadId: record.lead.id,
+  clientFirstName: record.lead.customerProfile?.firstName ?? "",
+  clientLastName: record.lead.customerProfile?.lastName ?? "",
+  clientEmail: record.lead.customerProfile?.email ?? "",
+  clientPhone: record.lead.customerProfile?.phone ?? "",
+  consentTitle: record.consentTemplate.title,
+  consentTemplateVersion: record.consentTemplate.version,
+  consentGiven: record.consentGiven,
+  consentMethod: record.consentMethod,
+  recordedByEmail: record.recordedBy?.email ?? "",
+  recordedByFullName: record.recordedBy?.fullName ?? "",
+  partnerName: record.partner?.name ?? "",
+  ipAddress: record.ipAddress ?? "",
+  userAgent: record.userAgent ?? "",
+  withdrawnAt: record.withdrawnAt?.toISOString() ?? "",
+});
+
+const toCsv = (records: ReturnType<typeof flattenConsentRecordForCsv>[]) => {
+  if (records.length === 0) {
+    return "";
+  }
+  const headers = Object.keys(records[0]);
+  const csvRows = [
+    headers.join(","),
+    ...records.map(row =>
+      headers.map(header => JSON.stringify(row[header as keyof typeof row])).join(",")
+    ),
+  ];
+  return csvRows.join("\n");
+};
+
+export const exportConsentRecords = async (
+  params: Omit<ListConsentRecordsParams, "skip" | "take">,
+  format: "csv" | "json"
+) => {
+  const { recordedAtStart, recordedAtEnd, withdrawnAtStart, withdrawnAtEnd, clientSearch, sortBy, sortOrder, ...whereParams } = params;
+
+  const where: Prisma.ConsentRecordWhereInput = {
+    ...whereParams,
+    recordedAt: {
+      gte: recordedAtStart,
+      lte: recordedAtEnd,
+    },
+    withdrawnAt: {
+      gte: withdrawnAtStart,
+      lte: withdrawnAtEnd,
+    },
+  };
+
+  if (clientSearch) {
+    where.OR = [
+      { lead: { customerProfile: { firstName: { contains: clientSearch, mode: "insensitive" } } } },
+      { lead: { customerProfile: { lastName: { contains: clientSearch, mode: "insensitive" } } } },
+      { lead: { customerProfile: { email: { contains: clientSearch, mode: "insensitive" } } } },
+      { lead: { customerProfile: { phone: { contains: clientSearch, mode: "insensitive" } } } },
+    ];
+  }
+
+  let orderBy: Prisma.ConsentRecordOrderByWithRelationInput;
+  switch (sortBy) {
+    case "clientName":
+      orderBy = [
+        { lead: { customerProfile: { lastName: sortOrder } } },
+        { lead: { customerProfile: { firstName: sortOrder } } },
+      ];
+      break;
+    case "consentType":
+      orderBy = { consentType: sortOrder };
+      break;
+    case "recordedAt":
+    default:
+      orderBy = { recordedAt: sortOrder };
+      break;
+  }
+
+  const records = await prisma.consentRecord.findMany({
+    where,
+    orderBy,
+    include: {
+      lead: { select: { id: true, customerProfile: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+      recordedBy: { select: { id: true, email: true, fullName: true } },
+      partner: { select: { id: true, name: true } },
+      consentTemplate: { select: { id: true, title: true, version: true } },
+    },
+  });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `consent-records-export-${timestamp}.${format}`;
+
+  if (format === "json") {
+    return {
+      data: JSON.stringify(records, null, 2),
+      filename,
+    };
+  }
+
+  // CSV format
+  const flattenedRecords = records.map(flattenConsentRecordForCsv);
+  const csvData = toCsv(flattenedRecords);
+
+  return {
+    data: csvData,
+    filename,
+  };
 };
