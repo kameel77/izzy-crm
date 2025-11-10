@@ -4,6 +4,7 @@ import { ConsentRecordDto, fetchConsentRecords, FetchConsentRecordsParams } from
 import { useToasts } from "../providers/ToastProvider";
 import { useDebounce } from "../hooks/useDebounce";
 import { API_BASE_URL } from "../api/client";
+import { Modal } from "../components/Modal";
 
 const buildExportUrl = (params: Omit<FetchConsentRecordsParams, "skip" | "take">, format: "csv" | "json") => {
   const query = new URLSearchParams();
@@ -17,6 +18,8 @@ const buildExportUrl = (params: Omit<FetchConsentRecordsParams, "skip" | "take">
     }
   }
   query.set("format", format);
+  // This assumes the API can handle the token from the cookie, which is standard for a browser context.
+  // If the API required a token in the URL, it would need to be added here.
   return `${API_BASE_URL}/api/consent-records/export?${query.toString()}`;
 };
 
@@ -26,6 +29,9 @@ export const AdminConsentRecordsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // State for modal
+  const [selectedRecord, setSelectedRecord] = useState<ConsentRecordDto | null>(null);
+
   // State for pagination, filtering, and sorting
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -178,7 +184,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
                     <td style={styles.td}>{record.recordedBy?.fullName || record.recordedBy?.email || "Client"}</td>
                     <td style={styles.td}>{new Date(record.recordedAt).toLocaleString()}</td>
                     <td style={styles.td}>
-                      <button style={styles.detailsButton}>Details</button>
+                      <button onClick={() => setSelectedRecord(record)} style={styles.detailsButton}>Details</button>
                     </td>
                   </tr>
                 ))}
@@ -196,9 +202,41 @@ export const AdminConsentRecordsPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {selectedRecord && (
+        <Modal isOpen={!!selectedRecord} onClose={() => setSelectedRecord(null)} title="Consent Record Details">
+          <div style={styles.modalContent}>
+            <div style={styles.modalGrid}>
+              <InfoItem label="Client" value={`${selectedRecord.lead.customerProfile?.firstName} ${selectedRecord.lead.customerProfile?.lastName}`} />
+              <InfoItem label="Lead ID" value={<Link to={`/leads/${selectedRecord.lead.id}`}>{selectedRecord.lead.id}</Link>} />
+              <InfoItem label="Consent Title" value={selectedRecord.consentTemplate.title} />
+              <InfoItem label="Template Version" value={selectedRecord.version} />
+              <InfoItem label="Status" value={selectedRecord.consentGiven ? "Given" : "Not Given"} />
+              <InfoItem label="Method" value={selectedRecord.consentMethod} />
+              <InfoItem label="Recorded At" value={new Date(selectedRecord.recordedAt).toLocaleString()} />
+              <InfoItem label="Recorded By" value={selectedRecord.recordedBy?.fullName || selectedRecord.recordedBy?.email || "Client / Automated"} />
+              <InfoItem label="Partner" value={selectedRecord.partner?.name || "N/A"} />
+              <InfoItem label="IP Address" value={selectedRecord.ipAddress || "N/A"} />
+              <InfoItem label="User Agent" value={selectedRecord.userAgent || "N/A"} />
+            </div>
+            <hr style={styles.hr} />
+            <div>
+              <h4 style={styles.modalSubheading}>Full Consent Text (Snapshot)</h4>
+              <pre style={styles.consentTextPre}>{selectedRecord.consentText}</pre>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
+
+const InfoItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div>
+    <strong style={styles.infoLabel}>{label}:</strong>
+    <span style={styles.infoValue}>{value}</span>
+  </div>
+);
 
 const styles: Record<string, React.CSSProperties> = {
   container: { padding: "1rem 2rem" },
@@ -215,4 +253,19 @@ const styles: Record<string, React.CSSProperties> = {
   detailsButton: { padding: "0.25rem 0.5rem", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer", background: "#f0f0f0" },
   badgeSuccess: { backgroundColor: "#dcfce7", color: "#166534", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   badgeDanger: { backgroundColor: "#fee2e2", color: "#991b1b", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
+  modalContent: { display: "flex", flexDirection: "column", gap: "1rem" },
+  modalGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" },
+  infoLabel: { marginRight: "0.5rem", color: "#555" },
+  infoValue: {},
+  hr: { border: "none", borderTop: "1px solid #eee", margin: "0.5rem 0" },
+  modalSubheading: { margin: "0 0 0.5rem 0" },
+  consentTextPre: {
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    background: "#f7f7f7",
+    padding: "0.75rem",
+    borderRadius: "4px",
+    maxHeight: "200px",
+    overflowY: "auto",
+  },
 };
