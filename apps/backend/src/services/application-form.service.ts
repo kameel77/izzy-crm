@@ -367,6 +367,30 @@ export const saveApplicationFormProgress = async (params: {
   return updatedForm;
 };
 
+export const getApplicationFormById = async (params: { applicationFormId: string }) => {
+  const { applicationFormId } = params;
+
+  const form = await prisma.applicationForm.findUnique({
+    where: { id: applicationFormId },
+    select: {
+      id: true,
+      status: true,
+      formData: true,
+      currentStep: true,
+      completionPercent: true,
+      isClientActive: true,
+      lastClientActivity: true,
+      lastAutoSave: true,
+    },
+  });
+
+  if (!form) {
+    throw createHttpError({ status: 404, message: "Application form not found" });
+  }
+
+  return form;
+};
+
 export const logUnlockAttempt = async (params: {
   applicationFormId: string;
   success: boolean;

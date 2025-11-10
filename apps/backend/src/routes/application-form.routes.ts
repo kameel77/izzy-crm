@@ -6,6 +6,7 @@ import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import {
+  getApplicationFormById,
   logUnlockAttempt,
   saveApplicationFormProgress,
   unlockApplicationForm,
@@ -27,6 +28,15 @@ const saveProgressSchema = z.object({
   currentStep: z.number().int().min(1),
   completionPercent: z.number().min(0).max(100),
 });
+
+router.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = formIdSchema.parse(req.params);
+    const form = await getApplicationFormById({ applicationFormId: id });
+    return res.json(form);
+  }),
+);
 
 router.post(
   "/:id/unlock",

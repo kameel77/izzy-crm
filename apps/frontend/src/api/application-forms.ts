@@ -18,3 +18,7 @@ export async function saveApplicationFormProgress(
     },
   );
 }
+
+export async function getApplicationForm(applicationFormId: string) {
+  return apiFetch(`/api/application-forms/${applicationFormId}`);
+}

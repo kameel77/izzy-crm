@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useDebounce } from "use-debounce";
-import { saveApplicationFormProgress } from "../../api/application-forms";
+import { getApplicationForm, saveApplicationFormProgress } from "../../api/application-forms";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -18,8 +18,8 @@ type StepRef = Step1Ref | Step2Ref | Step3Ref | Step4Ref | Step5Ref;
 const renderStep = (
   step: number,
   ref: React.Ref<StepRef>,
-  formData: any,
-  handleFormChange: (data: any) => void,
+  formData: Record<string, unknown>,
+  handleFormChange: (data: Record<string, unknown>) => void,
   onValidityChange: (isValid: boolean) => void,
   submitAttempted: boolean,
 ) => {
@@ -63,6 +63,7 @@ export const MultiStepForm: React.FC = () => {
   const [isStepValid, setIsStepValid] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
+  const [isLoading, setIsLoading] = useState(true);
   const isSavingRef = useRef(false);
 
   const [debouncedFormData] = useDebounce(formData, 3000);
@@ -71,8 +72,32 @@ export const MultiStepForm: React.FC = () => {
   stepRefs.current = Array(TOTAL_STEPS).fill(null).map((_, i) => stepRefs.current[i] ?? React.createRef<StepRef>());
 
   useEffect(() => {
+    const loadFormData = async () => {
+      if (!applicationFormId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const savedForm = await getApplicationForm(applicationFormId);
+        if (savedForm && savedForm.formData) {
+          setFormData(savedForm.formData);
+        }
+        if (savedForm && savedForm.currentStep) {
+          setCurrentStep(savedForm.currentStep);
+        }
+      } catch (error) {
+        console.error("Failed to load form data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFormData();
+  }, [applicationFormId]);
+
+  useEffect(() => {
     const performSave = async () => {
-      if (isSavingRef.current || !applicationFormId || Object.keys(debouncedFormData).length === 0) {
+      if (isLoading || isSavingRef.current || !applicationFormId || Object.keys(debouncedFormData).length === 0) {
         return;
       }
 
@@ -95,7 +120,7 @@ export const MultiStepForm: React.FC = () => {
     };
 
     performSave();
-  }, [debouncedFormData, currentStep, applicationFormId]);
+  }, [debouncedFormData, currentStep, applicationFormId, isLoading]);
 
   const handleNext = async () => {
     const currentStepRef = stepRefs.current[currentStep - 1]?.current;
@@ -131,6 +156,10 @@ export const MultiStepForm: React.FC = () => {
       alert("Proszę uzupełnić wszystkie wymagane pola i zgody.");
     }
   };
+
+  if (isLoading) {
+    return <div>Ładowanie...</div>;
+  }
 
   return (
     <div>
