@@ -204,7 +204,7 @@ router.post(
     const result = await recordConsentBatch({
       applicationFormId: body.applicationFormId,
       leadId: body.leadId,
-      ipAddress: body.ipAddress,
+      ipAddress: req.ip, // Capture IP from the request for security
       userAgent: body.userAgent,
       accessCodeHash: body.accessCodeHash,
       consents: normalizedConsents,
