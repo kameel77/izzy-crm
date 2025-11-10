@@ -9,6 +9,7 @@ import {
   LeadNote,
   generateApplicationFormLink,
   CreateApplicationFormLinkResponse,
+  anonymizeLead,
 } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
@@ -64,6 +65,7 @@ const FORM_STATUS_META: Record<string, { label: string; tone: FormStatusTone }> 
   ready: { label: "Gotowy do wysyłki", tone: "success" },
   submitted: { label: "Przesłany", tone: "success" },
   locked: { label: "Zablokowany", tone: "danger" },
+  unlocked: { label: "Odblokowany", tone: "warning" },
 };
 
 const FORM_STATUS_TONES: Record<FormStatusTone, { background: string; color: string }> = {
@@ -146,6 +148,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [generatedLinkResult, setGeneratedLinkResult] = useState<CreateApplicationFormLinkResponse | null>(null);
   const [isConsentContentModalOpen, setIsConsentContentModalOpen] = useState(false);
   const [selectedConsentContent, setSelectedConsentContent] = useState("");
+  const [isAnonymizeModalOpen, setIsAnonymizeModalOpen] = useState(false);
+  const [anonymizeConfirmation, setAnonymizeConfirmation] = useState("");
+  const [isAnonymizing, setIsAnonymizing] = useState(false);
 
   const applicationForm = lead?.applicationForm;
 
@@ -545,6 +550,27 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       addToast(message, "error");
     } finally {
       setIsSavingNote(false);
+    }
+  };
+
+  const handleAnonymize = async () => {
+    if (!token || !lead || anonymizeConfirmation !== "ANONIMIZUJ") {
+      addToast("Confirmation text does not match.", "error");
+      return;
+    }
+
+    setIsAnonymizing(true);
+    try {
+      await anonymizeLead(token, lead.id);
+      addToast("Lead has been anonymized.", "success");
+      setIsAnonymizeModalOpen(false);
+      setAnonymizeConfirmation("");
+      await Promise.resolve(onRefresh());
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to anonymize lead.";
+      addToast(message, "error");
+    } finally {
+      setIsAnonymizing(false);
     }
   };
 
@@ -957,6 +983,21 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </ul>
       </div>
 
+      {isAdmin && (
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Admin Actions</h3>
+          <div style={styles.adminActions}>
+            <button
+              type="button"
+              style={styles.dangerButton}
+              onClick={() => setIsAnonymizeModalOpen(true)}
+            >
+              Anonymize Lead
+            </button>
+          </div>
+        </div>
+      )}
+
       <Modal
         isOpen={isConsentContentModalOpen}
         onClose={() => setIsConsentContentModalOpen(false)}
@@ -1283,6 +1324,44 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isAnonymizeModalOpen}
+        onClose={() => setIsAnonymizeModalOpen(false)}
+        title="Anonymize Lead"
+      >
+        <div style={styles.modalForm}>
+          <p style={styles.warningText}>
+            <strong>Warning:</strong> This action is irreversible. All personal data will be permanently anonymized.
+          </p>
+          <label style={styles.modalLabel}>
+            To confirm, type "ANONIMIZUJ" below:
+            <input
+              type="text"
+              value={anonymizeConfirmation}
+              onChange={(e) => setAnonymizeConfirmation(e.target.value)}
+              style={styles.modalInput}
+            />
+          </label>
+          <div style={styles.modalActions}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => setIsAnonymizeModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              style={styles.dangerButton}
+              onClick={handleAnonymize}
+              disabled={anonymizeConfirmation !== "ANONIMIZUJ" || isAnonymizing}
+            >
+              {isAnonymizing ? "Anonymizing..." : "Anonymize"}
+            </button>
+          </div>
+        </div>
       </Modal>
     </section>
   );
@@ -1656,6 +1735,15 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontWeight: 500,
   },
+  dangerButton: {
+    background: "#dc2626",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "0.5rem 1rem",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
   ghostButton: {
     background: "transparent",
     color: "#2563eb",
@@ -1793,5 +1881,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.9rem",
     fontFamily: "monospace",
     margin: 0,
+  },
+  adminActions: {
+    display: "flex",
+    gap: "0.5rem",
+  },
+  warningText: {
+    color: "#b91c1c",
+    background: "#fee2e2",
+    padding: "0.75rem",
+    borderRadius: "4px",
+    border: "1px solid #fca5a5",
   },
 };

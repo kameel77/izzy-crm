@@ -1,6 +1,7 @@
 import { ApplicationFormStatus, BankDecisionStatus, ConsentType, LeadStatus, Prisma, UserRole } from "@prisma/client";
-
+import { createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
+import { createHttpError } from "../utils/httpError.js";
 
 const toJson = (value?: Record<string, unknown>) =>
   (value as Prisma.InputJsonValue | undefined);
@@ -996,5 +997,52 @@ export const addLeadNote = async (input: AddLeadNoteInput) => {
     });
 
     return note;
+  });
+};
+
+export const anonymizeLead = async (params: { leadId: string; actorUserId: string }) => {
+  const { leadId, actorUserId } = params;
+
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUnique({
+      where: { id: leadId },
+      include: { customerProfile: true },
+    });
+
+    if (!lead) {
+      throw createHttpError({ status: 404, message: "Lead not found" });
+    }
+
+    if (lead.customerProfile) {
+      const { id, nationalIdHash } = lead.customerProfile;
+      const anonymizedEmail = `anon_${id.substring(0, 8)}@anonymized.local`;
+
+      await tx.customerProfile.update({
+        where: { id },
+        data: {
+          firstName: "ANONIMIZOWANY",
+          lastName: `UŻYTKOWNIK_${id.substring(0, 8)}`,
+          email: anonymizedEmail,
+          phone: "000000000",
+          address: Prisma.JsonNull,
+          employmentInfo: Prisma.JsonNull,
+          dateOfBirth: null,
+          nationalIdHash: nationalIdHash
+            ? createHash("sha256").update(nationalIdHash).digest("hex")
+            : null,
+        },
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        leadId,
+        userId: actorUserId,
+        action: "LEAD_ANONYMIZED",
+        metadata: {
+          anonymizedAt: new Date().toISOString(),
+        },
+      },
+    });
   });
 };

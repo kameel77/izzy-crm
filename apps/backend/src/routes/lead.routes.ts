@@ -17,6 +17,7 @@ import {
   transitionLeadStatus,
   upsertFinancingApplication,
   updateLeadVehicles,
+  anonymizeLead,
 } from "../services/lead.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -712,6 +713,19 @@ router.post(
     });
 
     return res.status(201).json(result);
+  }),
+);
+
+router.post(
+  "/:id/anonymize",
+  authorize(UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const actorUserId = req.user!.id;
+
+    await anonymizeLead({ leadId: id, actorUserId });
+
+    res.status(200).json({ message: "Lead anonymized successfully" });
   }),
 );
 

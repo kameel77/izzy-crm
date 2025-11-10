@@ -351,20 +351,22 @@ export const uploadLeadDocument = (
   });
 };
 
-export async function generateApplicationFormLink(
-  token: string,
-  leadId: string,
-  accessCode: string,
-) {
-  return apiFetch<{ applicationFormId: string; link: string }>(
-    `/api/leads/${leadId}/application-form`,
-    {
-      method: "POST",
-      token,
-      body: JSON.stringify({ accessCode }),
-    },
-  );
+export async function generateApplicationFormLink(token: string, leadId: string, accessCode: string, expiresInDays?: number) {
+  const response = await apiFetch<CreateApplicationFormLinkResponse>(`/api/leads/${leadId}/application-form`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ accessCode, expiresInDays }),
+  });
+  return response;
 }
+
+export async function anonymizeLead(token: string, leadId: string) {
+  return apiFetch(`/api/leads/${leadId}/anonymize`, {
+    method: "POST",
+    token,
+  });
+}
+
 
 
 export interface UpdateLeadVehiclesPayload {
