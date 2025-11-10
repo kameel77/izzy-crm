@@ -144,6 +144,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [generateLinkError, setGenerateLinkError] = useState<string | null>(null);
   const [isGeneratingFormLink, setIsGeneratingFormLink] = useState(false);
   const [generatedLinkResult, setGeneratedLinkResult] = useState<CreateApplicationFormLinkResponse | null>(null);
+  const [isConsentContentModalOpen, setIsConsentContentModalOpen] = useState(false);
+  const [selectedConsentContent, setSelectedConsentContent] = useState("");
 
   const applicationForm = lead?.applicationForm;
 
@@ -911,6 +913,56 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           )}
         </ul>
       </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Consent Timeline</h3>
+        <ul style={styles.consentList}>
+          {lead.consentRecords.length ? (
+            lead.consentRecords.map((record) => (
+              <li key={record.id} style={styles.consentItem}>
+                <div style={styles.consentMeta}>
+                  <span>{record.consentTemplate.title} (v{record.version})</span>
+                  <span>· {new Date(record.recordedAt).toLocaleString()}</span>
+                  {record.consentGiven ? (
+                    <span style={{ color: "#16a34a", fontWeight: 600 }}>Given</span>
+                  ) : (
+                    <span style={{ color: "#dc2626", fontWeight: 600 }}>Not Given</span>
+                  )}
+                  {record.recordedBy ? (
+                    <span style={styles.subtleText}>by {record.recordedBy.fullName || record.recordedBy.email}</span>
+                  ) : null}
+                  {record.partner ? (
+                    <span style={styles.subtleText}>via {record.partner.name}</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    style={styles.ghostButton}
+                    onClick={() => {
+                      setSelectedConsentContent(record.consentTemplate.content);
+                      setIsConsentContentModalOpen(true);
+                    }}
+                  >
+                    View Content
+                  </button>
+                </div>
+                <p style={styles.consentContent}>{record.consentText}</p>
+              </li>
+            ))
+          ) : (
+            <li style={styles.subtleText}>No consent records found.</li>
+          )}
+        </ul>
+      </div>
+
+      <Modal
+        isOpen={isConsentContentModalOpen}
+        onClose={() => setIsConsentContentModalOpen(false)}
+        title="Consent Content"
+      >
+        <div style={styles.consentContentModal}>
+          <pre style={styles.consentContentPre}>{selectedConsentContent}</pre>
+        </div>
+      </Modal>
 
       <Modal isOpen={isNoteModalOpen} onClose={handleCloseNoteModal} title="Add note">
         <form onSubmit={handleSubmitNote} style={styles.modalForm}>
@@ -1689,5 +1741,54 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.875rem",
     maxHeight: "400px",
     overflowY: "auto",
+  },
+  consentList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  },
+  consentItem: {
+    background: "#fff",
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+    padding: "0.75rem 1rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
+  },
+  consentMeta: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "0.5rem",
+    color: "#475569",
+    fontSize: "0.85rem",
+  },
+  consentContent: {
+    margin: 0,
+    color: "#0f172a",
+    whiteSpace: "pre-wrap",
+    lineHeight: 1.5,
+    maxHeight: "100px",
+    overflowY: "hidden",
+    textOverflow: "ellipsis",
+  },
+  consentContentModal: {
+    maxHeight: "70vh",
+    overflowY: "auto",
+    padding: "1rem",
+    background: "#f8fafc",
+    borderRadius: 8,
+  },
+  consentContentPre: {
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-all",
+    fontSize: "0.9rem",
+    fontFamily: "monospace",
+    margin: 0,
   },
 };

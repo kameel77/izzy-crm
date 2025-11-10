@@ -8,6 +8,7 @@ import {
   createConsentTemplate,
   deleteConsentTemplate,
   listConsentTemplates,
+  listConsentRecords,
   recordConsentBatch,
   updateConsentTemplate,
 } from "../services/consent.service.js";
@@ -31,6 +32,21 @@ const listQuerySchema = z.object({
   include_inactive: z.union([z.string(), z.boolean()]).optional(),
   applicationFormId: z.string().cuid().optional(),
   leadId: z.string().cuid().optional(),
+});
+
+const consentRecordListQuerySchema = z.object({
+  leadId: z.string().cuid().optional(),
+  consentType: z.nativeEnum(ConsentType).optional(),
+  consentMethod: z.nativeEnum(ConsentMethod).optional(),
+  consentGiven: z.union([z.string(), z.boolean()]).optional(),
+  recordedByUserId: z.string().cuid().optional(),
+  partnerId: z.string().cuid().optional(),
+  recordedAtStart: z.coerce.date().optional(),
+  recordedAtEnd: z.coerce.date().optional(),
+  withdrawnAtStart: z.coerce.date().optional(),
+  withdrawnAtEnd: z.coerce.date().optional(),
+  skip: z.coerce.number().int().min(0).default(0),
+  take: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 const consentRecordSchema = z.object({
@@ -128,6 +144,21 @@ router.delete(
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     await deleteConsentTemplate(id);
     res.status(204).send();
+  }),
+);
+
+router.get(
+  "/consent-records",
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR),
+  asyncHandler(async (req, res) => {
+    const query = consentRecordListQuerySchema.parse(req.query);
+    const { consentGiven, ...rest } = query;
+    const records = await listConsentRecords({
+      ...rest,
+      consentGiven: parseBoolean(consentGiven),
+    });
+    res.json({ data: records.records, count: records.count });
   }),
 );
 

@@ -1,9 +1,84 @@
-import { BankDecisionStatus, LeadStatus, Prisma, UserRole } from "@prisma/client";
+import { ApplicationFormStatus, BankDecisionStatus, ConsentType, LeadStatus, Prisma, UserRole } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 
 const toJson = (value?: Record<string, unknown>) =>
   (value as Prisma.InputJsonValue | undefined);
+
+export type LeadConsentStatus = "complete" | "incomplete" | "missing_required" | "no_templates";
+
+export const getConsentStatusForLead = async (
+  lead: {
+    id: string;
+    partnerId: string;
+    consentRecords: Array<{
+      consentTemplateId: string;
+      consentGiven: boolean;
+      consentTemplate: { isRequired: boolean; formType: string };
+    }>;
+    applicationForm?: {
+      id: string;
+      status: ApplicationFormStatus;
+    } | null;
+  }
+): Promise<LeadConsentStatus> => {
+  const formTypes = ["lead_creation"]; // Default form types for lead creation
+  if (lead.applicationForm) {
+    formTypes.push("financing_application");
+  }
+
+  const requiredTemplates = await prisma.consentTemplate.findMany({
+    where: {
+      formType: { in: formTypes },
+      isActive: true,
+      isRequired: true,
+    },
+    select: { id: true, consentType: true },
+  });
+
+  if (requiredTemplates.length === 0) {
+    return "no_templates";
+  }
+
+  const givenRequiredConsents = new Set(
+    lead.consentRecords
+      .filter(r => r.consentGiven && r.consentTemplate.isRequired)
+      .map(r => r.consentTemplateId)
+  );
+
+  const allRequiredGiven = requiredTemplates.every(template =>
+    givenRequiredConsents.has(template.id)
+  );
+
+  if (!allRequiredGiven) {
+    return "missing_required";
+  }
+
+  const optionalTemplates = await prisma.consentTemplate.findMany({
+    where: {
+      formType: { in: formTypes },
+      isActive: true,
+      isRequired: false,
+    },
+    select: { id: true },
+  });
+
+  const givenOptionalConsents = new Set(
+    lead.consentRecords
+      .filter(r => r.consentGiven && !r.consentTemplate.isRequired)
+      .map(r => r.consentTemplateId)
+  );
+
+  const allOptionalGiven = optionalTemplates.every(template =>
+    givenOptionalConsents.has(template.id)
+  );
+
+  if (optionalTemplates.length > 0 && !allOptionalGiven) {
+    return "incomplete";
+  }
+
+  return "complete";
+};
 
 const leadSummarySelect = {
   id: true,
@@ -33,6 +108,19 @@ const leadSummarySelect = {
       lastName: true,
       email: true,
       phone: true,
+    },
+  },
+  consentRecords: {
+    select: {
+      consentTemplateId: true,
+      consentGiven: true,
+      consentTemplate: { select: { isRequired: true, formType: true } },
+    },
+  },
+  applicationForm: {
+    select: {
+      id: true,
+      status: true,
     },
   },
 } satisfies Prisma.LeadSelect;
@@ -268,8 +356,13 @@ export const listLeads = async (filters: LeadListFilters) => {
     prisma.lead.count({ where }),
   ]);
 
+  const itemsWithConsentStatus = await Promise.all(items.map(async (item) => ({
+    ...item,
+    consentStatus: await getConsentStatusForLead(item),
+  })));
+
   return {
-    items,
+    items: itemsWithConsentStatus,
     total,
   };
 };
@@ -334,10 +427,22 @@ export const getLeadById = async (id: string) => {
           },
         },
       },
+      consentRecords: {
+        orderBy: { recordedAt: "desc" },
+        include: {
+          consentTemplate: { select: { id: true, title: true, content: true, version: true, isRequired: true, formType: true } },
+          recordedBy: { select: { id: true, fullName: true, email: true } },
+          partner: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 
-  return lead;
+  if (!lead) return null;
+
+  const consentStatus = await getConsentStatusForLead(lead);
+
+  return { ...lead, consentStatus };
 };
 
 export interface UpdateLeadVehiclesInput {

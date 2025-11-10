@@ -23,7 +23,7 @@ import { useToasts } from "../providers/ToastProvider";
 
 export const DashboardPage: React.FC = () => {
   const { token, user } = useAuth();
-  const toast = useToasts();
+  const { addToast } = useToasts();
   const perPage = 25;
   const [leadList, setLeadList] = useState<LeadSummary[]>([]);
   const [leadMeta, setLeadMeta] = useState<LeadListResponse["meta"] | null>(null);
@@ -134,14 +134,14 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       const lead = await createLead(token, payload);
-      toast.success(`Lead ${lead.id} created`);
+      addToast(`Lead ${lead.id} created`, "success");
       setSelectedLeadId(lead.id);
       await loadLeads({ selectLeadId: lead.id });
       setIsCreateLeadOpen(false);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to create lead";
       setError(message);
-      toast.error(message);
+      addToast(message, "error");
     }
   };
 
@@ -151,12 +151,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       await updateLeadStatus(token, selectedLeadId, payload);
-      toast.success("Lead status updated");
+      addToast("Lead status updated", "success");
       await loadLeads({ selectLeadId: selectedLeadId });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update status";
       setError(message);
-      toast.error(message);
+      addToast(message, "error");
       throw (err instanceof Error ? err : new Error(message));
     }
   };
@@ -167,12 +167,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       await saveFinancingApplication(token, selectedLeadId, payload);
-      toast.success("Financing info saved");
+      addToast("Financing info saved", "success");
       await loadLeadDetail(selectedLeadId);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to save financing info";
       setError(message);
-      toast.error(message);
+      addToast(message, "error");
       throw err;
     }
   };
@@ -183,12 +183,12 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       await uploadLeadDocument(token, selectedLeadId, payload);
-      toast.success("Document uploaded");
+      addToast("Document uploaded", "success");
       await loadLeadDetail(selectedLeadId);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to upload document";
       setError(message);
-      toast.error(message);
+      addToast(message, "error");
       throw err;
     }
   };

@@ -90,6 +90,87 @@ export async function submitConsents(payload: SubmitConsentRequest) {
   });
 }
 
+export type ConsentRecordDto = {
+  id: string;
+  consentTemplateId: string;
+  consentType: string;
+  applicationFormId?: string | null;
+  leadId: string;
+  consentGiven: boolean;
+  consentMethod: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  recordedByUserId?: string | null;
+  partnerId?: string | null;
+  recordedAt: string;
+  withdrawnAt?: string | null;
+  notes?: string | null;
+  version: number;
+  consentText: string;
+  accessCodeHash?: string | null;
+  helpTextSnapshot?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lead: {
+    id: string;
+    customerProfile: {
+      firstName: string;
+      lastName: string;
+      email?: string | null;
+      phone?: string | null;
+    } | null;
+  };
+  recordedBy?: {
+    id: string;
+    email: string;
+    fullName: string;
+  } | null;
+  partner?: {
+    id: string;
+    name: string;
+  } | null;
+  consentTemplate: {
+    id: string;
+    title: string;
+    version: number;
+  };
+};
+
+export type FetchConsentRecordsParams = {
+  leadId?: string;
+  consentType?: string;
+  consentMethod?: string;
+  consentGiven?: boolean;
+  recordedByUserId?: string;
+  partnerId?: string;
+  recordedAtStart?: Date;
+  recordedAtEnd?: Date;
+  withdrawnAtStart?: Date;
+  withdrawnAtEnd?: Date;
+  skip?: number;
+  take?: number;
+};
+
+export async function fetchConsentRecords(params: FetchConsentRecordsParams) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      if (value instanceof Date) {
+        query.set(key, value.toISOString());
+      } else if (typeof value === "boolean") {
+        query.set(key, value.toString());
+      } else {
+        query.set(key, String(value));
+      }
+    }
+  }
+
+  const response = await apiFetch<{ data: ConsentRecordDto[]; count: number }>(
+    `/api/consent-records?${query.toString()}`,
+  );
+  return response;
+}
+
 export async function logUnlockAttempt(applicationFormId: string, success: boolean) {
   try {
     await apiFetch(`/api/application-forms/${applicationFormId}/log-unlock-attempt`, {

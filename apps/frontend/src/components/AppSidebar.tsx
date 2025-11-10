@@ -50,6 +50,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed }) => {
       roles: ["ADMIN"],
       icon: <ShieldIcon />,
     },
+    {
+      to: "/admin/consent-records",
+      label: "Consent Records Archive",
+      description: "View and audit all recorded consents",
+      roles: ["ADMIN", "SUPERVISOR", "OPERATOR"],
+      icon: <ArchiveIcon />,
+    },
   ];
 
   return (
@@ -210,5 +217,13 @@ const UsersIcon: React.FC = () => (
 const ShieldIcon: React.FC = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ArchiveIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <rect x="3" y="3" width="18" height="5" rx="1" />
+    <path d="M21 8v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8" />
+    <path d="M10 12h4" />
   </svg>
 );

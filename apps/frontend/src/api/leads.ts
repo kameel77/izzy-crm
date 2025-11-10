@@ -30,6 +30,7 @@ export interface LeadSummary {
   assignedUser?: LeadUser | null;
   partner?: LeadPartner | null;
   customerProfile?: LeadCustomerProfile | null;
+  consentStatus: "complete" | "incomplete" | "missing_required" | "no_templates";
 }
 
 export interface LeadDetail extends LeadSummary {
@@ -101,6 +102,43 @@ export interface LeadDetail extends LeadSummary {
       id: string;
       fullName: string;
       email: string;
+    } | null;
+  }>;
+  consentRecords: Array<{
+    id: string;
+    consentTemplateId: string;
+    consentType: string;
+    applicationFormId?: string | null;
+    leadId: string;
+    consentGiven: boolean;
+    consentMethod: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    recordedByUserId?: string | null;
+    partnerId?: string | null;
+    recordedAt: string;
+    withdrawnAt?: string | null;
+    notes?: string | null;
+    version: number;
+    consentText: string;
+    accessCodeHash?: string | null;
+    helpTextSnapshot?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    consentTemplate: {
+      id: string;
+      title: string;
+      content: string;
+      version: number;
+    };
+    recordedBy?: {
+      id: string;
+      fullName: string;
+      email: string;
+    } | null;
+    partner?: {
+      id: string;
+      name: string;
     } | null;
   }>;
 }

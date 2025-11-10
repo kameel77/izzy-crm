@@ -288,3 +288,51 @@ export const recordConsentBatch = async (payload: RecordConsentPayload) => {
 
   return { processed: recordsData.length };
 };
+
+export type ListConsentRecordsParams = {
+  leadId?: string;
+  consentType?: ConsentType;
+  consentMethod?: ConsentMethod;
+  consentGiven?: boolean;
+  recordedByUserId?: string;
+  partnerId?: string;
+  recordedAtStart?: Date;
+  recordedAtEnd?: Date;
+  withdrawnAtStart?: Date;
+  withdrawnAtEnd?: Date;
+  skip?: number;
+  take?: number;
+};
+
+export const listConsentRecords = async (params: ListConsentRecordsParams) => {
+  const { skip, take, recordedAtStart, recordedAtEnd, withdrawnAtStart, withdrawnAtEnd, ...whereParams } = params;
+
+  const where: Prisma.ConsentRecordWhereInput = {
+    ...whereParams,
+    recordedAt: {
+      gte: recordedAtStart,
+      lte: recordedAtEnd,
+    },
+    withdrawnAt: {
+      gte: withdrawnAtStart,
+      lte: withdrawnAtEnd,
+    },
+  };
+
+  const records = await prisma.consentRecord.findMany({
+    where,
+    skip,
+    take,
+    orderBy: { recordedAt: "desc" },
+    include: {
+      lead: { select: { id: true, customerProfile: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+      recordedBy: { select: { id: true, email: true, fullName: true } },
+      partner: { select: { id: true, name: true } },
+      consentTemplate: { select: { id: true, title: true, version: true } },
+    },
+  });
+
+  const count = await prisma.consentRecord.count({ where });
+
+  return { records, count };
+};
