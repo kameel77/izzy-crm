@@ -18,7 +18,7 @@ const ConsentTemplateForm: React.FC<{
 }> = ({ template, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     consentType: template?.consentType || "PARTNER_DECLARATION",
-    formType: template?.formType || "",
+    formType: template?.formType || "financing_application",
     title: template?.title || "",
     content: template?.content || "",
     version: template?.version || 1,
