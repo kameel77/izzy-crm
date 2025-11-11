@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,6 +36,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
     watch,
     trigger,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -55,10 +56,40 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 
   const watchedData = watch();
   const isResidentialSame = watch("isResidentialSameAsRegistered");
+  const regStreet = watch("registeredStreet");
+  const regPostal = watch("registeredPostalCode");
+  const regCity = watch("registeredCity");
+  const regPostOffice = watch("registeredPostOffice");
 
   useEffect(() => {
     onFormChange(watchedData);
   }, [JSON.stringify(watchedData), onFormChange]);
+
+  // Copy on toggle only: when checked -> copy; when unchecked -> clear residential fields
+  const prevIsSameRef = useRef<boolean | undefined>(isResidentialSame);
+  useEffect(() => {
+    const prev = prevIsSameRef.current;
+    if (prev !== isResidentialSame) {
+      if (isResidentialSame) {
+        const copy = (field: keyof FormValues, value?: string | null) => {
+          setValue(field as any, value ?? "", { shouldValidate: true });
+        };
+        copy("residentialStreet", regStreet);
+        copy("residentialPostalCode", regPostal);
+        copy("residentialCity", regCity);
+        copy("residentialPostOffice", regPostOffice);
+      } else {
+        const clear = (field: keyof FormValues) => {
+          setValue(field as any, "", { shouldValidate: true });
+        };
+        clear("residentialStreet");
+        clear("residentialPostalCode");
+        clear("residentialCity");
+        clear("residentialPostOffice");
+      }
+      prevIsSameRef.current = isResidentialSame;
+    }
+  }, [isResidentialSame, regStreet, regPostal, regCity, regPostOffice, setValue]);
 
   return (
     <form>
@@ -99,42 +130,40 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
           </label>
         </div>
 
-        {!isResidentialSame && (
-          <div style={styles.grid}>
-            <div style={styles.field}>
-              <label htmlFor="residentialCountry">Kraj zamieszkania</label>
-              <input id="residentialCountry" {...register("residentialCountry")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="residentialStreet">Ulica, nr budynku/mieszkania</label>
-              <input id="residentialStreet" {...register("residentialStreet")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="residentialPostalCode">Kod pocztowy</label>
-              <input id="residentialPostalCode" {...register("residentialPostalCode")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="residentialCity">Miejscowość</label>
-              <input id="residentialCity" {...register("residentialCity")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="residentialPostOffice">Poczta</label>
-              <input id="residentialPostOffice" {...register("residentialPostOffice")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="propertyType">Typ lokalu</label>
-              <input id="propertyType" {...register("propertyType")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="ownershipType">Rodzaj własności</label>
-              <input id="ownershipType" {...register("ownershipType")} />
-            </div>
-            <div style={styles.field}>
-              <label htmlFor="addressFrom">Adres od (RRRR-MM)</label>
-              <input id="addressFrom" type="month" {...register("addressFrom")} />
-            </div>
+        <div style={styles.grid}>
+          <div style={styles.field}>
+            <label htmlFor="residentialCountry">Kraj zamieszkania</label>
+            <input id="residentialCountry" {...register("residentialCountry")} />
           </div>
-        )}
+          <div style={styles.field}>
+            <label htmlFor="residentialStreet">Ulica, nr budynku/mieszkania</label>
+            <input id="residentialStreet" {...register("residentialStreet")} />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="residentialPostalCode">Kod pocztowy</label>
+            <input id="residentialPostalCode" {...register("residentialPostalCode")} />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="residentialCity">Miejscowość</label>
+            <input id="residentialCity" {...register("residentialCity")} />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="residentialPostOffice">Poczta</label>
+            <input id="residentialPostOffice" {...register("residentialPostOffice")} />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="propertyType">Typ lokalu</label>
+            <input id="propertyType" {...register("propertyType")} />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="ownershipType">Rodzaj własności</label>
+            <input id="ownershipType" {...register("ownershipType")} />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="addressFrom">Adres od (RRRR-MM)</label>
+            <input id="addressFrom" type="month" {...register("addressFrom")} />
+          </div>
+        </div>
       </fieldset>
     </form>
   );
