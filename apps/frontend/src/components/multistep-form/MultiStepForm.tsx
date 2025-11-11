@@ -77,7 +77,15 @@ export const MultiStepForm: React.FC = () => {
 
   useEffect(() => {
     const performSave = async () => {
-      if (isLoading || isSavingRef.current || !applicationFormId || Object.keys(debouncedFormData).length === 0) {
+      // Do not autosave when the form is submitted or locked
+      if (
+        isLoading ||
+        isSavingRef.current ||
+        !applicationFormId ||
+        Object.keys(debouncedFormData).length === 0 ||
+        formStatus === 'SUBMITTED' ||
+        formStatus === 'LOCKED'
+      ) {
         return;
       }
 
@@ -100,7 +108,7 @@ export const MultiStepForm: React.FC = () => {
     };
 
     performSave();
-  }, [debouncedFormData, currentStep, applicationFormId, isLoading]);
+  }, [debouncedFormData, currentStep, applicationFormId, isLoading, formStatus]);
 
   const handleNext = async () => {
     const currentStepRef = stepRefs.current[currentStep - 1]?.current;
