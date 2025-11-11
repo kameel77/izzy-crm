@@ -28,7 +28,18 @@ export const FormNavigator: React.FC<FormNavigatorProps> = ({
       </button>
       {currentStep === totalSteps ? (
         <button
-          style={styles.button}
+          style={{
+            ...styles.button,
+            ...(isSubmittable
+              ? {}
+              : {
+                  background: "#94a3b8",
+                  color: "#e2e8f0",
+                  borderColor: "transparent",
+                  cursor: "not-allowed",
+                  opacity: 0.85,
+                }),
+          }}
           onClick={onSubmit}
           disabled={!isSubmittable}
         >

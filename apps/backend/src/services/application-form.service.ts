@@ -424,6 +424,7 @@ export const getApplicationFormById = async (params: { applicationFormId: string
     select: {
       id: true,
       status: true,
+      submittedAt: true,
       formData: true,
       currentStep: true,
       completionPercent: true,

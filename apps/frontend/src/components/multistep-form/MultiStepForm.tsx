@@ -28,6 +28,8 @@ export const MultiStepForm: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
+  const [formStatus, setFormStatus] = useState<string | null>(null);
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
   const [isLoading, setIsLoading] = useState(true);
@@ -50,8 +52,18 @@ export const MultiStepForm: React.FC = () => {
         if (savedForm && savedForm.formData) {
           setFormData(savedForm.formData);
         }
-        if (savedForm && savedForm.currentStep) {
-          setCurrentStep(savedForm.currentStep);
+        if (savedForm && savedForm.status) {
+          setFormStatus(savedForm.status);
+        }
+        if (savedForm && savedForm.submittedAt) {
+          setSubmittedAt(savedForm.submittedAt);
+        }
+        if (savedForm) {
+          if (savedForm.status === 'SUBMITTED') {
+            setCurrentStep(TOTAL_STEPS);
+          } else if (savedForm.currentStep) {
+            setCurrentStep(savedForm.currentStep);
+          }
         }
       } catch (error) {
         console.error("Failed to load form data", error);
@@ -130,6 +142,9 @@ export const MultiStepForm: React.FC = () => {
       }
       try {
         await submitApplicationForm(applicationFormId, formData);
+        const ts = new Date().toISOString();
+        setFormStatus('SUBMITTED');
+        setSubmittedAt(ts);
         console.log("Form submitted successfully:", formData);
         navigate('/thank-you');
       } catch (error) {
@@ -161,6 +176,7 @@ export const MultiStepForm: React.FC = () => {
       formData={formData}
       submitAttempted={submitAttempted}
       onFormChange={handleFormChange}
+      submittedAt={submittedAt}
     />
   ];
 
@@ -183,7 +199,7 @@ export const MultiStepForm: React.FC = () => {
         onBack={handleBack}
         onNext={handleNext}
         onSubmit={handleSubmit}
-        isSubmittable={currentStep === TOTAL_STEPS}
+        isSubmittable={currentStep === TOTAL_STEPS && formStatus !== 'SUBMITTED'}
       />
     </div>
   );

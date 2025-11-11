@@ -10,6 +10,7 @@ interface Step6Props {
   formData: Record<string, unknown>;
   onFormChange: (data: Record<string, unknown>) => void;
   submitAttempted: boolean;
+  submittedAt?: string | null;
 }
 
 const SummaryItem: React.FC<{ label: string; value: unknown }> = ({ label, value }) => (
@@ -23,6 +24,7 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
   formData,
   onFormChange,
   submitAttempted,
+  submittedAt,
 }, ref) => {
   const { applicationFormId, leadId } = useParams<{ applicationFormId: string; leadId: string }>();
   const [templates, setTemplates] = useState<ConsentTemplateDto[]>([]);
@@ -128,6 +130,11 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
             </div>
           );
         })}
+        {submittedAt ? (
+          <p style={styles.submittedNote}>
+            Wniosek został wysłany: {new Date(submittedAt).toLocaleString()}
+          </p>
+        ) : null}
       </fieldset>
     </div>
   );
@@ -179,5 +186,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#ef4444",
     fontSize: "0.875rem",
     marginBottom: "1rem",
+  },
+  submittedNote: {
+    marginTop: "0.5rem",
+    color: "#065f46",
+    background: "#d1fae5",
+    border: "1px solid #10b981",
+    borderRadius: "6px",
+    padding: "0.5rem 0.75rem",
+    fontSize: "0.9rem",
   },
 };
