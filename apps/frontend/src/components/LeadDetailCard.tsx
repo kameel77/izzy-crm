@@ -20,6 +20,7 @@ import { useToasts } from "../providers/ToastProvider";
 import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
+import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
 
 type UnlockHistoryEntry = {
   unlockedBy?: string | null;
@@ -140,6 +141,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [vehicleErrors, setVehicleErrors] = useState<Record<string, string>>({});
   const [isSavingVehicles, setIsSavingVehicles] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+  const [isConfirmUnlockOpen, setIsConfirmUnlockOpen] = useState(false);
+  const [unlockReason, setUnlockReason] = useState("");
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [isGenerateFormModalOpen, setIsGenerateFormModalOpen] = useState(false);
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [expiresInDays, setExpiresInDays] = useState(7);
@@ -181,6 +185,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     const key = applicationForm.status.toLowerCase();
     return FORM_STATUS_META[key] || { label: applicationForm.status, tone: "neutral" };
   }, [applicationForm?.status]);
+  const canUnlock =
+    (user?.role === "ADMIN" || user?.role === "SUPERVISOR") &&
+    (applicationForm?.status === "SUBMITTED" ||
+      applicationForm?.status === "LOCKED" ||
+      applicationForm?.status === "READY");
 
   useEffect(() => {
     setNotes(lead?.notes ?? []);
@@ -795,6 +804,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                   ? `Ostatni submit: ${new Date(applicationForm.submittedAt).toLocaleString()}`
                   : "Formularz nie został jeszcze przesłany"}
               </span>
+              {canUnlock ? (
+                <button
+                  type="button"
+                  style={styles.primaryButton}
+                  onClick={() => setIsConfirmUnlockOpen(true)}
+                >
+                  Odblokuj wniosek
+                </button>
+              ) : null}
               {unlockHistory.length ? (
                 <button
                   type="button"
@@ -1257,6 +1275,61 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         ) : (
           <p style={styles.subtleText}>Brak historii odblokowań.</p>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isConfirmUnlockOpen}
+        onClose={() => {
+          if (!isUnlocking) setIsConfirmUnlockOpen(false);
+        }}
+        title="Odblokuj wniosek"
+      >
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!lead?.applicationForm?.id) return;
+            setIsUnlocking(true);
+            try {
+              await apiUnlockApplicationForm(lead.applicationForm.id, unlockReason.trim() || undefined);
+              addToast("Formularz odblokowany i link wysłany do klienta.", "success");
+              setIsConfirmUnlockOpen(false);
+              setUnlockReason("");
+              const r = onRefresh();
+              if (r instanceof Promise) await r;
+            } catch (err) {
+              const message = err instanceof ApiError ? err.message : "Nie udało się odblokować wniosku";
+              addToast(message, "error");
+            } finally {
+              setIsUnlocking(false);
+            }
+          }}
+          style={styles.modalForm}
+        >
+          <label style={styles.modalLabel}>
+            Powód (opcjonalnie)
+            <input
+              type="text"
+              value={unlockReason}
+              onChange={(e) => setUnlockReason(e.target.value)}
+              style={styles.modalInput}
+              maxLength={500}
+              placeholder="Np. korekta danych w sekcji zatrudnienie"
+            />
+          </label>
+          <div style={styles.modalActions}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => setIsConfirmUnlockOpen(false)}
+              disabled={isUnlocking}
+            >
+              Anuluj
+            </button>
+            <button type="submit" style={styles.primaryButton} disabled={isUnlocking}>
+              {isUnlocking ? "Odblokowuję…" : "Odblokuj i wyślij link"}
+            </button>
+          </div>
+        </form>
       </Modal>
 
       <Modal

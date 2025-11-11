@@ -47,7 +47,7 @@
 4. **Manual/triggered pipelines** – workflow uruchamiany na żądanie przed release (pełny zestaw E2E + checklisty compliance), aby nie blokować codziennego developmentu.
 
 ## Sprint 4 – Jakość i Usprawnienia UX
-[ ] **Implementacja zapisu adresu IP przy zgodach (RODO)**
+[x] **Implementacja zapisu adresu IP przy zgodach (RODO)**
     - *Cel:* Zapewnienie pełnej zgodności z `US-17` (`prd_multiform_financing.md`) poprzez zapisywanie adresu IP i User Agent w `ConsentRecord`.
     - *Kryteria akceptacji:* Adres IP jest pobierany z nagłówków żądania w backendzie i poprawnie zapisywany w bazie danych podczas wysyłania formularza przez klienta.
 

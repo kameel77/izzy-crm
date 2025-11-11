@@ -238,6 +238,7 @@ export const unlockApplicationForm = async (params: {
       id: true,
       leadId: true,
       status: true,
+      accessCodeHash: true,
       unlockHistory: true,
     },
   });
@@ -278,6 +279,9 @@ export const unlockApplicationForm = async (params: {
     },
   });
 
+  // Build link to send to the client (reuse existing accessCodeHash)
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}&hash=${form.accessCodeHash}`;
+
   const note = await prisma.leadNote.create({
     data: {
       leadId: updatedForm.leadId,
@@ -300,6 +304,8 @@ export const unlockApplicationForm = async (params: {
       status: EmailLogStatus.SENT,
       payload: {
         reason: params.reason ?? null,
+        link: linkUrl,
+        expiresAt: expiration.toISOString(),
       },
       noteCreated: true,
       noteId: note.id,
@@ -314,6 +320,35 @@ export const unlockApplicationForm = async (params: {
       metadata: unlockEntry,
     },
   });
+
+  // Try to deliver email with the refreshed link to the client
+  const lead = await prisma.lead.findUnique({
+    where: { id: updatedForm.leadId },
+    select: {
+      customerProfile: {
+        select: {
+          email: true,
+          firstName: true,
+        },
+      },
+    },
+  });
+  const recipient = lead?.customerProfile?.email;
+  if (recipient) {
+    await sendMail({
+      to: recipient,
+      subject: "Twój wniosek został odblokowany – wymagane ponowne potwierdzenie",
+      text: [
+        `Cześć ${lead?.customerProfile?.firstName ?? ""}`.trim(),
+        "",
+        "Twój wniosek został odblokowany przez naszego konsultanta w celu weryfikacji/poprawy danych.",
+        "Prosimy o ponowne sprawdzenie danych oraz akceptację zgód:",
+        linkUrl,
+        "",
+        `Link wygasa: ${expiration.toLocaleString()}`,
+      ].join("\n"),
+    });
+  }
 
   return updatedForm;
 };

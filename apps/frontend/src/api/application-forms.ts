@@ -30,3 +30,10 @@ export const submitApplicationForm = (applicationFormId: string, formData: Recor
   });
 };
 
+export const unlockApplicationForm = (applicationFormId: string, reason?: string) => {
+  return apiFetch(`/api/application-forms/${applicationFormId}/unlock`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+};
+
