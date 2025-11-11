@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,8 +58,14 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
     mode: "onBlur",
   });
 
+  // Reset only when incoming formData truly differs from last applied snapshot
+  const lastResetSnapshotRef = useRef<string>(JSON.stringify(formData ?? {}));
   useEffect(() => {
-    reset(formData);
+    const incoming = JSON.stringify(formData ?? {});
+    if (incoming !== lastResetSnapshotRef.current) {
+      reset(formData);
+      lastResetSnapshotRef.current = incoming;
+    }
   }, [formData, reset]);
 
   useImperativeHandle(ref, () => ({
@@ -72,9 +78,16 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
   const peselValue = watch("pesel");
   const watchedPhone = watch("mobilePhone");
 
+  // Emit changes to parent only when values actually changed compared to last emission
+  const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));
   useEffect(() => {
-    onFormChange(watchedData);
-  }, [JSON.stringify(watchedData), onFormChange]);
+    const current = JSON.stringify(watchedData ?? {});
+    if (current !== lastEmittedSnapshotRef.current) {
+      lastEmittedSnapshotRef.current = current;
+      onFormChange(watchedData);
+    }
+    // Intentionally depend on watchedData object (RHF watch) to capture real changes
+  }, [watchedData, onFormChange]);
 
   useEffect(() => {
     if (peselValue && peselValue.length === 11) {

@@ -282,6 +282,27 @@ export const unlockApplicationForm = async (params: {
   // Build link to send to the client (reuse existing accessCodeHash)
   const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}&hash=${form.accessCodeHash}`;
 
+  // Enrich unlock history with actor user display data (best-effort)
+  const actor = await prisma.user.findUnique({
+    where: { id: params.actorUserId },
+    select: { id: true, email: true, fullName: true },
+  });
+  if (actor) {
+    await prisma.applicationForm.update({
+      where: { id: params.applicationFormId },
+      data: {
+        unlockHistory: buildUnlockHistory(form.unlockHistory, {
+          ...unlockEntry,
+          unlockedByUser: {
+            id: actor.id,
+            email: actor.email,
+            fullName: actor.fullName,
+          },
+        }),
+      },
+    });
+  }
+
   const note = await prisma.leadNote.create({
     data: {
       leadId: updatedForm.leadId,
@@ -427,7 +448,7 @@ export const logUnlockAttempt = async (params: {
 }) => {
   const form = await prisma.applicationForm.findUnique({
     where: { id: params.applicationFormId },
-    select: { id: true, unlockHistory: true },
+    select: { id: true, unlockHistory: true, leadId: true },
   });
 
   if (!form) {
@@ -436,12 +457,27 @@ export const logUnlockAttempt = async (params: {
     return;
   }
 
+  // Fetch client display data (best-effort)
+  const lead = await prisma.lead.findUnique({
+    where: { id: form.leadId },
+    select: {
+      customerProfile: {
+        select: { firstName: true, lastName: true, email: true },
+      },
+    },
+  });
+
   const unlockEntry = {
     type: "CLIENT_ATTEMPT",
     timestamp: new Date().toISOString(),
     success: params.success,
     ipAddress: params.ipAddress,
     userAgent: params.userAgent,
+    client: {
+      firstName: lead?.customerProfile?.firstName ?? null,
+      lastName: lead?.customerProfile?.lastName ?? null,
+      email: lead?.customerProfile?.email ?? null,
+    },
   };
 
   await prisma.applicationForm.update({

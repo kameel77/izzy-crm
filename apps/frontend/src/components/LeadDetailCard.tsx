@@ -26,6 +26,20 @@ type UnlockHistoryEntry = {
   unlockedBy?: string | null;
   unlockedAt?: string | null;
   reason?: string | null;
+  // operator/admin enriched
+  unlockedByUser?: {
+    id?: string | null;
+    email?: string | null;
+    fullName?: string | null;
+  } | null;
+  // client attempt
+  type?: string | null; // e.g., CLIENT_ATTEMPT
+  timestamp?: string | null;
+  client?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
 };
 
 
@@ -1259,16 +1273,50 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           <ul style={styles.unlockList}>
             {unlockHistory.map((entry, index) => (
               <li key={`${entry.unlockedAt}-${index}`} style={styles.unlockItem}>
-                <div style={styles.infoLabel}>Odblokowane</div>
-                <div style={styles.infoValue}>
-                  <strong>{entry.unlockedBy || "Nieznany użytkownik"}</strong>
-                  <span>
-                    {entry.unlockedAt
-                      ? new Date(entry.unlockedAt).toLocaleString()
-                      : "brak daty"}
-                  </span>
-                  {entry.reason ? <span style={styles.subtleText}>Powód: {entry.reason}</span> : null}
-                </div>
+                {entry.type === "CLIENT_ATTEMPT" ? (
+                  <>
+                    <div style={styles.infoLabel}>Aktywność klienta</div>
+                    <div style={styles.infoValue}>
+                      <strong>
+                        {[
+                          [entry.client?.firstName, entry.client?.lastName].filter(Boolean).join(" "),
+                          entry.client?.email ? `(${entry.client?.email})` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </strong>
+                      <span>
+                        {entry.timestamp
+                          ? new Date(entry.timestamp).toLocaleString()
+                          : "brak daty otwarcia"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={styles.infoLabel}>Odblokowane</div>
+                    <div style={styles.infoValue}>
+                      <strong>
+                        {entry.unlockedByUser?.fullName || entry.unlockedByUser?.email
+                          ? [
+                              entry.unlockedByUser?.fullName,
+                              entry.unlockedByUser?.email ? `(${entry.unlockedByUser?.email})` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")
+                          : entry.unlockedBy || "Nieznany użytkownik"}
+                      </strong>
+                      <span>
+                        {entry.unlockedAt
+                          ? new Date(entry.unlockedAt).toLocaleString()
+                          : "brak daty"}
+                      </span>
+                      {entry.reason ? (
+                        <span style={styles.subtleText}>Powód: {entry.reason}</span>
+                      ) : null}
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>
