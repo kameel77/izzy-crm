@@ -25,6 +25,7 @@ model User {
   consentTemplates        ConsentTemplate[] @relation("ConsentTemplateCreatedBy")
   recordedConsents        ConsentRecord[]   @relation("ConsentRecordRecordedBy")
   createdApplicationForms ApplicationForm[] @relation("ApplicationFormCreatedBy")
+  leadStatusChanges       LeadStatusHistory[]
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
 }
@@ -51,7 +52,7 @@ model Lead {
   assignedUserId  String?
   createdBy       User?                  @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
   createdByUserId String?
-  status          LeadStatus             @default(NEW_LEAD)
+  status          LeadStatus             @default(NEW)
   sourceMetadata  Json?
   notes           String?
   leadCreatedAt   DateTime               @default(now())
@@ -71,6 +72,7 @@ model Lead {
   consentRecords  ConsentRecord[]
   applicationForm ApplicationForm?
   emailLogs       EmailLog[]
+  leadStatusHistory LeadStatusHistory[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -218,13 +220,7 @@ model Reminder {
   updatedAt      DateTime       @updatedAt
 }
 
-model LeadStatusReference {
-  id          String     @id @default(cuid())
-  code        LeadStatus @unique
-  description String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-}
+
 
 model ApplicationForm {
   id                 String                @id @default(cuid())
@@ -351,15 +347,37 @@ enum PartnerStatus {
 }
 
 enum LeadStatus {
-  NEW_LEAD
-  LEAD_TAKEN
-  GET_INFO
-  WAITING_FOR_BANK
-  WAITING_FOR_APPROVAL
-  BANK_REJECTED
-  CLIENT_ACCEPTED
-  CLIENT_REJECTED
-  AGREEMENT_SIGNED
+  NEW
+  FIRST_CONTACT
+  FOLLOW_UP
+  VERIFICATION
+  UNQUALIFIED
+  GATHERING_DOCUMENTS
+  CREDIT_ANALYSIS
+  OFFER_PRESENTED
+  NEGOTIATIONS
+  TERMS_ACCEPTED
+  CONTRACT_IN_PREPARATION
+  CONTRACT_SIGNING
+  CLOSED_WON
+  CLOSED_LOST
+  CLOSED_NO_FINANCING
+  CANCELLED
+}
+
+model LeadStatusHistory {
+  id          String     @id @default(cuid())
+  lead        Lead       @relation(fields: [leadId], references: [id])
+  leadId      String
+  oldStatus   LeadStatus
+  newStatus   LeadStatus
+  changedBy   User?      @relation(fields: [changedById], references: [id])
+  changedById String?
+  timestamp   DateTime   @default(now())
+  reason      String?
+
+  @@index([leadId])
+  @@index([changedById])
 }
 
 enum BankDecisionStatus {

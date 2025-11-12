@@ -213,16 +213,7 @@ CREATE TABLE "Reminder" (
     CONSTRAINT "Reminder_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "LeadStatusReference" (
-    "id" TEXT NOT NULL,
-    "code" "LeadStatus" NOT NULL,
-    "description" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "LeadStatusReference_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
@@ -239,8 +230,7 @@ CREATE UNIQUE INDEX "VehicleDesired_leadId_key" ON "VehicleDesired"("leadId");
 -- CreateIndex
 CREATE UNIQUE INDEX "Agreement_leadId_key" ON "Agreement"("leadId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "LeadStatusReference_code_key" ON "LeadStatusReference"("code");
+
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_partnerId_fkey" FOREIGN KEY ("partnerId") REFERENCES "Partner"("id") ON DELETE SET NULL ON UPDATE CASCADE;

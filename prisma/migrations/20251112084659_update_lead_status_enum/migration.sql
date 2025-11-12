@@ -1,0 +1,19 @@
+/*
+  Warnings:
+
+  - The values [NEW_LEAD,LEAD_TAKEN,GET_INFO,WAITING_FOR_BANK,WAITING_FOR_APPROVAL,BANK_REJECTED,CLIENT_ACCEPTED,CLIENT_REJECTED,AGREEMENT_SIGNED] on the enum `LeadStatus` will be removed. If these variants are still used in the database, this will fail.
+
+*/
+-- AlterEnum
+BEGIN;
+CREATE TYPE "LeadStatus_new" AS ENUM ('NEW', 'FIRST_CONTACT', 'FOLLOW_UP', 'VERIFICATION', 'UNQUALIFIED', 'GATHERING_DOCUMENTS', 'CREDIT_ANALYSIS', 'OFFER_PRESENTED', 'NEGOTIATIONS', 'TERMS_ACCEPTED', 'CONTRACT_IN_PREPARATION', 'CONTRACT_SIGNING', 'CLOSED_WON', 'CLOSED_LOST', 'CLOSED_NO_FINANCING', 'CANCELLED');
+ALTER TABLE "public"."Lead" ALTER COLUMN "status" DROP DEFAULT;
+ALTER TABLE "Lead" ALTER COLUMN "status" TYPE "LeadStatus_new" USING ("status"::text::"LeadStatus_new");
+ALTER TYPE "LeadStatus" RENAME TO "LeadStatus_old";
+ALTER TYPE "LeadStatus_new" RENAME TO "LeadStatus";
+DROP TYPE "public"."LeadStatus_old";
+ALTER TABLE "Lead" ALTER COLUMN "status" SET DEFAULT 'NEW';
+COMMIT;
+
+-- AlterTable
+ALTER TABLE "Lead" ALTER COLUMN "status" SET DEFAULT 'NEW';

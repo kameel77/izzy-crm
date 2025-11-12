@@ -20,7 +20,7 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      const redirectTo = (location.state as { from?: Location })?.from?.pathname || "/leads";
+      const redirectTo = "/dashboard";
       navigate(redirectTo, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {

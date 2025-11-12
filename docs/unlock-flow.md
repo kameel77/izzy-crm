@@ -38,3 +38,4 @@ Link dla klienta:
 - Frontend E2E: Admin → Odblokuj → modal → potwierdzenie → toast → odświeżony status i wpis w historii.
 
 
+
