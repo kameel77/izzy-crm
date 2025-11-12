@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { LeadDetail } from "../api/leads";
 import {
   LEAD_STATUS_LABELS,
-  LEAD_STATUS_TRANSITIONS,
+  LEAD_STATUSES,
   LeadStatus,
 } from "../constants/leadStatus";
 
@@ -13,18 +13,15 @@ interface StatusUpdateFormProps {
 }
 
 export const StatusUpdateForm: React.FC<StatusUpdateFormProps> = ({ lead, onSubmit }) => {
-  const [status, setStatus] = useState<LeadStatus>(
-    LEAD_STATUS_TRANSITIONS[lead.status][0] ?? lead.status,
-  );
+  const [status, setStatus] = useState<LeadStatus>(lead.status);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const availableStatuses = LEAD_STATUS_TRANSITIONS[lead.status];
+  const availableStatuses = LEAD_STATUSES.filter((s) => s !== lead.status);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!availableStatuses.length) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -38,7 +35,7 @@ export const StatusUpdateForm: React.FC<StatusUpdateFormProps> = ({ lead, onSubm
   };
 
   if (!availableStatuses.length) {
-    return <p style={styles.hint}>This lead is complete. No further transitions available.</p>;
+    return <p style={styles.hint}>No other statuses available for selection.</p>;
   }
 
   return (
@@ -51,6 +48,9 @@ export const StatusUpdateForm: React.FC<StatusUpdateFormProps> = ({ lead, onSubm
           onChange={(event) => setStatus(event.target.value as LeadStatus)}
           style={styles.select}
         >
+          <option value={lead.status} disabled>
+            {LEAD_STATUS_LABELS[lead.status]} (Current)
+          </option>
           {availableStatuses.map((value) => (
             <option key={value} value={value}>
               {LEAD_STATUS_LABELS[value]}

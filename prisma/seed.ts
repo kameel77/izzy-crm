@@ -50,23 +50,60 @@ async function main() {
       role: UserRole.OPERATOR,
       fullName: "Seed Operator",
       status: UserStatus.ACTIVE,
-      partnerId: partner.id,
-    },
-  });
-
-  // Example placeholder to ensure statuses exist in reporting tables if needed.
-  const leadStatusValues = Object.values(LeadStatus);
-  for (const status of leadStatusValues) {
-    await prisma.leadStatusReference.upsert({
-      where: { code: status },
-      update: {},
-      create: {
-        code: status,
-        description: status.replaceAll("_", " ").toLowerCase(),
-      },
-    });
-  }
-}
+            partnerId: partner.id,
+          },
+        });
+      
+        // Seed consent templates
+        const consentTypes = [
+          {
+            type: "PARTNER_DECLARATION",
+            title: "Oświadczenie o partnerstwie",
+            content: "Oświadczam, że zapoznałem się z warunkami współpracy z partnerem.",
+            isRequired: true,
+          },
+          {
+            type: "MARKETING",
+            title: "Zgoda marketingowa",
+            content: "Zgadzam się na otrzymywanie informacji handlowych drogą elektroniczną.",
+            isRequired: false,
+          },
+          {
+            type: "FINANCIAL_PARTNERS",
+            title: "Zgoda na przekazanie danych partnerom finansowym",
+            content: "Zgadzam się na przekazanie moich danych partnerom finansowym w celu przedstawienia oferty.",
+            isRequired: true,
+          },
+          {
+            type: "VEHICLE_PARTNERS",
+            title: "Zgoda na przekazanie danych partnerom motoryzacyjnym",
+            content: "Zgadzam się na przekazanie moich danych partnerom motoryzacyjnym w celu przedstawienia oferty pojazdu.",
+            isRequired: true,
+          },
+        ];
+      
+        for (const consent of consentTypes) {
+          await prisma.consentTemplate.upsert({
+            where: {
+              consentType_formType_version: {
+                consentType: consent.type as any,
+                formType: "financing_application",
+                version: 1,
+              },
+            },
+            update: {},
+            create: {
+              consentType: consent.type as any,
+              formType: "financing_application",
+              title: consent.title,
+              content: consent.content,
+              version: 1,
+              isActive: true,
+              isRequired: consent.isRequired,
+            },
+          });
+        }
+      }
 
 main()
   .then(async () => {
