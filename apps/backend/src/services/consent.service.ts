@@ -355,7 +355,7 @@ export const listConsentRecords = async (params: ListConsentRecordsParams) => {
     ];
   }
 
-  let orderBy: Prisma.ConsentRecordOrderByWithRelationInput;
+  let orderBy: Prisma.Enumerable<Prisma.ConsentRecordOrderByWithRelationInput>;
   switch (sortBy) {
     case "clientName":
       orderBy = [
@@ -458,7 +458,7 @@ export const exportConsentRecords = async (
     ];
   }
 
-  let orderBy: Prisma.ConsentRecordOrderByWithRelationInput;
+  let orderBy: Prisma.Enumerable<Prisma.ConsentRecordOrderByWithRelationInput>;
   switch (sortBy) {
     case "clientName":
       orderBy = [

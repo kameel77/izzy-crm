@@ -532,10 +532,10 @@ router.post(
       return res.status(403).json({ message: "Cannot unassign lead" });
     }
 
-    if (body.unassign && body.status !== LeadStatus.NEW_LEAD) {
+    if (body.unassign && body.status !== LeadStatus.NEW) {
       return res
         .status(400)
-        .json({ message: "Unassign is only allowed when returning to NEW_LEAD" });
+        .json({ message: "Unassign is only allowed when returning to NEW" });
     }
 
     if (assignToUserId && body.unassign) {

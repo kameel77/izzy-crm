@@ -3,15 +3,22 @@ import { LeadStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 const LEAD_STATUS_SEQUENCE: LeadStatus[] = [
-  LeadStatus.NEW_LEAD,
-  LeadStatus.LEAD_TAKEN,
-  LeadStatus.GET_INFO,
-  LeadStatus.WAITING_FOR_BANK,
-  LeadStatus.WAITING_FOR_APPROVAL,
-  LeadStatus.BANK_REJECTED,
-  LeadStatus.CLIENT_ACCEPTED,
-  LeadStatus.CLIENT_REJECTED,
-  LeadStatus.AGREEMENT_SIGNED,
+  LeadStatus.NEW,
+  LeadStatus.FIRST_CONTACT,
+  LeadStatus.FOLLOW_UP,
+  LeadStatus.VERIFICATION,
+  LeadStatus.UNQUALIFIED,
+  LeadStatus.GATHERING_DOCUMENTS,
+  LeadStatus.CREDIT_ANALYSIS,
+  LeadStatus.OFFER_PRESENTED,
+  LeadStatus.NEGOTIATIONS,
+  LeadStatus.TERMS_ACCEPTED,
+  LeadStatus.CONTRACT_IN_PREPARATION,
+  LeadStatus.CONTRACT_SIGNING,
+  LeadStatus.CLOSED_WON,
+  LeadStatus.CLOSED_LOST,
+  LeadStatus.CLOSED_NO_FINANCING,
+  LeadStatus.CANCELLED,
 ];
 
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
@@ -140,7 +147,7 @@ export const getDashboardAnalytics = async (
       };
 
     existing.totalLeads += 1;
-    if (lead.status === LeadStatus.AGREEMENT_SIGNED) {
+    if (lead.status === LeadStatus.CLOSED_WON) {
       existing.convertedLeads += 1;
       signedLeadsInRange += 1;
     }
@@ -167,7 +174,7 @@ export const getDashboardAnalytics = async (
       signedAt: { not: null, gte: start },
       lead: {
         ...leadWhere,
-        status: LeadStatus.AGREEMENT_SIGNED,
+        status: LeadStatus.CLOSED_WON,
       },
     },
     select: {

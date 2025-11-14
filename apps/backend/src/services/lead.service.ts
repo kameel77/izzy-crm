@@ -127,15 +127,32 @@ const leadSummarySelect = {
 } satisfies Prisma.LeadSelect;
 
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
-  NEW_LEAD: [LeadStatus.LEAD_TAKEN, LeadStatus.BANK_REJECTED],
-  LEAD_TAKEN: [LeadStatus.GET_INFO, LeadStatus.BANK_REJECTED, LeadStatus.NEW_LEAD],
-  GET_INFO: [LeadStatus.WAITING_FOR_BANK, LeadStatus.BANK_REJECTED, LeadStatus.CLIENT_REJECTED],
-  WAITING_FOR_BANK: [LeadStatus.WAITING_FOR_APPROVAL, LeadStatus.BANK_REJECTED],
-  WAITING_FOR_APPROVAL: [LeadStatus.CLIENT_ACCEPTED, LeadStatus.CLIENT_REJECTED],
-  BANK_REJECTED: [LeadStatus.GET_INFO, LeadStatus.NEW_LEAD],
-  CLIENT_ACCEPTED: [LeadStatus.AGREEMENT_SIGNED, LeadStatus.CLIENT_REJECTED],
-  CLIENT_REJECTED: [LeadStatus.GET_INFO],
-  AGREEMENT_SIGNED: [],
+  NEW: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED],
+  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW],
+  FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED],
+  VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED],
+  UNQUALIFIED: [],
+  GATHERING_DOCUMENTS: [LeadStatus.CREDIT_ANALYSIS, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  CREDIT_ANALYSIS: [
+    LeadStatus.OFFER_PRESENTED,
+    LeadStatus.CLOSED_LOST,
+    LeadStatus.CLOSED_NO_FINANCING,
+    LeadStatus.CANCELLED,
+  ],
+  OFFER_PRESENTED: [
+    LeadStatus.NEGOTIATIONS,
+    LeadStatus.TERMS_ACCEPTED,
+    LeadStatus.CLOSED_LOST,
+    LeadStatus.CANCELLED,
+  ],
+  NEGOTIATIONS: [LeadStatus.TERMS_ACCEPTED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  TERMS_ACCEPTED: [LeadStatus.CONTRACT_IN_PREPARATION, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  CONTRACT_IN_PREPARATION: [LeadStatus.CONTRACT_SIGNING, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  CONTRACT_SIGNING: [LeadStatus.CLOSED_WON, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  CLOSED_WON: [],
+  CLOSED_LOST: [],
+  CLOSED_NO_FINANCING: [],
+  CANCELLED: [],
 };
 
 export interface CreateLeadInput {
@@ -187,7 +204,7 @@ export const createLead = async (input: CreateLeadInput) => {
       const newLead = await tx.lead.create({
         data: {
           partnerId: input.partnerId,
-          status: LeadStatus.NEW_LEAD,
+          status: LeadStatus.NEW,
           sourceMetadata: toJson(input.sourceMetadata),
           notes: input.notes,
           createdByUserId: input.createdByUserId ?? null,
@@ -727,12 +744,12 @@ export const transitionLeadStatus = async (input: TransitionLeadInput) => {
       data.assignedUserId = input.assignToUserId;
     }
 
-    if (input.targetStatus === LeadStatus.LEAD_TAKEN) {
+    if (input.targetStatus === LeadStatus.FIRST_CONTACT) {
       data.assignedUserId = input.assignToUserId ?? input.userId;
       data.claimedAt = new Date();
     }
 
-    if (input.targetStatus === LeadStatus.NEW_LEAD) {
+    if (input.targetStatus === LeadStatus.NEW) {
       data.assignedUserId = null;
       data.claimedAt = null;
     }
