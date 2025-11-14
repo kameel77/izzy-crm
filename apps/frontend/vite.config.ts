@@ -5,6 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true
-  }
+    host: true,
+  },
+  preview: {
+    port: 4173,
+    host: true,
+    allowedHosts: ["crm.izzylease.com"],
+  },
 });
