@@ -267,15 +267,20 @@ router.get(
       }
 
       partnerFilter = req.user.partnerId;
-    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      if (partnerFilter && partnerFilter !== req.user.partnerId) {
-        return res
-          .status(403)
-          .json({ message: "Cannot view leads for other partners" });
-      }
-
-      partnerFilter = req.user.partnerId;
+    } else if (req.user?.role === UserRole.OPERATOR) {
       includeAssignedUserId = req.user.id;
+
+      if (req.user.partnerId) {
+        if (partnerFilter && partnerFilter !== req.user.partnerId) {
+          return res
+            .status(403)
+            .json({ message: "Cannot view leads for other partners" });
+        }
+
+        partnerFilter = req.user.partnerId;
+      } else {
+        partnerFilter = partnerFilter ?? undefined;
+      }
     }
 
     let assignedFilter: string | null | undefined = undefined;

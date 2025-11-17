@@ -351,16 +351,23 @@ export const listLeads = async (filters: LeadListFilters) => {
     }
   }
 
-  if (filters.partnerId) {
-    if (filters.includeAssignedUserId && !filters.includeAssignedOnly) {
-      andConditions.push({
-        OR: [{ partnerId: filters.partnerId }, { assignedUserId: filters.includeAssignedUserId }],
-      });
+  const partnerOrAssigned: Prisma.LeadWhereInput[] = [];
+  if (filters.partnerId && !filters.includeAssignedOnly) {
+    partnerOrAssigned.push({ partnerId: filters.partnerId });
+  } else if (filters.partnerId) {
+    andConditions.push({ partnerId: filters.partnerId });
+  }
+
+  if (filters.includeAssignedUserId) {
+    partnerOrAssigned.push({ assignedUserId: filters.includeAssignedUserId });
+  }
+
+  if (partnerOrAssigned.length) {
+    if (filters.includeAssignedOnly) {
+      andConditions.push({ assignedUserId: filters.includeAssignedUserId });
     } else {
-      andConditions.push({ partnerId: filters.partnerId });
+      andConditions.push({ OR: partnerOrAssigned });
     }
-  } else if (filters.includeAssignedUserId) {
-    andConditions.push({ assignedUserId: filters.includeAssignedUserId });
   }
 
   if (filters.createdByUserId) {
