@@ -30,7 +30,7 @@ const PARTNER_SCOPED_ROLES: UserRole[] = [
   UserRole.PARTNER_EMPLOYEE,
 ];
 
-const isPartnerScopedRole = (role?: UserRole | null): role is UserRole =>
+const isPartnerScopedRole = (role?: UserRole | null) =>
   Boolean(role && PARTNER_SCOPED_ROLES.includes(role));
 
 const isOperatorAssignedToLead = (
@@ -46,8 +46,10 @@ const canAccessLead = (
 ) => {
   const operatorAssigned = isOperatorAssignedToLead(user, lead);
 
-  if (isPartnerScopedRole(user?.role)) {
-    if (!user?.partnerId || lead.partnerId !== user.partnerId) {
+  if (user && isPartnerScopedRole(user.role)) {
+    const partnerId = typeof user.partnerId === "string" ? user.partnerId : null;
+
+    if (!partnerId || lead.partnerId !== partnerId) {
       return false;
     }
 
@@ -58,12 +60,14 @@ const canAccessLead = (
     return true;
   }
 
-  if (user?.role === UserRole.OPERATOR) {
-    if (user.partnerId && lead.partnerId !== user.partnerId && !operatorAssigned) {
-      return false;
-    }
+  if (user && user.role === UserRole.OPERATOR) {
+    const partnerId = typeof user.partnerId === "string" ? user.partnerId : null;
 
-    if (!user.partnerId && !operatorAssigned) {
+    if (partnerId) {
+      if (lead.partnerId !== partnerId && !operatorAssigned) {
+        return false;
+      }
+    } else if (!operatorAssigned) {
       return false;
     }
   }
@@ -294,7 +298,7 @@ router.get(
     let includeAssignedUserId: string | undefined;
     let includeAssignedOnly = false;
 
-    if (isPartnerScopedRole(req.user?.role)) {
+    if (req.user && isPartnerScopedRole(req.user.role)) {
       if (!req.user.partnerId) {
         return res.status(403).json({ message: "Partner context is missing" });
       }
