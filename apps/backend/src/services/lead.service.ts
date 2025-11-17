@@ -2,6 +2,7 @@ import { ApplicationFormStatus, BankDecisionStatus, ConsentType, LeadStatus, Pri
 import { createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { createHttpError } from "../utils/httpError.js";
+import { CLIENT_ACTIVITY_TIMEOUT_MS, releaseClientActivity } from "./application-form.service.js";
 
 const toJson = (value?: Record<string, unknown>) =>
   (value as Prisma.InputJsonValue | undefined);
@@ -503,6 +504,15 @@ export const getLeadById = async (id: string) => {
   });
 
   if (!lead) return null;
+
+  if (lead.applicationForm?.isClientActive) {
+    const lastActivity = lead.applicationForm.lastClientActivity;
+    if (!lastActivity || Date.now() - lastActivity.getTime() > CLIENT_ACTIVITY_TIMEOUT_MS) {
+      await releaseClientActivity(lead.applicationForm.id);
+      lead.applicationForm.isClientActive = false;
+      lead.applicationForm.lastClientActivity = null;
+    }
+  }
 
   const consentStatus = await getConsentStatusForLead(lead);
 

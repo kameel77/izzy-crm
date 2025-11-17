@@ -27,6 +27,11 @@ export const ensureOperatorCanMutateLead = async (params: {
     return;
   }
 
+  if (hasClientSessionExpired(form.lastClientActivity)) {
+    await releaseClientActivity(form.id);
+    return;
+  }
+
   await prisma.auditLog.create({
     data: {
       leadId: params.leadId,
@@ -79,6 +84,19 @@ export const ensureOperatorCanMutateLead = async (params: {
 
 const UNLOCK_TOKEN_BYTES = 16;
 const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const CLIENT_ACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+
+const hasClientSessionExpired = (lastActivity: Date | null) => {
+  if (!lastActivity) return true;
+  return Date.now() - lastActivity.getTime() > CLIENT_ACTIVITY_TIMEOUT_MS;
+};
+
+export const releaseClientActivity = async (applicationFormId: string) => {
+  await prisma.applicationForm.update({
+    where: { id: applicationFormId },
+    data: { isClientActive: false, lastClientActivity: null },
+  });
+};
 
 const buildUnlockHistory = (existing: unknown, entry: unknown) => {
   if (Array.isArray(existing)) {
