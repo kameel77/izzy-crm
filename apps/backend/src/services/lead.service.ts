@@ -510,7 +510,7 @@ export const getLeadById = async (id: string) => {
     if (!lastActivity || Date.now() - lastActivity.getTime() > CLIENT_ACTIVITY_TIMEOUT_MS) {
       await releaseClientActivity(lead.applicationForm.id);
       lead.applicationForm.isClientActive = false;
-      lead.applicationForm.lastClientActivity = null;
+      lead.applicationForm.lastClientActivity = lastActivity ?? null;
     }
   }
 

@@ -94,7 +94,7 @@ const hasClientSessionExpired = (lastActivity: Date | null) => {
 export const releaseClientActivity = async (applicationFormId: string) => {
   await prisma.applicationForm.update({
     where: { id: applicationFormId },
-    data: { isClientActive: false, lastClientActivity: null },
+    data: { isClientActive: false },
   });
 };
 
