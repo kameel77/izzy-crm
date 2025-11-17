@@ -252,6 +252,7 @@ router.get(
     const skip = (page - 1) * perPage;
 
     let partnerFilter = query.partnerId;
+    let includeAssignedUserId: string | undefined;
 
     if (isPartnerScopedRole(req.user?.role)) {
       if (!req.user.partnerId) {
@@ -273,6 +274,7 @@ router.get(
       }
 
       partnerFilter = req.user.partnerId;
+      includeAssignedUserId = req.user.id;
     }
 
     let assignedFilter: string | null | undefined = undefined;
@@ -288,6 +290,7 @@ router.get(
     const { items, total } = await listLeads({
       status: query.status,
       partnerId: partnerFilter,
+      includeAssignedUserId,
       assignedUserId: assignedFilter,
       createdByUserId: limitToCreator,
       search: query.search,

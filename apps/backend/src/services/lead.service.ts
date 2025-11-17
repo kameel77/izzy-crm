@@ -327,6 +327,7 @@ export interface LeadListFilters {
   status?: LeadStatus[];
   partnerId?: string;
   assignedUserId?: string | null;
+  includeAssignedUserId?: string;
   createdByUserId?: string;
   search?: string;
   skip: number;
@@ -335,37 +336,52 @@ export interface LeadListFilters {
 
 export const listLeads = async (filters: LeadListFilters) => {
   const where: Prisma.LeadWhereInput = {};
+  const andConditions: Prisma.LeadWhereInput[] = [];
 
   if (filters.status?.length) {
-    where.status = { in: filters.status };
+    andConditions.push({ status: { in: filters.status } });
   }
 
   if (typeof filters.assignedUserId !== "undefined") {
     if (filters.assignedUserId === null) {
-      where.assignedUserId = null;
+      andConditions.push({ assignedUserId: null });
     } else {
-      where.assignedUserId = filters.assignedUserId;
+      andConditions.push({ assignedUserId: filters.assignedUserId });
     }
   }
 
   if (filters.partnerId) {
-    where.partnerId = filters.partnerId;
+    if (filters.includeAssignedUserId) {
+      andConditions.push({
+        OR: [{ partnerId: filters.partnerId }, { assignedUserId: filters.includeAssignedUserId }],
+      });
+    } else {
+      andConditions.push({ partnerId: filters.partnerId });
+    }
+  } else if (filters.includeAssignedUserId) {
+    andConditions.push({ assignedUserId: filters.includeAssignedUserId });
   }
 
   if (filters.createdByUserId) {
-    where.createdByUserId = filters.createdByUserId;
+    andConditions.push({ createdByUserId: filters.createdByUserId });
   }
 
   if (filters.search) {
     const searchTerm = filters.search.trim();
     if (searchTerm) {
-      where.OR = [
-        { customerProfile: { firstName: { contains: searchTerm, mode: "insensitive" } } },
-        { customerProfile: { lastName: { contains: searchTerm, mode: "insensitive" } } },
-        { customerProfile: { email: { contains: searchTerm, mode: "insensitive" } } },
-        { customerProfile: { phone: { contains: searchTerm, mode: "insensitive" } } },
-      ];
+      andConditions.push({
+        OR: [
+          { customerProfile: { firstName: { contains: searchTerm, mode: "insensitive" } } },
+          { customerProfile: { lastName: { contains: searchTerm, mode: "insensitive" } } },
+          { customerProfile: { email: { contains: searchTerm, mode: "insensitive" } } },
+          { customerProfile: { phone: { contains: searchTerm, mode: "insensitive" } } },
+        ],
+      });
     }
+  }
+
+  if (andConditions.length) {
+    where.AND = andConditions;
   }
 
   const [items, total] = await prisma.$transaction([
