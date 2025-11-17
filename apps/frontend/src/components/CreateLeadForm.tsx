@@ -71,7 +71,16 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   useEffect(() => {
     const loadConsents = async () => {
       try {
-        const templates = await fetchAuthenticatedConsentTemplates({ formType: "lead_creation" });
+        const leadCreationTemplates = await fetchAuthenticatedConsentTemplates({ formType: "lead_creation" });
+        let templates = leadCreationTemplates;
+
+        if (!templates.length) {
+          const financingTemplates = await fetchAuthenticatedConsentTemplates({ formType: "financing_application" });
+          templates = financingTemplates.filter((template) => template.consentType === "PARTNER_DECLARATION");
+        }
+
+        templates = templates.sort((a, b) => a.title.localeCompare(b.title));
+
         setConsentTemplates(templates);
         const initialState: Record<string, boolean> = {};
         templates.forEach(t => {
