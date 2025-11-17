@@ -33,6 +33,44 @@ const PARTNER_SCOPED_ROLES: UserRole[] = [
 const isPartnerScopedRole = (role?: UserRole | null): role is UserRole =>
   Boolean(role && PARTNER_SCOPED_ROLES.includes(role));
 
+const isOperatorAssignedToLead = (
+  user: { role?: UserRole | null; id?: string | null } | undefined,
+  lead: { assignedUser?: { id: string | null } | null },
+) =>
+  user?.role === UserRole.OPERATOR &&
+  Boolean(lead.assignedUser?.id && lead.assignedUser.id === user.id);
+
+const canAccessLead = (
+  lead: { partnerId: string; createdByUserId?: string | null; assignedUser?: { id: string | null } | null },
+  user: { role?: UserRole | null; partnerId?: string | null; id?: string | null } | undefined,
+) => {
+  const operatorAssigned = isOperatorAssignedToLead(user, lead);
+
+  if (isPartnerScopedRole(user?.role)) {
+    if (!user?.partnerId || lead.partnerId !== user.partnerId) {
+      return false;
+    }
+
+    if (user.role === UserRole.PARTNER_EMPLOYEE && lead.createdByUserId !== user.id) {
+      return false;
+    }
+
+    return true;
+  }
+
+  if (user?.role === UserRole.OPERATOR) {
+    if (user.partnerId && lead.partnerId !== user.partnerId && !operatorAssigned) {
+      return false;
+    }
+
+    if (!user.partnerId && !operatorAssigned) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const createLeadSchema = z.object({
   partnerId: z.string().min(1).optional(),
   sourceMetadata: z.record(z.unknown()).optional(),
@@ -345,21 +383,8 @@ router.get(
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    if (isPartnerScopedRole(req.user?.role)) {
-      if (!req.user.partnerId || lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      if (
-        req.user.role === UserRole.PARTNER_EMPLOYEE &&
-        lead.createdByUserId !== req.user.id
-      ) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      if (lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     const { leadNotes, ...leadRest } = lead;
@@ -418,21 +443,8 @@ router.patch(
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    if (isPartnerScopedRole(req.user?.role)) {
-      if (!req.user.partnerId || lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      if (
-        req.user.role === UserRole.PARTNER_EMPLOYEE &&
-        lead.createdByUserId !== req.user.id
-      ) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-    } else if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      if (lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (req.user?.role === UserRole.OPERATOR) {
@@ -524,10 +536,8 @@ router.post(
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      if (lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     let assignToUserId: string | null | undefined = undefined;
@@ -588,14 +598,13 @@ router.post(
     const { id } = leadIdParamSchema.parse(req.params);
     const payload = financingSchema.parse(req.body);
 
-    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      const lead = await getLeadById(id);
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
-      }
-      if (lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    const lead = await getLeadById(id);
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (req.user?.role === UserRole.OPERATOR) {
