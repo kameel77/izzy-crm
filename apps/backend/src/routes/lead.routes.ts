@@ -252,6 +252,7 @@ router.get(
     const skip = (page - 1) * perPage;
 
     let partnerFilter = query.partnerId;
+    let scopedPartnerId: string | undefined;
     let includeAssignedUserId: string | undefined;
     let includeAssignedOnly = false;
 
@@ -267,6 +268,7 @@ router.get(
       }
 
       partnerFilter = req.user.partnerId;
+      scopedPartnerId = req.user.partnerId;
     } else if (req.user?.role === UserRole.OPERATOR) {
       includeAssignedUserId = req.user.id;
 
@@ -277,7 +279,8 @@ router.get(
             .json({ message: "Cannot view leads for other partners" });
         }
 
-        partnerFilter = req.user.partnerId;
+        scopedPartnerId = req.user.partnerId;
+        partnerFilter = partnerFilter ?? undefined;
       } else {
         partnerFilter = partnerFilter ?? undefined;
       }
@@ -299,6 +302,7 @@ router.get(
     const { items, total } = await listLeads({
       status: query.status,
       partnerId: partnerFilter,
+      scopedPartnerId,
       includeAssignedUserId,
       includeAssignedOnly,
       assignedUserId: assignedFilter,

@@ -326,6 +326,7 @@ export const createLead = async (input: CreateLeadInput) => {
 export interface LeadListFilters {
   status?: LeadStatus[];
   partnerId?: string;
+  scopedPartnerId?: string;
   assignedUserId?: string | null;
   includeAssignedUserId?: string;
   includeAssignedOnly?: boolean;
@@ -351,22 +352,23 @@ export const listLeads = async (filters: LeadListFilters) => {
     }
   }
 
-  const partnerOrAssigned: Prisma.LeadWhereInput[] = [];
-  if (filters.partnerId && !filters.includeAssignedOnly) {
-    partnerOrAssigned.push({ partnerId: filters.partnerId });
-  } else if (filters.partnerId) {
+  if (filters.partnerId) {
     andConditions.push({ partnerId: filters.partnerId });
   }
 
+  const scopedOrAssigned: Prisma.LeadWhereInput[] = [];
+  if (filters.scopedPartnerId) {
+    scopedOrAssigned.push({ partnerId: filters.scopedPartnerId });
+  }
   if (filters.includeAssignedUserId) {
-    partnerOrAssigned.push({ assignedUserId: filters.includeAssignedUserId });
+    scopedOrAssigned.push({ assignedUserId: filters.includeAssignedUserId });
   }
 
-  if (partnerOrAssigned.length) {
-    if (filters.includeAssignedOnly) {
+  if (scopedOrAssigned.length) {
+    if (filters.includeAssignedOnly && filters.includeAssignedUserId) {
       andConditions.push({ assignedUserId: filters.includeAssignedUserId });
     } else {
-      andConditions.push({ OR: partnerOrAssigned });
+      andConditions.push({ OR: scopedOrAssigned });
     }
   }
 
