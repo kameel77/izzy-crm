@@ -82,43 +82,47 @@ System notifications (consent links, reminders) rely on the backend `MailService
 
 ## 2. Deploying to the VPS
 
+Every change must ship through the `staging` branch first. Deploy this branch to the staging environment, run online verification there, and merge to `main` only after tests pass. Production deployments are triggered exclusively from the latest `main`.
+
 Prerequisites:
 - SSH access to the VPS (non-root user with sudo)
 - Docker & Docker Compose installed on the host
 - `.env` files prepared with production secrets (JWT secret, database URL, domains)
 
 ### Steps
-1. **Push changes to `main`** (CI ensures build passes).
-2. **SSH to the VPS** and pull the latest code:
-   ```bash
-   ssh user@your-vps
-   cd ~/apps/izzy-crm
-   git pull origin main
-   ```
+1. **Push feature work to `staging`** – staging is kept up to date with all pending releases.
+2. **Deploy staging** by pulling the `staging` branch on the staging VPS (or running `./ops/scripts/deploy.sh staging-host staging` if scripted). Smoke-test the feature online. If fixes are required, repeat steps 1-2 until staging is green.
+3. **Merge `staging` into `main`** after staging validation succeeds (open a PR or fast-forward merge).
+4. **SSH to the production VPS** and pull the latest code from `main`:
+  ```bash
+  ssh user@your-vps
+  cd ~/apps/izzy-crm
+  git pull origin main
+  ```
    or use the provided script from your workstation:
    ```bash
    ./ops/scripts/deploy.sh user@your-vps
    ```
-3. **Update environment variables** if necessary:
-   ```bash
-   nano .env        # API env vars
-   nano apps/backend/.env
-   ```
-4. **Build & restart services**:
-   ```bash
-   docker compose build
-   docker compose up -d
-   ```
-5. **Run database migrations** (inside running containers):
-   ```bash
-   docker compose exec backend npx prisma migrate deploy
-   docker compose exec backend npx prisma generate
-   ```
-6. **Seed optional data** (only on fresh environments):
-   ```bash
-   docker compose exec backend npm run prisma:seed
-   ```
-7. **Verify**:
+5. **Update environment variables** if necessary:
+  ```bash
+  nano .env        # API env vars
+  nano apps/backend/.env
+  ```
+6. **Build & restart services**:
+  ```bash
+  docker compose build
+  docker compose up -d
+  ```
+7. **Run database migrations** (inside running containers):
+  ```bash
+  docker compose exec backend npx prisma migrate deploy
+  docker compose exec backend npx prisma generate
+  ```
+8. **Seed optional data** (only on fresh environments):
+  ```bash
+  docker compose exec backend npm run prisma:seed
+  ```
+9. **Verify**:
    - API health: `curl http://your-domain/api/health`
    - Frontend: open `https://your-domain`
 

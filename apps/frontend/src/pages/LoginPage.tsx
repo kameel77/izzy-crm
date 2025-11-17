@@ -64,10 +64,6 @@ export const LoginPage: React.FC = () => {
             {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
-        <p style={styles.hint}>
-          Tip: seeded accounts <code>admin@example.com</code> / <code>Admin123!</code> or{" "}
-          <code>operator@example.com</code> / <code>Operator123!</code>
-        </p>
       </div>
     </div>
   );
@@ -133,11 +129,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#b91c1c",
     padding: "0.75rem",
     borderRadius: 8,
-  },
-  hint: {
-    marginTop: "1.5rem",
-    fontSize: "0.85rem",
-    color: "#6b7280",
-    lineHeight: 1.4,
   },
 };
