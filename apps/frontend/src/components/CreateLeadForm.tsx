@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ConsentTemplateDto, fetchAuthenticatedConsentTemplates } from "../api/consents";
+import { fetchPartners, PartnerSummary } from "../api/partners";
 
 interface CreateLeadFormProps {
   onCreate: (payload: {
@@ -30,7 +31,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   onCreate,
   defaultPartnerId,
 }) => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -51,12 +52,17 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [consentTemplates, setConsentTemplates] = useState<ConsentTemplateDto[]>([]);
   const [consentState, setConsentState] = useState<Record<string, boolean>>({});
   const [consentsLoading, setConsentsLoading] = useState(true);
+  const [partners, setPartners] = useState<PartnerSummary[]>([]);
+  const [partnersLoading, setPartnersLoading] = useState(false);
+  const [partnersError, setPartnersError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.partner) {
       setPartnerId(user.partner.id);
+    } else if (defaultPartnerId) {
+      setPartnerId(defaultPartnerId);
     }
-  }, [user]);
+  }, [user, defaultPartnerId]);
 
   useEffect(() => {
     const phoneDigits = phone.replace(/\D/g, "").slice(-9);
@@ -97,6 +103,45 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     };
     loadConsents();
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const shouldLoadPartners = user?.role === "ADMIN" || (!user?.partner?.name && Boolean(partnerId));
+    if (!shouldLoadPartners) return;
+
+    let cancelled = false;
+    const loadPartners = async () => {
+      setPartnersLoading(true);
+      setPartnersError(null);
+      try {
+        const response = await fetchPartners(token, { page: 1, perPage: 100 });
+        if (!cancelled) {
+          const sorted = [...response.data].sort((a, b) => a.name.localeCompare(b.name));
+          setPartners(sorted);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPartnersError("Failed to load partners.");
+        }
+      } finally {
+        if (!cancelled) {
+          setPartnersLoading(false);
+        }
+      }
+    };
+
+    loadPartners();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.role, user?.partner?.name, partnerId]);
+
+  const resolvedPartnerName = useMemo(() => {
+    if (user?.partner?.name) return user.partner.name;
+    const matched = partners.find((partner) => partner.id === partnerId);
+    return matched?.name ?? partnerId ?? "";
+  }, [user?.partner?.name, partners, partnerId]);
 
   const handleConsentChange = (consentId: string, isChecked: boolean) => {
     setConsentState(prev => ({ ...prev, [consentId]: isChecked }));
@@ -214,13 +259,31 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         </label>
         <label style={styles.label}>
           Partner
-          <input
-            style={{ ...styles.input, background: user?.role !== "ADMIN" ? "#f3f4f6" : "white" }}
-            value={user?.partner?.name ?? partnerId}
-            readOnly={user?.role !== "ADMIN"}
-            onChange={(e) => setPartnerId(e.target.value)}
-            placeholder="seed-partner"
-          />
+          {user?.role === "ADMIN" ? (
+            <>
+              <select
+                style={styles.input}
+                value={partnerId}
+                onChange={(event) => setPartnerId(event.target.value)}
+                disabled={partnersLoading}
+              >
+                <option value="">Select partner</option>
+                {partners.map((partner) => (
+                  <option key={partner.id} value={partner.id}>
+                    {partner.name}
+                  </option>
+                ))}
+              </select>
+              {partnersError ? <span style={styles.fieldError}>{partnersError}</span> : null}
+            </>
+          ) : (
+            <input
+              style={{ ...styles.input, background: "#f3f4f6" }}
+              value={resolvedPartnerName}
+              readOnly
+              placeholder="Partner name"
+            />
+          )}
         </label>
       </div>
       <div style={styles.row}>
