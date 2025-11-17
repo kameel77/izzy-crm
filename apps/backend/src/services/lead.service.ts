@@ -23,10 +23,20 @@ export const getConsentStatusForLead = async (
     } | null;
   }
 ): Promise<LeadConsentStatus> => {
-  const formTypes = ["lead_creation"]; // Default form types for lead creation
+  const formTypeSet = new Set<string>(["lead_creation"]); // Default form types for lead creation
   if (lead.applicationForm) {
-    formTypes.push("financing_application");
+    formTypeSet.add("financing_application");
   }
+
+  if (
+    lead.consentRecords.some(
+      (record) => record.consentTemplate.formType === "financing_application",
+    )
+  ) {
+    formTypeSet.add("financing_application");
+  }
+
+  const formTypes = Array.from(formTypeSet);
 
   const requiredTemplates = await prisma.consentTemplate.findMany({
     where: {
