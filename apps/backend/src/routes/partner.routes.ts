@@ -99,7 +99,7 @@ router.patch(
   "/:id",
   authorize(UserRole.ADMIN),
   asyncHandler(async (req, res) => {
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
     const payload = updatePartnerSchema.parse(req.body);
 
     const partner = await updatePartner({
