@@ -253,6 +253,7 @@ router.get(
 
     let partnerFilter = query.partnerId;
     let includeAssignedUserId: string | undefined;
+    let includeAssignedOnly = false;
 
     if (isPartnerScopedRole(req.user?.role)) {
       if (!req.user.partnerId) {
@@ -284,13 +285,17 @@ router.get(
       assignedFilter = query.assignedUserId;
     }
 
-    const limitToCreator =
-      req.user?.role === UserRole.PARTNER_EMPLOYEE ? req.user.id : undefined;
+    let limitToCreator: string | undefined;
+    if (req.user?.role === UserRole.PARTNER_EMPLOYEE) {
+      limitToCreator = req.user.id;
+      includeAssignedOnly = true;
+    }
 
     const { items, total } = await listLeads({
       status: query.status,
       partnerId: partnerFilter,
       includeAssignedUserId,
+      includeAssignedOnly,
       assignedUserId: assignedFilter,
       createdByUserId: limitToCreator,
       search: query.search,

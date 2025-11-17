@@ -328,6 +328,7 @@ export interface LeadListFilters {
   partnerId?: string;
   assignedUserId?: string | null;
   includeAssignedUserId?: string;
+  includeAssignedOnly?: boolean;
   createdByUserId?: string;
   search?: string;
   skip: number;
@@ -351,7 +352,7 @@ export const listLeads = async (filters: LeadListFilters) => {
   }
 
   if (filters.partnerId) {
-    if (filters.includeAssignedUserId) {
+    if (filters.includeAssignedUserId && !filters.includeAssignedOnly) {
       andConditions.push({
         OR: [{ partnerId: filters.partnerId }, { assignedUserId: filters.includeAssignedUserId }],
       });
