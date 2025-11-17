@@ -10,6 +10,6 @@ export default defineConfig({
   preview: {
     port: 4173,
     host: true,
-    allowedHosts: ["crm.izzylease.com"],
+    allowedHosts: ["crm.izzylease.com", "staging-crm.izzylease.com"],
   },
 });
