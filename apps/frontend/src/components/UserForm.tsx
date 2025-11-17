@@ -58,7 +58,7 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
       setPartnersLoading(true);
       setPartnersError(null);
       try {
-        const response = await fetchPartners(token, { perPage: 200 });
+        const response = await fetchPartners(token, { page: 1, perPage: 200 });
         if (!cancelled) {
           setPartners(
             [...response.data].sort((a, b) => a.name.localeCompare(b.name)),
