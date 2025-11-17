@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 
+import { fetchPartners, PartnerSummary } from "../api/partners";
 import { CreateUserPayload, UpdateUserPayload, UserSummary } from "../api/users";
+import { useAuth } from "../hooks/useAuth";
 
 interface UserFormProps {
   mode: "create" | "edit";
@@ -22,6 +24,7 @@ const ROLE_OPTIONS = [
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "INVITED"];
 
 export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onResetPassword, onSuccess }) => {
+  const { token } = useAuth();
   const [email, setEmail] = useState(user?.email ?? "");
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -33,6 +36,9 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [partners, setPartners] = useState<PartnerSummary[]>([]);
+  const [partnersLoading, setPartnersLoading] = useState(false);
+  const [partnersError, setPartnersError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -44,6 +50,37 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
       setPartnerId(user.partner?.id ?? "");
     }
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPartners = async () => {
+      if (!token) return;
+      setPartnersLoading(true);
+      setPartnersError(null);
+      try {
+        const response = await fetchPartners(token, { perPage: 200 });
+        if (!cancelled) {
+          setPartners(
+            [...response.data].sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPartnersError("Failed to load partners");
+        }
+      } finally {
+        if (!cancelled) {
+          setPartnersLoading(false);
+        }
+      }
+    };
+
+    loadPartners();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -161,13 +198,25 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
           </select>
         </label>
         <label style={styles.label}>
-          Partner ID (optional)
-          <input
-            style={styles.input}
+          Partner (optional)
+          <select
             value={partnerId}
             onChange={(event) => setPartnerId(event.target.value)}
-            placeholder="seed-partner"
-          />
+            style={styles.input}
+            disabled={partnersLoading || Boolean(partnersError)}
+          >
+            <option value="">No partner</option>
+            {partners.map((partner) => (
+              <option key={partner.id} value={partner.id}>
+                {partner.name}
+              </option>
+            ))}
+          </select>
+          {partnersLoading ? (
+            <span style={styles.hint}>Loading partners…</span>
+          ) : partnersError ? (
+            <span style={styles.errorInline}>{partnersError}</span>
+          ) : null}
         </label>
         <label style={styles.label}>
           Password {mode === "create" ? "(optional)" : "(leave blank to keep current)"}
@@ -258,5 +307,15 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#047857",
     padding: "0.5rem",
     borderRadius: 8,
+  },
+  hint: {
+    marginTop: "0.25rem",
+    fontSize: "0.8rem",
+    color: "#6b7280",
+  },
+  errorInline: {
+    marginTop: "0.25rem",
+    fontSize: "0.8rem",
+    color: "#b91c1c",
   },
 };
