@@ -193,12 +193,16 @@ router.get(
 router.post(
   "/consent-records/:id/withdraw",
   authenticate,
-  authorize(UserRole.ADMIN, UserRole.SUPERVISOR),
+  authorize(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR),
   asyncHandler(async (req, res) => {
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
-    const actorUserId = req.user!.id;
+    const actorUser = req.user!;
 
-    const withdrawnRecord = await withdrawConsent({ consentRecordId: id, actorUserId });
+    const withdrawnRecord = await withdrawConsent({
+      consentRecordId: id,
+      actorUserId: actorUser.id,
+      actorRole: actorUser.role,
+    });
 
     res.json(withdrawnRecord);
   }),

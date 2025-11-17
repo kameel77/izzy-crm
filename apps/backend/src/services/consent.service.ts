@@ -4,6 +4,7 @@ import {
   ConsentTemplate,
   ConsentType,
   Prisma,
+  UserRole,
 } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
@@ -506,13 +507,17 @@ export const exportConsentRecords = async (
   };
 };
 
-export const withdrawConsent = async (params: { consentRecordId: string; actorUserId: string }) => {
-  const { consentRecordId, actorUserId } = params;
+export const withdrawConsent = async (params: {
+  consentRecordId: string;
+  actorUserId: string;
+  actorRole: UserRole;
+}) => {
+  const { consentRecordId, actorUserId, actorRole } = params;
 
   return prisma.$transaction(async (tx) => {
     const consentRecord = await tx.consentRecord.findUnique({
       where: { id: consentRecordId },
-      select: { id: true, withdrawnAt: true, leadId: true },
+      select: { id: true, withdrawnAt: true, leadId: true, consentType: true },
     });
 
     if (!consentRecord) {
@@ -521,6 +526,16 @@ export const withdrawConsent = async (params: { consentRecordId: string; actorUs
 
     if (consentRecord.withdrawnAt) {
       throw createHttpError({ status: 409, message: "Consent has already been withdrawn" });
+    }
+
+    if (
+      actorRole === UserRole.OPERATOR &&
+      consentRecord.consentType !== ConsentType.PARTNER_DECLARATION
+    ) {
+      throw createHttpError({
+        status: 403,
+        message: "Operators can only withdraw partner declaration consents",
+      });
     }
 
     const now = new Date();

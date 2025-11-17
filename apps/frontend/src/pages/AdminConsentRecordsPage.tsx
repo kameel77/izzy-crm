@@ -5,6 +5,7 @@ import { useToasts } from "../providers/ToastProvider";
 import { useDebounce } from "../hooks/useDebounce";
 import { API_BASE_URL } from "../api/client";
 import { Modal } from "../components/Modal";
+import { useAuth } from "../hooks/useAuth";
 
 const buildExportUrl = (params: Omit<FetchConsentRecordsParams, "skip" | "take">, format: "csv" | "json") => {
   const query = new URLSearchParams();
@@ -44,6 +45,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
 
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const { addToast } = useToasts();
+  const { user } = useAuth();
 
   const loadRecords = useCallback(async () => {
     try {
@@ -104,8 +106,17 @@ export const AdminConsentRecordsPage: React.FC = () => {
     addToast(`Exporting records to ${format.toUpperCase()}...`, "success");
   };
 
+  const canWithdrawRecord = (record: ConsentRecordDto | null) => {
+    if (!record || !user) return false;
+    if (user.role === "ADMIN" || user.role === "SUPERVISOR") return true;
+    if (user.role === "OPERATOR") {
+      return record.consentType === "PARTNER_DECLARATION";
+    }
+    return false;
+  };
+
   const handleWithdrawConfirm = async () => {
-    if (!selectedRecord) return;
+    if (!selectedRecord || !canWithdrawRecord(selectedRecord)) return;
 
     setIsWithdrawing(true);
     try {
@@ -243,7 +254,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
               <h4 style={styles.modalSubheading}>Full Consent Text (Snapshot)</h4>
               <pre style={styles.consentTextPre}>{selectedRecord.consentText}</pre>
             </div>
-            {!selectedRecord.withdrawnAt && (
+            {!selectedRecord.withdrawnAt && canWithdrawRecord(selectedRecord) && (
               <div style={styles.modalActions}>
                 <button onClick={() => setIsWithdrawModalOpen(true)} style={styles.withdrawButton}>Withdraw Consent</button>
               </div>
