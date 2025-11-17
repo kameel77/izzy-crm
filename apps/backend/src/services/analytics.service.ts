@@ -27,6 +27,7 @@ const formatDateKey = (value: Date) => value.toISOString().slice(0, 10);
 
 export interface DashboardAnalyticsOptions {
   partnerId?: string;
+  assignedUserId?: string;
   rangeDays?: number;
 }
 
@@ -76,6 +77,9 @@ export const getDashboardAnalytics = async (
   const leadWhere: Prisma.LeadWhereInput = {};
   if (options.partnerId) {
     leadWhere.partnerId = options.partnerId;
+  }
+  if (options.assignedUserId) {
+    leadWhere.assignedUserId = options.assignedUserId;
   }
 
   const leadsInRange = await prisma.lead.findMany({
@@ -239,14 +243,25 @@ export interface DashboardMonitoringData {
   };
 }
 
-export const getDashboardMonitoringData = async (): Promise<DashboardMonitoringData> => {
+export interface DashboardMonitoringOptions {
+  assignedUserId?: string;
+}
+
+export const getDashboardMonitoringData = async (
+  options: DashboardMonitoringOptions = {},
+): Promise<DashboardMonitoringData> => {
   const stuckThreshold = new Date();
   stuckThreshold.setHours(stuckThreshold.getHours() - 24);
+
+  const leadAssignmentFilter = options.assignedUserId
+    ? { lead: { assignedUserId: options.assignedUserId } }
+    : {};
 
   const stuckForms = await prisma.applicationForm.findMany({
     where: {
       status: "IN_PROGRESS",
       updatedAt: { lt: stuckThreshold },
+      ...leadAssignmentFilter,
     },
     select: {
       id: true,
@@ -278,6 +293,7 @@ export const getDashboardMonitoringData = async (): Promise<DashboardMonitoringD
     where: {
       updatedAt: { gt: pinFailThreshold },
       unlockHistory: { not: Prisma.JsonNull },
+      ...leadAssignmentFilter,
     },
     select: {
       unlockHistory: true,

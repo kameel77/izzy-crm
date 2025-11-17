@@ -30,6 +30,7 @@ router.get(
 
     const analytics = await getDashboardAnalytics({
       partnerId: query.partnerId,
+      assignedUserId: req.user?.role === UserRole.OPERATOR ? req.user.id : undefined,
       rangeDays: query.rangeDays,
     });
 
@@ -39,9 +40,11 @@ router.get(
 
 router.get(
   "/monitoring",
-  authorize(UserRole.ADMIN, UserRole.SUPERVISOR),
+  authorize(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR),
   asyncHandler(async (req, res) => {
-    const data = await getDashboardMonitoringData();
+    const data = await getDashboardMonitoringData({
+      assignedUserId: req.user?.role === UserRole.OPERATOR ? req.user.id : undefined,
+    });
     res.json(data);
   }),
 );
