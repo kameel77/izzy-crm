@@ -30,6 +30,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed }) => {
       icon: <InboxIcon />,
     },
     {
+      to: "/admin/partners",
+      label: "Partner Admin",
+      description: "Manage partner records and SLAs",
+      roles: ["ADMIN"],
+      icon: <UsersIcon />,
+    },
+    {
       to: "/analytics",
       label: "Analytics",
       description: "Visualize volume, conversion, and funnel health",

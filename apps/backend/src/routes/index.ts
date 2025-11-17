@@ -7,6 +7,7 @@ import { applicationFormRouter } from "./application-form.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { consentRouter } from "./consent.routes.js";
 import { leadRouter } from "./lead.routes.js";
+import { partnerRouter } from "./partner.routes.js";
 import { userRouter } from "./user.routes.js";
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use(consentRouter);
 router.use("/auth", authRouter);
 router.use("/analytics", authenticate, analyticsRouter);
 router.use("/leads", authenticate, leadRouter);
+router.use("/partners", authenticate, partnerRouter);
 router.use("/application-forms", applicationFormRouter);
 router.use("/users", authenticate, userRouter);
 

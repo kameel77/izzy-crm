@@ -12,6 +12,7 @@ import { ApplicationFormPage } from "./pages/ApplicationFormPage";
 import { AdminConsentsPage } from "./pages/AdminConsentsPage";
 import { AdminConsentRecordsPage } from "./pages/AdminConsentRecordsPage";
 import { ThankYouPage } from "./pages/ThankYouPage";
+import { AdminPartnersPage } from "./pages/AdminPartnersPage";
 
 export const App: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -54,6 +55,16 @@ export const App: React.FC = () => {
           <ProtectedRoute roles={['ADMIN', 'SUPERVISOR']}>
             <AppLayout>
               <UserAdminPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/partners"
+        element={
+          <ProtectedRoute roles={['ADMIN']}>
+            <AppLayout>
+              <AdminPartnersPage />
             </AppLayout>
           </ProtectedRoute>
         }
