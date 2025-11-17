@@ -56,13 +56,13 @@ export const fetchPartners = async (token: string, filters: PartnerFilters = {})
   if (filters.search) params.set("search", filters.search);
 
   const query = params.toString();
-  return apiFetch<PartnerListResponse>(`/partners${query ? `?${query}` : ""}`, {
+  return apiFetch<PartnerListResponse>(`/api/partners${query ? `?${query}` : ""}`, {
     token,
   });
 };
 
 export const createPartner = async (token: string, payload: CreatePartnerPayload) => {
-  return apiFetch<PartnerSummary>("/partners", {
+  return apiFetch<PartnerSummary>("/api/partners", {
     method: "POST",
     body: JSON.stringify(payload),
     token,
@@ -70,7 +70,7 @@ export const createPartner = async (token: string, payload: CreatePartnerPayload
 };
 
 export const updatePartner = async (token: string, payload: UpdatePartnerPayload) => {
-  return apiFetch<PartnerSummary>(`/partners/${payload.id}`, {
+  return apiFetch<PartnerSummary>(`/api/partners/${payload.id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
     token,
