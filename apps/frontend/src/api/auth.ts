@@ -5,6 +5,7 @@ export interface AuthUser {
   email: string;
   role: string;
   partnerId?: string | null;
+  partner?: { id: string; name: string } | null;
 }
 
 export interface LoginResponse {

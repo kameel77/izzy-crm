@@ -57,8 +57,8 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [partnersError, setPartnersError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.partner) {
-      setPartnerId(user.partner.id);
+    if (user?.partnerId) {
+      setPartnerId(user.partnerId);
     } else if (defaultPartnerId) {
       setPartnerId(defaultPartnerId);
     }
@@ -106,7 +106,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
   useEffect(() => {
     if (!token) return;
-    const shouldLoadPartners = user?.role === "ADMIN" || (!user?.partner?.name && Boolean(partnerId));
+    const shouldLoadPartners = user?.role === "ADMIN";
     if (!shouldLoadPartners) return;
 
     let cancelled = false;
@@ -135,7 +135,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [token, user?.role, user?.partner?.name, partnerId]);
+  }, [token, user?.role]);
 
   const resolvedPartnerName = useMemo(() => {
     if (user?.partner?.name) return user.partner.name;

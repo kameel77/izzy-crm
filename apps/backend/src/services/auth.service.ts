@@ -12,6 +12,7 @@ export const authenticateUser = async (email: string, password: string) => {
       role: true,
       partnerId: true,
       status: true,
+      partner: { select: { id: true, name: true } },
     },
   });
 
@@ -49,6 +50,7 @@ export const authenticateUser = async (email: string, password: string) => {
       email: user.email,
       role: user.role,
       partnerId: user.partnerId,
+      partner: user.partner,
     },
   };
 };
