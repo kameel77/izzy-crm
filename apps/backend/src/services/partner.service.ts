@@ -17,7 +17,26 @@ export interface PartnerContactInput {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
+  [key: string]: string | null | undefined;
 }
+
+export type PartnerSlaRulesInput = Record<string, string | number | boolean | null>;
+
+const serializeJson = (
+  value?: PartnerSlaRulesInput | null,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined => {
+  if (typeof value === "undefined") return undefined;
+  if (value === null) return Prisma.JsonNull;
+  return value as Prisma.JsonObject;
+};
+
+const serializeContact = (
+  value?: PartnerContactInput | null,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined => {
+  if (typeof value === "undefined") return undefined;
+  if (value === null) return Prisma.JsonNull;
+  return value as Prisma.JsonObject;
+};
 
 export interface ListPartnersFilters {
   status?: PartnerStatus;
@@ -61,7 +80,7 @@ export interface CreatePartnerInput {
   name: string;
   status?: PartnerStatus;
   contact?: PartnerContactInput | null;
-  slaRules?: Prisma.JsonValue | null;
+  slaRules?: PartnerSlaRulesInput | null;
   notes?: string | null;
 }
 
@@ -70,8 +89,8 @@ export const createPartner = async (input: CreatePartnerInput) => {
     data: {
       name: input.name,
       status: input.status ?? PartnerStatus.ACTIVE,
-      contact: typeof input.contact === "undefined" ? Prisma.JsonNull : input.contact,
-      slaRules: typeof input.slaRules === "undefined" ? Prisma.JsonNull : input.slaRules,
+      contact: serializeContact(input.contact),
+      slaRules: serializeJson(input.slaRules),
       notes: input.notes ?? null,
     },
     select: partnerSummarySelect,
@@ -85,7 +104,7 @@ export interface UpdatePartnerInput {
   name?: string;
   status?: PartnerStatus;
   contact?: PartnerContactInput | null;
-  slaRules?: Prisma.JsonValue | null;
+  slaRules?: PartnerSlaRulesInput | null;
   notes?: string | null;
 }
 
@@ -100,12 +119,14 @@ export const updatePartner = async (input: UpdatePartnerInput) => {
     data.status = input.status;
   }
 
-  if (typeof input.contact !== "undefined") {
-    data.contact = input.contact ?? Prisma.JsonNull;
+  const serializedContact = serializeContact(input.contact);
+  if (typeof serializedContact !== "undefined") {
+    data.contact = serializedContact;
   }
 
-  if (typeof input.slaRules !== "undefined") {
-    data.slaRules = input.slaRules ?? Prisma.JsonNull;
+  const serializedSla = serializeJson(input.slaRules);
+  if (typeof serializedSla !== "undefined") {
+    data.slaRules = serializedSla;
   }
 
   if (typeof input.notes !== "undefined") {

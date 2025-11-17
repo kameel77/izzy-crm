@@ -21,7 +21,8 @@ const contactSchema = z
   })
   .partial();
 
-const jsonRecordSchema = z.record(z.unknown()).optional();
+const jsonScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const jsonRecordSchema = z.record(jsonScalarSchema).optional();
 
 const listPartnersSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).optional(),
