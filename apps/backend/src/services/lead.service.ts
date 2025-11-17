@@ -285,37 +285,40 @@ export const createLead = async (input: CreateLeadInput) => {
       });
 
       if (input.consents && input.consents.length > 0) {
-        if (!input.createdByUserId) {
-          throw new Error("User ID is required to record consents.");
+        const givenConsents = input.consents.filter(c => c.given);
+        if (givenConsents.length > 0) {
+          if (!input.createdByUserId) {
+            throw new Error("User ID is required to record consents.");
+          }
+          const templateIds = givenConsents.map(c => c.templateId);
+          const templates = await tx.consentTemplate.findMany({
+            where: { id: { in: templateIds } },
+          });
+
+          const templateMap = new Map(templates.map(t => [t.id, t]));
+
+          await tx.consentRecord.createMany({
+            data: givenConsents.map(c => {
+              const template = templateMap.get(c.templateId);
+              if (!template) {
+                throw new Error(`Consent template with id ${c.templateId} not found.`);
+              }
+              return {
+                leadId: newLead.id,
+                consentTemplateId: c.templateId,
+                version: c.version,
+                consentGiven: true,
+                consentMethod: "PARTNER_SUBMISSION",
+                recordedByUserId: input.createdByUserId as string,
+                consentType: template.consentType,
+                consentText: template.content,
+                partnerId: input.partnerId,
+                ipAddress: input.ipAddress,
+                userAgent: input.userAgent,
+              };
+            }),
+          });
         }
-        const templateIds = input.consents.map(c => c.templateId);
-        const templates = await tx.consentTemplate.findMany({
-          where: { id: { in: templateIds } },
-        });
-
-        const templateMap = new Map(templates.map(t => [t.id, t]));
-
-        await tx.consentRecord.createMany({
-          data: input.consents.map(c => {
-            const template = templateMap.get(c.templateId);
-            if (!template) {
-              throw new Error(`Consent template with id ${c.templateId} not found.`);
-            }
-            return {
-              leadId: newLead.id,
-              consentTemplateId: c.templateId,
-              version: c.version,
-              consentGiven: c.given,
-              consentMethod: "PARTNER_SUBMISSION",
-              recordedByUserId: input.createdByUserId as string,
-              consentType: template.consentType,
-              consentText: template.content,
-              partnerId: input.partnerId,
-              ipAddress: input.ipAddress,
-              userAgent: input.userAgent,
-            };
-          }),
-        });
       }
 
       return newLead;
