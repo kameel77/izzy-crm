@@ -48,7 +48,7 @@ export const getConsentStatusForLead = async (
   });
 
   if (requiredTemplates.length === 0) {
-    return "no_templates";
+    return lead.consentRecords.length > 0 ? "complete" : "no_templates";
   }
 
   const givenRequiredConsents = new Set(
