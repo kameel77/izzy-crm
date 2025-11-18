@@ -151,3 +151,18 @@ export const updatePartner = async (input: UpdatePartnerInput) => {
     throw error;
   }
 };
+
+export const getPartnerById = async (id: string) => {
+  const partner = await prisma.partner.findUnique({
+    where: { id },
+    select: partnerSummarySelect,
+  });
+
+  if (!partner) {
+    const error = new Error("Partner not found");
+    (error as Error & { status: number }).status = 404;
+    throw error;
+  }
+
+  return partner;
+};

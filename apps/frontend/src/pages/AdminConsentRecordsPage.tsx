@@ -172,8 +172,8 @@ export const AdminConsentRecordsPage: React.FC = () => {
         </select>
       </div>
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {loading && <p style={styles.message}>Loading...</p>}
+      {error && <div style={styles.bannerError}>{error}</div>}
 
       {!loading && !error && (
         <>
@@ -288,18 +288,60 @@ const InfoItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, 
 );
 
 const styles: Record<string, React.CSSProperties> = {
-  container: { padding: "1rem 2rem" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" },
-  exportButtons: { display: "flex", gap: "0.5rem" },
-  filters: { display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" },
-  searchInput: { flexGrow: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" },
-  select: { padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" },
+  container: { padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "1rem",
+    flexWrap: "wrap",
+    padding: "1.25rem 1.5rem",
+    borderRadius: "1rem",
+    background: "#fff",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
+  },
+  exportButtons: { display: "flex", gap: "0.75rem", flexWrap: "wrap" },
+  filters: {
+    display: "flex",
+    gap: "0.75rem",
+    flexWrap: "wrap",
+    padding: "1rem 1.25rem",
+    borderRadius: "1rem",
+    background: "#fff",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+  },
+  searchInput: { flexGrow: 1, minWidth: 240, padding: "0.55rem 0.75rem", borderRadius: 8, border: "1px solid #d1d5db" },
+  select: { padding: "0.55rem 0.75rem", borderRadius: 8, border: "1px solid #d1d5db" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: { borderBottom: "2px solid #eee", padding: "0.75rem", textAlign: "left", cursor: "pointer" },
   td: { borderBottom: "1px solid #eee", padding: "0.75rem" },
-  pagination: { marginTop: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  button: { padding: "0.5rem 1rem", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer" },
-  detailsButton: { padding: "0.25rem 0.5rem", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer", background: "#f0f0f0" },
+  pagination: {
+    marginTop: "1rem",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "1rem",
+  },
+  button: {
+    padding: "0.5rem 1rem",
+    borderRadius: 8,
+    border: "1px solid #2563eb",
+    background: "transparent",
+    color: "#2563eb",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  detailsButton: {
+    padding: "0.4rem 0.95rem",
+    borderRadius: 8,
+    border: "1px solid #2563eb",
+    background: "transparent",
+    color: "#2563eb",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
   badgeSuccess: { backgroundColor: "#dcfce7", color: "#166534", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   badgeDanger: { backgroundColor: "#fee2e2", color: "#991b1b", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   badgeWithdrawn: { backgroundColor: "#e5e7eb", color: "#4b5563", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
@@ -318,13 +360,24 @@ const styles: Record<string, React.CSSProperties> = {
     maxHeight: "200px",
     overflowY: "auto",
   },
-  modalActions: { display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "1rem" },
+  modalActions: { display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" },
   withdrawButton: {
-    backgroundColor: "#ef4444",
-    color: "white",
-    border: "none",
+    backgroundColor: "#fee2e2",
+    color: "#b91c1c",
+    border: "1px solid #f87171",
     padding: "0.5rem 1rem",
-    borderRadius: "4px",
+    borderRadius: 8,
     cursor: "pointer",
+    fontWeight: 600,
+  },
+  bannerError: {
+    background: "#fee2e2",
+    color: "#b91c1c",
+    padding: "0.75rem 1rem",
+    borderRadius: 10,
+  },
+  message: {
+    color: "#6b7280",
+    margin: 0,
   },
 };

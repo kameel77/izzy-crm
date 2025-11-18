@@ -6,6 +6,7 @@ import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {
   createPartner,
+  getPartnerById,
   listPartners,
   PartnerContactInput,
   updatePartner,
@@ -46,6 +47,20 @@ const updatePartnerSchema = z.object({
   slaRules: jsonRecordSchema.nullable(),
   notes: z.string().nullable().optional(),
 });
+
+router.get(
+  "/me",
+  authorize(UserRole.PARTNER, UserRole.PARTNER_MANAGER, UserRole.PARTNER_EMPLOYEE),
+  asyncHandler(async (req, res) => {
+    const partnerId = req.user?.partnerId;
+    if (!partnerId) {
+      return res.status(404).json({ message: "Partner not assigned" });
+    }
+
+    const partner = await getPartnerById(partnerId);
+    res.json(partner);
+  }),
+);
 
 router.get(
   "/",

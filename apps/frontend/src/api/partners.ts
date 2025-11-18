@@ -76,3 +76,9 @@ export const updatePartner = async (token: string, payload: UpdatePartnerPayload
     token,
   });
 };
+
+export const fetchCurrentPartner = async (token: string) => {
+  return apiFetch<PartnerSummary>("/api/partners/me", {
+    token,
+  });
+};

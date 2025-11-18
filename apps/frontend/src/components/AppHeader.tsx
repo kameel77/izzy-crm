@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import { useAuth } from "../hooks/useAuth";
+import { fetchCurrentPartner } from "../api/partners";
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
@@ -8,14 +9,38 @@ interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebarCollapsed }) => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
+  const [partnerName, setPartnerName] = useState<string | null>(user?.partner?.name ?? null);
 
   if (!user) {
     return null;
   }
 
-  const isPartnerRole = user.role === "PARTNER_MANAGER" || user.role === "PARTNER_EMPLOYEE";
-  const partnerLabel = user.partner?.name || (user.partnerId ? `#${user.partnerId}` : null);
+  useEffect(() => {
+    setPartnerName(user.partner?.name ?? null);
+  }, [user.partner?.name]);
+
+  useEffect(() => {
+    if (!token || partnerName || !user.partnerId) {
+      return;
+    }
+    let cancelled = false;
+
+    fetchCurrentPartner(token)
+      .then((partner) => {
+        if (!cancelled) {
+          setPartnerName(partner.name);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, partnerName, user.partnerId]);
+
+  const isPartnerRole = user.role === "PARTNER_MANAGER" || user.role === "PARTNER_EMPLOYEE" || user.role === "PARTNER";
+  const partnerLabel = partnerName || user.partnerId || null;
 
   return (
     <header style={styles.header}>
