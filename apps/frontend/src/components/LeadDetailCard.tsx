@@ -122,6 +122,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [noteErrors, setNoteErrors] = useState<{ content?: string; link?: string }>({});
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [areNotesExpanded, setAreNotesExpanded] = useState(false);
+  const [areActivitiesExpanded, setAreActivitiesExpanded] = useState(false);
   const buildVehicleFormState = useCallback((): VehicleFormState => {
     const preferences = lead?.vehicleDesired?.preferences;
     const desiredNotes =
@@ -208,6 +209,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   useEffect(() => {
     setNotes(lead?.notes ?? []);
     setAreNotesExpanded(false);
+    setAreActivitiesExpanded(false);
   }, [lead]);
 
   useEffect(() => {
@@ -666,6 +668,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
   const displayedNotes = areNotesExpanded ? notes : notes.slice(0, 3);
   const canToggleNotes = notes.length > 3;
+  const auditLogs = lead.auditLogs || [];
+  const displayedAuditLogs = areActivitiesExpanded ? auditLogs : auditLogs.slice(0, 3);
+  const canToggleAuditLogs = auditLogs.length > 3;
 
   const formattedPhone = formatPhoneNumber(lead.customerProfile?.phone);
 
@@ -952,10 +957,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       </div>
 
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Recent Activity</h3>
+        <div style={styles.sectionHeader}>
+          <div style={styles.sectionTitleGroup}>
+            <h3 style={styles.sectionTitle}>Recent Activity</h3>
+            <span style={styles.noteCount}>({auditLogs.length})</span>
+          </div>
+        </div>
         <ul style={styles.auditList}>
-          {lead.auditLogs.length ? (
-            lead.auditLogs.map((log) => (
+          {displayedAuditLogs.length ? (
+            displayedAuditLogs.map((log) => (
               <li key={log.id} style={styles.auditItem}>
                 <div>
                   <strong>{formatAuditAction(log.action, log.field)}</strong>
@@ -970,6 +980,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             <li style={styles.subtleText}>No activity logged yet.</li>
           )}
         </ul>
+        {canToggleAuditLogs ? (
+          <button
+            type="button"
+            style={{ ...styles.ghostButton, alignSelf: "flex-start" }}
+            onClick={() => setAreActivitiesExpanded((prev) => !prev)}
+          >
+            {areActivitiesExpanded ? "Pokaż mniej" : "Pokaż całą aktywność"}
+          </button>
+        ) : null}
       </div>
 
       <div style={styles.section}>

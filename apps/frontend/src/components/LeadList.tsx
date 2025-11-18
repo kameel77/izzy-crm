@@ -81,7 +81,6 @@ export const LeadList: React.FC<LeadListProps> = ({
           <thead>
             <tr>
               <th style={styles.tableHeadCell}>Customer</th>
-              <th style={styles.tableHeadCell}>Consents</th>
               <th style={styles.tableHeadCell}>Status</th>
               <th style={styles.tableHeadCell}>Assigned</th>
               <th style={styles.tableHeadCell}>Partner</th>
@@ -92,7 +91,7 @@ export const LeadList: React.FC<LeadListProps> = ({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} style={{ ...styles.tableCell, ...styles.loadingCell }}>
+                <td colSpan={6} style={{ ...styles.tableCell, ...styles.loadingCell }}>
                   Loading leads...
                 </td>
               </tr>
@@ -112,9 +111,6 @@ export const LeadList: React.FC<LeadListProps> = ({
                         : "—"}
                     </strong>
                     <div style={styles.subtleText}>{lead.customerProfile?.email}</div>
-                  </td>
-                  <td style={styles.tableCell}>
-                    <ConsentStatusIndicator status={lead.consentStatus} />
                   </td>
                   <td style={styles.tableCell}>
                     <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
@@ -140,7 +136,7 @@ export const LeadList: React.FC<LeadListProps> = ({
               ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ ...styles.tableCell, ...styles.loadingCell }}>
+                <td colSpan={6} style={{ ...styles.tableCell, ...styles.loadingCell }}>
                   No leads found.
                 </td>
               </tr>
@@ -171,22 +167,6 @@ export const LeadList: React.FC<LeadListProps> = ({
         </button>
       </div>
     </section>
-  );
-};
-
-const ConsentStatusIndicator: React.FC<{ status: LeadSummary["consentStatus"] }> = ({ status }) => {
-  const meta = {
-    complete: { label: "Complete", color: "#16a34a" },
-    incomplete: { label: "Incomplete", color: "#f59e0b" },
-    missing_required: { label: "Missing Required", color: "#dc2626" },
-    no_templates: { label: "No Templates", color: "#6b7280" },
-  }[status];
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: meta.color }} />
-      <span>{meta.label}</span>
-    </div>
   );
 };
 

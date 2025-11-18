@@ -14,6 +14,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
     return null;
   }
 
+  const isPartnerRole = user.role === "PARTNER_MANAGER" || user.role === "PARTNER_EMPLOYEE";
+  const partnerLabel = user.partner?.name || (user.partnerId ? `#${user.partnerId}` : null);
+
   return (
     <header style={styles.header}>
       <div style={styles.brandGroup}>
@@ -37,8 +40,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
         <div style={styles.userMeta}>
           <span style={styles.userName}>{user.fullName || user.email}</span>
           <span style={styles.userDetails}>
-            <span style={styles.roleBadge}>{user.role}</span>
-            {user.partnerId ? <span style={styles.partner}>Partner #{user.partnerId}</span> : null}
+            {!isPartnerRole ? <span style={styles.roleBadge}>{user.role}</span> : null}
+            {partnerLabel ? <span style={styles.partner}>Partner: {partnerLabel}</span> : null}
           </span>
         </div>
         <button type="button" onClick={logout} style={styles.logout}>

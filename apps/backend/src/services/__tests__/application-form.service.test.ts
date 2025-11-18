@@ -9,6 +9,12 @@ const mockPrisma = {
     findUnique: vi.fn(),
     update: vi.fn(),
   },
+  user: {
+    findUnique: vi.fn(),
+  },
+  lead: {
+    findUnique: vi.fn(),
+  },
   leadNote: {
     create: vi.fn(),
   },
@@ -24,12 +30,19 @@ vi.mock("../../lib/prisma.js", () => ({ prisma: mockPrisma }));
 vi.mock("crypto", () => ({
   randomBytes: () => Buffer.from("0123456789abcdef0123456789abcdef"),
 }));
+const sendMailMock = vi.fn();
+vi.mock("../mail.service.js", () => ({
+  sendMail: sendMailMock,
+}));
 
 const { unlockApplicationForm } = await import("../application-form.service.js");
 
 describe("unlockApplicationForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.lead.findUnique.mockResolvedValue(null);
+    sendMailMock.mockResolvedValue(undefined);
   });
 
   it("throws when form missing", async () => {

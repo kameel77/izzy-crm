@@ -31,10 +31,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed }) => {
     },
     {
       to: "/admin/partners",
-      label: "Partner Admin",
+      label: "Partners",
       description: "Manage partner records and SLAs",
       roles: ["ADMIN"],
-      icon: <UsersIcon />,
+      icon: <PartnerIcon />,
     },
     {
       to: "/analytics",
@@ -45,7 +45,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed }) => {
     },
     {
       to: "/admin/users",
-      label: "User Admin",
+      label: "Users",
       description: "Invite teammates, manage roles, and reset passwords",
       roles: ["ADMIN", "SUPERVISOR"],
       icon: <UsersIcon />,
@@ -218,6 +218,15 @@ const UsersIcon: React.FC = () => (
     <path d="M15 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
     <path d="M3 20c.6-3.4 3.3-6 6-6s5.4 2.6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M15.5 14c2.5 0 4.8 2 5.5 5" strokeLinecap="round" />
+  </svg>
+);
+
+const PartnerIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M3 11h5l2-3 4 7 2-3h5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M7 20c0-1.7 1.3-3 3-3h4c1.7 0 3 1.3 3 3" strokeLinecap="round" />
+    <circle cx="9" cy="5" r="2" />
+    <circle cx="15" cy="8" r="2" />
   </svg>
 );
 

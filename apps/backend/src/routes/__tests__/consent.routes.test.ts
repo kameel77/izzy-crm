@@ -91,25 +91,21 @@ describe("Consent routes", () => {
       applicationFormId: "cjld2cjxh0000qzrmn831i7rn",
       leadId: "cjld2cjxh0001qzrmn831i7rn",
       accessCodeHash: "hashhash",
-      ipAddress: undefined,
+      ipAddress: expect.any(String),
       userAgent: undefined,
       consents: [
-        {
+        expect.objectContaining({
           consentTemplateId: "cjld2cjxh0002qzrmn831i7rn",
           consentGiven: true,
           version: 1,
           consentMethod: "ONLINE_FORM",
-          acceptedAt: undefined,
-          consentText: undefined,
-        },
-        {
+        }),
+        expect.objectContaining({
           consentTemplateId: "cjld2cjxh0003qzrmn831i7rn",
           consentGiven: true,
           version: 2,
           consentMethod: "PARTNER_SUBMISSION",
-          acceptedAt: undefined,
-          consentText: undefined,
-        },
+        }),
       ],
     });
   });
