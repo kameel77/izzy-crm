@@ -11,7 +11,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "test": "vitest",
     "prisma:migrate": "prisma migrate deploy --schema ../../prisma/schema.prisma",
-    "prisma:generate": "cross-env DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder prisma generate --schema ../../prisma/schema.prisma",
+    "prisma:generate": "cross-env PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder prisma generate --schema ../../prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema ../../prisma/schema.prisma",
     "prisma:seed": "tsx ../../prisma/seed.ts"
   },
