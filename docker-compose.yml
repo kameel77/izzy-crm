@@ -34,7 +34,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - DATABASE_URL=${DATABASE_URL:-postgresql://izzy:izzy@postgres:5432/izzy}
+      - DATABASE_URL=${SERVER_DATABASE_URL:-postgresql://izzy:izzy@postgres:5432/izzy}
       - JWT_SECRET=${JWT_SECRET:-change-me-dev-secret}
     depends_on:
       - postgres

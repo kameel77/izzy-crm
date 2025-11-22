@@ -907,6 +907,34 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                         </div>
                       )}
                       <div style={{ whiteSpace: "pre-wrap" }}>{note.content}</div>
+                      {note.type === "EMAIL_SENT" && note.metadata?.links && Array.isArray(note.metadata.links) && note.metadata.links.length > 0 && (
+                        <div style={{ marginTop: "0.5rem" }}>
+                          <div style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.25rem" }}>Links:</div>
+                          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                            {note.metadata.links.map((link, i) => {
+                              let title = link;
+                              try {
+                                const url = new URL(link);
+                                const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
+                                if (match) {
+                                  const make = match[1];
+                                  const model = match[2].replace(/-/g, " ");
+                                  title = `${make} ${model}`;
+                                }
+                              } catch (e) {
+                                // ignore
+                              }
+                              return (
+                                <li key={i} style={{ marginBottom: "0.25rem" }}>
+                                  <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>
+                                    {title}
+                                  </a>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
                     </>
                   ) : (
                     note.content

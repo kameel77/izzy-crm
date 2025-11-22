@@ -35,11 +35,34 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
             }
         });
 
+        // Helper to format link title
+        const formatLinkTitle = (urlStr: string) => {
+            try {
+                const url = new URL(urlStr);
+                // Pattern: .../samochod/Make/Model/...
+                const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
+                if (match) {
+                    const make = match[1];
+                    const model = match[2].replace(/-/g, " ");
+                    return `${make} ${model}`;
+                }
+                return urlStr;
+            } catch (e) {
+                return urlStr;
+            }
+        };
+
         const linkList = trackedLinks.map((l: string) => `- ${l}`).join("\n");
         const fullMessage = `${message}\n\nLinks:\n${linkList}`;
-        const htmlMessage = `<p>${message.replace(/\n/g, "<br>")}</p><p>Links:<br>${trackedLinks
-            .map((l: string) => `<a href="${l}">${l}</a>`)
-            .join("<br>")}</p>`;
+
+        const htmlLinks = trackedLinks
+            .map((l: string) => {
+                const title = formatLinkTitle(l);
+                return `<a href="${l}">${title}</a>`;
+            })
+            .join("<br>");
+
+        const htmlMessage = `<p>${message.replace(/\n/g, "<br>")}</p><p>Links:<br>${htmlLinks}</p>`;
 
         await sendMail({
             to: lead.customerProfile.email,
@@ -52,7 +75,7 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
             data: {
                 leadId: id,
                 authorId: userId,
-                content: fullMessage,
+                content: message, // Save only the message content, links are in metadata
                 type: "EMAIL_SENT",
                 metadata: {
                     to: lead.customerProfile.email,
