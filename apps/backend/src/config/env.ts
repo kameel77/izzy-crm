@@ -59,9 +59,15 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+const corsOrigins = parsed.data.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean);
+const normalizedCorsOrigins = corsOrigins.length > 0 ? corsOrigins : ["*"];
+
 export const env = {
   ...parsed.data,
   port: Number(parsed.data.PORT) || 4000,
+  cors: {
+    origins: normalizedCorsOrigins,
+  },
   uploadDriver: parsed.data.UPLOAD_DRIVER,
   uploadDir: path.resolve(parsed.data.UPLOAD_DIR),
   uploadMaxBytes: parsed.data.UPLOAD_MAX_BYTES,

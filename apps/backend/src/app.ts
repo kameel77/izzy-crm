@@ -20,7 +20,20 @@ export const createApp = () => {
       },
     }),
   );
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  const corsOrigins = env.cors.origins;
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || corsOrigins.includes("*") || corsOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json({ limit: "1mb" }));
   app.use((_, res, next) => {
     res.setHeader("Cache-Control", "no-store");
