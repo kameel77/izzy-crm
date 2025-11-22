@@ -24,7 +24,13 @@ export const createApp = () => {
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || corsOrigins.includes("*") || corsOrigins.includes(origin)) {
+        if (!origin || corsOrigins.includes("*")) {
+          callback(null, true);
+          return;
+        }
+
+        const normalizedOrigin = origin.replace(/\/$/, "").toLowerCase();
+        if (corsOrigins.includes(normalizedOrigin)) {
           callback(null, true);
           return;
         }

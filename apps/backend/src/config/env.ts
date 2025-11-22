@@ -59,7 +59,9 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-const corsOrigins = parsed.data.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean);
+const corsOrigins = parsed.data.CORS_ORIGIN.split(",")
+  .map((origin) => origin.trim().replace(/\/$/, "").toLowerCase())
+  .filter(Boolean);
 const normalizedCorsOrigins = corsOrigins.length > 0 ? corsOrigins : ["*"];
 
 export const env = {
