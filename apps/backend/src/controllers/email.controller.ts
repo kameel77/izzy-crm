@@ -92,46 +92,51 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
     }
 };
 
+export const processIncomingEmail = async (from: string, subject: string, text: string, html?: string) => {
+    // Extract email address from "Name <email@example.com>" format if necessary
+    const emailMatch = from.match(/<(.+)>/);
+    const senderEmail = emailMatch ? emailMatch[1] : from;
+
+    const customerProfile = await prisma.customerProfile.findFirst({
+        where: { email: senderEmail },
+        include: { lead: true },
+    });
+
+    if (!customerProfile) {
+        console.warn(`Received email from unknown sender: ${senderEmail}`);
+        return { success: false, message: "Unknown sender" };
+    }
+
+    await prisma.leadNote.create({
+        data: {
+            leadId: customerProfile.leadId,
+            content: text || "(No content)",
+            type: "EMAIL_RECEIVED",
+            metadata: {
+                from,
+                subject,
+                html,
+            },
+        },
+    });
+
+    return { success: true, message: "Email processed and attached to lead" };
+};
+
 export const handleIncomingEmailWebhook = async (req: Request, res: Response) => {
     // This assumes a generic webhook payload structure. 
     // Adjust based on the actual email provider (SendGrid, Mailgun, etc.)
     // For now, we assume a simple JSON payload: { from, subject, text, html }
 
-    const { from, subject, text } = req.body;
+    const { from, subject, text, html } = req.body;
 
     if (!from) {
         return res.status(400).json({ message: "Missing 'from' field" });
     }
 
     try {
-        // Extract email address from "Name <email@example.com>" format if necessary
-        const emailMatch = from.match(/<(.+)>/);
-        const senderEmail = emailMatch ? emailMatch[1] : from;
-
-        const customerProfile = await prisma.customerProfile.findFirst({
-            where: { email: senderEmail },
-            include: { lead: true },
-        });
-
-        if (!customerProfile) {
-            console.warn(`Received email from unknown sender: ${senderEmail}`);
-            // Optionally create a new lead or log it elsewhere
-            return res.status(200).json({ message: "Processed (unknown sender)" });
-        }
-
-        await prisma.leadNote.create({
-            data: {
-                leadId: customerProfile.leadId,
-                content: text || "(No content)",
-                type: "EMAIL_RECEIVED",
-                metadata: {
-                    from,
-                    subject,
-                },
-            },
-        });
-
-        res.json({ message: "Email processed and attached to lead" });
+        const result = await processIncomingEmail(from, subject, text, html);
+        res.status(200).json(result);
     } catch (error) {
         console.error("Failed to process incoming email", error);
         res.status(500).json({ message: "Internal server error" });
