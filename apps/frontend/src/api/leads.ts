@@ -63,10 +63,13 @@ export interface LeadDetail extends LeadSummary {
   } | null;
   financingApps: Array<{
     id: string;
+    leadId: string;
     bank: string;
     loanAmount?: string | null;
+    downPayment?: string | null;
     decision?: string | null;
     createdAt: string;
+    updatedAt: string;
   }>;
   documents: Array<{
     id: string;
@@ -148,6 +151,13 @@ export interface LeadNote {
   id: string;
   content: string;
   link?: string | null;
+  type: "MANUAL" | "EMAIL_SENT" | "EMAIL_RECEIVED";
+  metadata?: {
+    to?: string;
+    from?: string;
+    subject?: string;
+    links?: string[];
+  } | null;
   createdAt: string;
   author?: {
     id: string;
@@ -155,6 +165,17 @@ export interface LeadNote {
     email: string;
   } | null;
 }
+
+export const sendLeadEmail = (
+  token: string,
+  leadId: string,
+  payload: { message: string; links: string[] },
+) =>
+  apiFetch<LeadNote>(`/api/leads/${leadId}/email`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
 
 export interface LeadListFilters {
   page?: number;

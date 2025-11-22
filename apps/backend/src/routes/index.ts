@@ -9,6 +9,7 @@ import { consentRouter } from "./consent.routes.js";
 import { leadRouter } from "./lead.routes.js";
 import { partnerRouter } from "./partner.routes.js";
 import { userRouter } from "./user.routes.js";
+import { webhookRouter } from "./webhook.routes.js";
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use("/leads", authenticate, leadRouter);
 router.use("/partners", authenticate, partnerRouter);
 router.use("/application-forms", applicationFormRouter);
 router.use("/users", authenticate, userRouter);
+router.use("/webhooks", webhookRouter);
 
 export { router };

@@ -180,9 +180,9 @@ export const AdminConsentsPage: React.FC = () => {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Form Type</th>
-                  <th>Version</th>
-                  <th>Active</th>
-                  <th>Required</th>
+                  <th style={styles.metricHeader}>Version</th>
+                  <th style={styles.metricHeader}>Active</th>
+                  <th style={styles.metricHeader}>Required</th>
                   <th style={styles.actionsHeader}>Actions</th>
                 </tr>
               </thead>
@@ -192,9 +192,9 @@ export const AdminConsentsPage: React.FC = () => {
                     <td>{template.title}</td>
                     <td>{template.consentType}</td>
                     <td>{template.formType}</td>
-                    <td>{template.version}</td>
-                    <td>{template.isActive ? "Yes" : "No"}</td>
-                    <td>{template.isRequired ? "Yes" : "No"}</td>
+                    <td style={styles.metricCell}>{template.version}</td>
+                    <td style={styles.metricCell}>{template.isActive ? "Yes" : "No"}</td>
+                    <td style={styles.metricCell}>{template.isRequired ? "Yes" : "No"}</td>
                     <td style={styles.actionsCell}>
                       <div style={styles.actionGroup}>
                         <button
@@ -312,11 +312,22 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     borderCollapse: "collapse",
   },
+  metricHeader: {
+    textAlign: "center",
+    width: "90px",
+  },
+  metricCell: {
+    textAlign: "center",
+    fontVariantNumeric: "tabular-nums",
+  },
   actionsHeader: {
     textAlign: "right",
+    width: "170px",
+    paddingRight: "0.25rem",
   },
   actionsCell: {
     textAlign: "right",
+    width: "170px",
   },
   actionGroup: {
     display: "flex",

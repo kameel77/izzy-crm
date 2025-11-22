@@ -462,31 +462,31 @@ router.patch(
     const currentInput =
       typeof body.current === "object" && body.current !== null
         ? {
-            make: body.current.make?.trim() || undefined,
-            model: body.current.model?.trim() || undefined,
-            year: body.current.year,
-            mileage: body.current.mileage,
-            ownershipStatus: body.current.ownershipStatus?.trim() || undefined,
-          }
+          make: body.current.make?.trim() || undefined,
+          model: body.current.model?.trim() || undefined,
+          year: body.current.year,
+          mileage: body.current.mileage,
+          ownershipStatus: body.current.ownershipStatus?.trim() || undefined,
+        }
         : body.current;
 
     const desiredInput =
       typeof body.desired === "object" && body.desired !== null
         ? {
-            make: body.desired.make?.trim() || undefined,
-            model: body.desired.model?.trim() || undefined,
-            year: body.desired.year,
-            budget:
-              typeof body.desired.budget === "number" || body.desired.budget === null
-                ? body.desired.budget
-                : undefined,
-            preferences:
-              typeof body.desired.notes === "string"
-                ? body.desired.notes.trim().length
-                  ? { notes: body.desired.notes.trim() }
-                  : null
-                : undefined,
-          }
+          make: body.desired.make?.trim() || undefined,
+          model: body.desired.model?.trim() || undefined,
+          year: body.desired.year,
+          budget:
+            typeof body.desired.budget === "number" || body.desired.budget === null
+              ? body.desired.budget
+              : undefined,
+          preferences:
+            typeof body.desired.notes === "string"
+              ? body.desired.notes.trim().length
+                ? { notes: body.desired.notes.trim() }
+                : null
+              : undefined,
+        }
         : body.desired;
     const amountAvailableInput =
       typeof body.amountAvailable === "number" || body.amountAvailable === null
@@ -759,6 +759,14 @@ router.post(
 
     res.status(200).json({ message: "Lead anonymized successfully" });
   }),
+);
+
+import { sendLeadEmail } from "../controllers/email.controller.js";
+
+router.post(
+  "/:id/email",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(sendLeadEmail),
 );
 
 export { router as leadRouter };

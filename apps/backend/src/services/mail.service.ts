@@ -9,7 +9,7 @@ interface MailOptions {
   html?: string;
 }
 
-let transporter: Transporter | null = null;
+export let transporter: Transporter | null = null;
 
 const mailConfig = env.email;
 

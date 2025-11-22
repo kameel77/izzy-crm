@@ -20,6 +20,7 @@ import { useToasts } from "../providers/ToastProvider";
 import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
+import { SendEmailModal } from "./SendEmailModal";
 import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
 
 type UnlockHistoryEntry = {
@@ -170,6 +171,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isAnonymizeModalOpen, setIsAnonymizeModalOpen] = useState(false);
   const [anonymizeConfirmation, setAnonymizeConfirmation] = useState("");
   const [isAnonymizing, setIsAnonymizing] = useState(false);
+  const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false);
 
   const applicationForm = lead?.applicationForm;
 
@@ -393,9 +395,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       desiredBudgetRaw.length === 0
         ? null
         : parseNumberField(desiredBudgetRaw, "desired.budget", {
-            allowFloat: true,
-            min: 0,
-          });
+          allowFloat: true,
+          min: 0,
+        });
     const amountAvailableRaw = vehicleForm.desired.amountAvailable.trim();
     let amountAvailable: number | null | undefined;
     if (amountAvailableRaw.length === 0) {
@@ -450,10 +452,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     const hasDesiredValues =
       Boolean(
         desired.make ||
-          desired.model ||
-          typeof desired.year !== "undefined" ||
-          (desiredBudgetRaw.length > 0 && desiredBudget !== undefined) ||
-          (amountAvailableRaw.length > 0 && typeof amountAvailable !== "undefined"),
+        desired.model ||
+        typeof desired.year !== "undefined" ||
+        (desiredBudgetRaw.length > 0 && desiredBudget !== undefined) ||
+        (amountAvailableRaw.length > 0 && typeof amountAvailable !== "undefined"),
       ) ||
       desiredBudget === null ||
       amountAvailable === null ||
@@ -641,10 +643,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       const formatted =
         Number.isFinite(parsed) && parsed >= 0
           ? new Intl.NumberFormat("pl-PL", {
-              style: "currency",
-              currency: "PLN",
-              minimumFractionDigits: 0,
-            }).format(parsed)
+            style: "currency",
+            currency: "PLN",
+            minimumFractionDigits: 0,
+          }).format(parsed)
           : `${downPaymentRaw} PLN`;
       meta.push(`Amount Available: ${formatted}`);
     }
@@ -689,6 +691,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               <a href={`mailto:${lead.customerProfile.email}`} style={styles.contactLink}>
                 {lead.customerProfile.email}
               </a>
+              <button
+                type="button"
+                onClick={() => setIsSendEmailModalOpen(true)}
+                style={{ ...styles.ghostButton, marginLeft: "0.5rem", fontSize: "0.75rem" }}
+              >
+                ✉️ Send Email
+              </button>
             </p>
           ) : null}
           {formattedPhone ? (
@@ -709,35 +718,35 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
         <div style={styles.grid}>
           <InfoItem label="Partner" value={lead.partner?.name || lead.partnerId} />
-                  <InfoItem
-          label="Assigned To"
-          value={
-            isAdmin ? (
-              <div style={styles.assignmentControl}>
-                <select
-                  value={assignedUserId}
-                  onChange={handleAssignmentChange}
-                  style={{
-                    ...styles.assignmentSelect,
-                    background: assignedUserId ? "#ffffff" : "#fef3c7",
-                  }}
-                  disabled={isLoadingOperators || isUpdatingAssignment}
-                >
-                  <option value="">Do przypisania</option>
-                  {mergedOperatorOptions.map((operator) => (
-                    <option key={operator.id} value={operator.id}>
-                      {operator.email}
-                      {operator.fullName ? ` (${operator.fullName})` : ""}
-                    </option>
-                  ))}
-                </select>
-                {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
-              </div>
-            ) : (
-              assignedEmail
-            )
-          }
-        />
+          <InfoItem
+            label="Assigned To"
+            value={
+              isAdmin ? (
+                <div style={styles.assignmentControl}>
+                  <select
+                    value={assignedUserId}
+                    onChange={handleAssignmentChange}
+                    style={{
+                      ...styles.assignmentSelect,
+                      background: assignedUserId ? "#ffffff" : "#fef3c7",
+                    }}
+                    disabled={isLoadingOperators || isUpdatingAssignment}
+                  >
+                    <option value="">Do przypisania</option>
+                    {mergedOperatorOptions.map((operator) => (
+                      <option key={operator.id} value={operator.id}>
+                        {operator.email}
+                        {operator.fullName ? ` (${operator.fullName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
+                </div>
+              ) : (
+                assignedEmail
+              )
+            }
+          />
           <InfoItem
             label="Created"
             value={new Date(lead.leadCreatedAt).toLocaleString()}
@@ -872,7 +881,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             displayedNotes.map((note) => (
               <li key={note.id} style={styles.noteItem}>
                 <div style={styles.noteMeta}>
-                  <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    {note.type === "EMAIL_SENT" && <span title="Sent Email">📤</span>}
+                    {note.type === "EMAIL_RECEIVED" && <span title="Received Email">📥</span>}
+                    <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+                  </div>
                   <span>· {new Date(note.createdAt).toLocaleString()}</span>
                   {note.link ? (
                     <a
@@ -885,7 +898,20 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                     </a>
                   ) : null}
                 </div>
-                <p style={styles.noteContent}>{note.content}</p>
+                <div style={styles.noteContent}>
+                  {note.type === "EMAIL_SENT" || note.type === "EMAIL_RECEIVED" ? (
+                    <>
+                      {note.metadata?.subject && (
+                        <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
+                          {note.metadata.subject}
+                        </div>
+                      )}
+                      <div style={{ whiteSpace: "pre-wrap" }}>{note.content}</div>
+                    </>
+                  ) : (
+                    note.content
+                  )}
+                </div>
               </li>
             ))
           ) : (
@@ -1318,11 +1344,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                       <strong>
                         {entry.unlockedByUser?.fullName || entry.unlockedByUser?.email
                           ? [
-                              entry.unlockedByUser?.fullName,
-                              entry.unlockedByUser?.email ? `(${entry.unlockedByUser?.email})` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" ")
+                            entry.unlockedByUser?.fullName,
+                            entry.unlockedByUser?.email ? `(${entry.unlockedByUser?.email})` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")
                           : entry.unlockedBy || "Nieznany użytkownik"}
                       </strong>
                       <span>
@@ -1503,7 +1529,15 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </div>
         </div>
       </Modal>
-    </section>
+
+
+      <SendEmailModal
+        isOpen={isSendEmailModalOpen}
+        onClose={() => setIsSendEmailModalOpen(false)}
+        leadId={lead.id}
+        onSuccess={() => onRefresh()}
+      />
+    </section >
   );
 };
 

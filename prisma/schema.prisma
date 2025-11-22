@@ -78,14 +78,22 @@ model Lead {
 }
 
 model LeadNote {
-  id        String   @id @default(cuid())
-  lead      Lead     @relation(fields: [leadId], references: [id])
+  id        String       @id @default(cuid())
+  lead      Lead         @relation(fields: [leadId], references: [id])
   leadId    String
-  author    User?    @relation(fields: [authorId], references: [id])
+  author    User?        @relation(fields: [authorId], references: [id])
   authorId  String?
   content   String
   link      String?
-  createdAt DateTime @default(now())
+  type      LeadNoteType @default(MANUAL)
+  metadata  Json?
+  createdAt DateTime     @default(now())
+}
+
+enum LeadNoteType {
+  MANUAL
+  EMAIL_SENT
+  EMAIL_RECEIVED
 }
 
 model CustomerProfile {

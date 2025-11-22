@@ -1,0 +1,12 @@
+{
+  "name": "izzy-prisma-studio",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "prisma studio --schema ./schema.prisma --hostname 0.0.0.0 --port ${PORT:-5555}"
+  },
+  "dependencies": {
+    "prisma": "^6.18.0"
+  }
+}
