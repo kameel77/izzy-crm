@@ -7,11 +7,17 @@ export class ImapService {
     private config: imaps.ImapSimpleOptions;
 
     constructor() {
+        const { SMTP_HOST, SMTP_USER, SMTP_PASSWORD } = env;
+
+        if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) {
+            throw new Error("Missing SMTP environment variables required for IMAP connection");
+        }
+
         this.config = {
             imap: {
-                user: env.SMTP_USER,
-                password: env.SMTP_PASSWORD,
-                host: env.SMTP_HOST,
+                user: SMTP_USER,
+                password: SMTP_PASSWORD,
+                host: SMTP_HOST,
                 port: 993,
                 tls: true,
                 authTimeout: 3000,
