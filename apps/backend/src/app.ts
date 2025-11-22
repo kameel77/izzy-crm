@@ -42,6 +42,9 @@ export const createApp = () => {
   app.use("/uploads", express.static(path.resolve(env.uploadDir)));
 
   app.use("/api", router);
+  app.get("/", (_req, res) => {
+    res.json({ status: "ok" });
+  });
 
   app.use(errorHandler);
 
