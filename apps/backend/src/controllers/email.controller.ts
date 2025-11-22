@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../db.js";
+import { prisma } from "../lib/prisma.js";
 import { sendMail } from "../services/mail.service.js";
 import { env } from "../config/env.js";
 
