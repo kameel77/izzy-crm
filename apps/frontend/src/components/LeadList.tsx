@@ -47,7 +47,7 @@ export const LeadList: React.FC<LeadListProps> = ({
       <header style={styles.header}>
         <div style={styles.filters}>
           <input
-            placeholder="Search customer..."
+            placeholder="Wyszukaj klienta..."
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             style={styles.searchInput}
@@ -65,10 +65,10 @@ export const LeadList: React.FC<LeadListProps> = ({
             ))}
           </select>
           <button type="button" style={styles.refreshButton} onClick={onRefresh}>
-            Refresh
+            Odśwież
           </button>
           <button type="button" style={styles.createButton} onClick={onCreateLeadClick}>
-            Create lead
+            Dodaj nowy lead
           </button>
         </div>
         <span style={styles.count}>
@@ -80,11 +80,11 @@ export const LeadList: React.FC<LeadListProps> = ({
         <table style={styles.table}>
           <thead>
             <tr>
-              <th style={styles.tableHeadCell}>Customer</th>
+              <th style={styles.tableHeadCell}>Klient</th>
               <th style={styles.tableHeadCell}>Status</th>
-              <th style={styles.tableHeadCell}>Assigned</th>
+              <th style={styles.tableHeadCell}>Przypisany</th>
               <th style={styles.tableHeadCell}>Partner</th>
-              <th style={styles.tableHeadCell}>Created</th>
+              <th style={styles.tableHeadCell}>Dodany</th>
               <th aria-label="Lead actions" style={{ ...styles.tableHeadCell, textAlign: "right" }} />
             </tr>
           </thead>
@@ -116,7 +116,7 @@ export const LeadList: React.FC<LeadListProps> = ({
                     <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
                   </td>
                   <td style={styles.tableCell}>
-                    {lead.assignedUser?.fullName || <span style={styles.subtleText}>Unassigned</span>}
+                    {lead.assignedUser?.fullName || <span style={styles.subtleText}>Nieprzypisany</span>}
                   </td>
                   <td style={styles.tableCell}>{lead.partner?.name || lead.partnerId}</td>
                   <td style={styles.tableCell}>{new Date(lead.leadCreatedAt).toLocaleString()}</td>
@@ -129,7 +129,7 @@ export const LeadList: React.FC<LeadListProps> = ({
                         onMore(lead.id);
                       }}
                     >
-                      More
+                      Więcej
                     </button>
                   </td>
                 </tr>
@@ -152,10 +152,10 @@ export const LeadList: React.FC<LeadListProps> = ({
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1 || isLoading}
         >
-          Previous
+          Poprzednia
         </button>
         <span style={styles.paginationInfo}>
-          Page {page} of {totalPages}
+          Strona {page} z {totalPages}
         </span>
         <button
           type="button"
@@ -163,7 +163,7 @@ export const LeadList: React.FC<LeadListProps> = ({
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages || isLoading}
         >
-          Next
+          Następna
         </button>
       </div>
     </section>

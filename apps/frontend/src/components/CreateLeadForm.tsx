@@ -112,13 +112,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         templates = templates.sort((a, b) => a.title.localeCompare(b.title));
 
         setConsentTemplates(templates);
-        const initialState: Record<string, boolean> = {};
-        templates.forEach(t => {
-          if (t.isRequired) {
-            initialState[t.id] = true;
-          }
-        });
-        setConsentState(initialState);
+        setConsentState({});
       } catch (error) {
         setErrors(prev => ({ ...prev, consents: "Nie udało się wczytać wzorów zgód." }));
       } finally {

@@ -199,7 +199,9 @@ export const AdminConsentRecordsPage: React.FC = () => {
                         {record.lead.customerProfile ? `${record.lead.customerProfile.firstName} ${record.lead.customerProfile.lastName}` : record.lead.id}
                       </Link>
                     </td>
-                    <td style={styles.td}>{record.consentType}</td>
+                    <td style={styles.td}>
+                      <span style={styles.badgeOutline}>{record.consentType}</span>
+                    </td>
                     <td style={styles.td}>{record.consentTemplate.title} (v{record.consentTemplate.version})</td>
                     <td style={styles.td}>
                       {record.withdrawnAt ? (
@@ -210,7 +212,9 @@ export const AdminConsentRecordsPage: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td style={styles.td}>{record.consentMethod}</td>
+                    <td style={styles.td}>
+                      <span style={styles.badgeOutline}>{record.consentMethod}</span>
+                    </td>
                     <td style={styles.td}>{record.recordedBy?.fullName || record.recordedBy?.email || "Client"}</td>
                     <td style={styles.td}>{new Date(record.recordedAt).toLocaleString()}</td>
                     <td style={styles.td}>
@@ -345,6 +349,15 @@ const styles: Record<string, React.CSSProperties> = {
   badgeSuccess: { backgroundColor: "#dcfce7", color: "#166534", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   badgeDanger: { backgroundColor: "#fee2e2", color: "#991b1b", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
   badgeWithdrawn: { backgroundColor: "#e5e7eb", color: "#4b5563", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
+  badgeOutline: {
+    border: "1px solid #cbd5e1",
+    color: "#334155",
+    background: "transparent",
+    padding: "0.25rem 0.5rem",
+    borderRadius: "999px",
+    fontSize: "0.8rem",
+    display: "inline-block",
+  },
   modalContent: { display: "flex", flexDirection: "column", gap: "1rem" },
   modalGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" },
   infoLabel: { marginRight: "0.5rem", color: "#555" },
