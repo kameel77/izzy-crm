@@ -155,8 +155,14 @@ export interface LeadNote {
   metadata?: {
     to?: string;
     from?: string;
+    senderEmail?: string;
     subject?: string;
     links?: string[];
+    direction?: "INCOMING" | "OUTGOING";
+    html?: string;
+    messageId?: string | null;
+    replyToNoteId?: string | null;
+    quotedHtml?: string | null;
   } | null;
   createdAt: string;
   author?: {
@@ -169,7 +175,14 @@ export interface LeadNote {
 export const sendLeadEmail = (
   token: string,
   leadId: string,
-  payload: { message: string; links: string[] },
+  payload: {
+    message: string;
+    links: string[];
+    subject?: string;
+    replyToNoteId?: string;
+    quotedHtml?: string;
+    quotedText?: string;
+  },
 ) =>
   apiFetch<LeadNote>(`/api/leads/${leadId}/email`, {
     method: "POST",

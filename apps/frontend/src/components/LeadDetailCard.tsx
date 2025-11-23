@@ -172,6 +172,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [anonymizeConfirmation, setAnonymizeConfirmation] = useState("");
   const [isAnonymizing, setIsAnonymizing] = useState(false);
   const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false);
+  const [replyContext, setReplyContext] = useState<EmailReplyContext | null>(null);
+  const [expandedEmailNoteIds, setExpandedEmailNoteIds] = useState<Record<string, boolean>>({});
 
   const applicationForm = lead?.applicationForm;
 
@@ -212,6 +214,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     setNotes(lead?.notes ?? []);
     setAreNotesExpanded(false);
     setAreActivitiesExpanded(false);
+    setExpandedEmailNoteIds({});
   }, [lead]);
 
   useEffect(() => {
@@ -668,6 +671,90 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     return value.trim();
   };
 
+  const isEmailNote = (note: LeadNote) =>
+    note.type === "EMAIL_SENT" || note.type === "EMAIL_RECEIVED";
+
+  const getEmailDirection = (note: LeadNote): "INCOMING" | "OUTGOING" =>
+    note.metadata?.direction ?? (note.type === "EMAIL_RECEIVED" ? "INCOMING" : "OUTGOING");
+
+  const getEmailParticipantLabel = (note: LeadNote) => {
+    const direction = getEmailDirection(note);
+    if (direction === "INCOMING") {
+      return note.metadata?.from || note.metadata?.senderEmail || note.author?.fullName || "Unknown";
+    }
+    return note.metadata?.to || lead.customerProfile?.email || "Client";
+  };
+
+  const stripHtml = (value: string) => value.replace(/<[^>]+>/g, "");
+  const truncateText = (value: string, max = 400) =>
+    value.length <= max ? value : `${value.slice(0, max)}…`;
+
+  const renderEmailBody = (note: LeadNote, expanded: boolean) => {
+    const html = note.metadata?.html;
+    if (html) {
+      if (!expanded) {
+        return (
+          <div style={{ whiteSpace: "pre-wrap" }}>
+            {truncateText(stripHtml(html))}
+          </div>
+        );
+      }
+      return <div style={{ whiteSpace: "normal" }} dangerouslySetInnerHTML={{ __html: html }} />;
+    }
+    const content = note.content || "";
+    return (
+      <div style={{ whiteSpace: "pre-wrap" }}>
+        {expanded ? content : truncateText(content)}
+      </div>
+    );
+  };
+
+  const shouldAllowEmailToggle = (note: LeadNote) => {
+    if (note.metadata?.html) {
+      return stripHtml(note.metadata.html).length > 300;
+    }
+    return (note.content?.length ?? 0) > 300;
+  };
+
+  const buildReplyContext = (note: LeadNote): EmailReplyContext => {
+    const baseSubject = note.metadata?.subject || "Information from Izzy CRM";
+    const normalizedSubject = baseSubject.toLowerCase().startsWith("re:")
+      ? baseSubject
+      : `Re: ${baseSubject}`;
+    const sourceHtml = note.metadata?.html || `<p>${note.content.replace(/\n/g, "<br>")}</p>`;
+    const quotedHtml = `<blockquote style="border-left:2px solid #e5e7eb;padding-left:12px;color:#4b5563;">${sourceHtml}</blockquote>`;
+    const quotedText = note.content
+      ? note.content
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n")
+      : "";
+
+    return {
+      noteId: note.id,
+      subject: normalizedSubject,
+      quotedHtml,
+      quotedText,
+    };
+  };
+
+  const toggleEmailBody = (noteId: string) => {
+    setExpandedEmailNoteIds((prev) => ({
+      ...prev,
+      [noteId]: !prev[noteId],
+    }));
+  };
+
+  const handleReplyToNote = (note: LeadNote) => {
+    setReplyContext(buildReplyContext(note));
+    setIsSendEmailModalOpen(true);
+  };
+
+  const handleComposeEmail = () => {
+    setReplyContext(null);
+    setIsSendEmailModalOpen(true);
+  };
+
   const displayedNotes = areNotesExpanded ? notes : notes.slice(0, 3);
   const canToggleNotes = notes.length > 3;
   const auditLogs = lead.auditLogs || [];
@@ -693,7 +780,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               </a>
               <button
                 type="button"
-                onClick={() => setIsSendEmailModalOpen(true)}
+                onClick={handleComposeEmail}
                 style={{ ...styles.ghostButton, marginLeft: "0.5rem", fontSize: "0.75rem" }}
               >
                 ✉️ Send Email
@@ -878,70 +965,127 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </div>
         <ul style={styles.noteList}>
           {displayedNotes.length ? (
-            displayedNotes.map((note) => (
-              <li key={note.id} style={styles.noteItem}>
-                <div style={styles.noteMeta}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    {note.type === "EMAIL_SENT" && <span title="Sent Email">📤</span>}
-                    {note.type === "EMAIL_RECEIVED" && <span title="Received Email">📥</span>}
-                    <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+            displayedNotes.map((note) => {
+              const emailNote = isEmailNote(note);
+              const direction = emailNote ? getEmailDirection(note) : null;
+              const isExpanded = Boolean(expandedEmailNoteIds[note.id]);
+              const allowToggle = emailNote ? shouldAllowEmailToggle(note) : false;
+
+              return (
+                <li key={note.id} style={styles.noteItem}>
+                  <div style={styles.noteMeta}>
+                    <div style={styles.noteMetaLeft}>
+                      {emailNote ? (
+                        <>
+                          <span
+                            style={{
+                              ...styles.emailIcon,
+                              backgroundColor: direction === "INCOMING" ? "#e0f2fe" : "#fee2e2",
+                            }}
+                            title={direction === "INCOMING" ? "Incoming email" : "Outgoing email"}
+                          >
+                            {direction === "INCOMING" ? "📥" : "📤"}
+                          </span>
+                          <span
+                            style={{
+                              ...styles.emailDirectionBadge,
+                              color: direction === "INCOMING" ? "#0369a1" : "#b91c1c",
+                              backgroundColor: direction === "INCOMING" ? "#e0f2fe" : "#fee2e2",
+                            }}
+                          >
+                            {direction === "INCOMING" ? "Incoming" : "Outgoing"}
+                          </span>
+                          <span style={styles.emailAddress}>{getEmailParticipantLabel(note)}</span>
+                        </>
+                      ) : (
+                        <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+                      )}
+                    </div>
+                    <div style={styles.noteMetaRight}>
+                      <span>{new Date(note.createdAt).toLocaleString()}</span>
+                      {!emailNote && note.link ? (
+                        <a
+                          href={note.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={styles.noteLink}
+                        >
+                          Link
+                        </a>
+                      ) : null}
+                    </div>
                   </div>
-                  <span>· {new Date(note.createdAt).toLocaleString()}</span>
-                  {note.link ? (
-                    <a
-                      href={note.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.noteLink}
-                    >
-                      Link
-                    </a>
-                  ) : null}
-                </div>
-                <div style={styles.noteContent}>
-                  {note.type === "EMAIL_SENT" || note.type === "EMAIL_RECEIVED" ? (
-                    <>
-                      {note.metadata?.subject && (
-                        <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                          {note.metadata.subject}
-                        </div>
-                      )}
-                      <div style={{ whiteSpace: "pre-wrap" }}>{note.content}</div>
-                      {note.type === "EMAIL_SENT" && note.metadata?.links && Array.isArray(note.metadata.links) && note.metadata.links.length > 0 && (
-                        <div style={{ marginTop: "0.5rem" }}>
-                          <div style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.25rem" }}>Links:</div>
-                          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                            {note.metadata.links.map((link, i) => {
-                              let title = link;
-                              try {
-                                const url = new URL(link);
-                                const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
-                                if (match) {
-                                  const make = match[1];
-                                  const model = match[2].replace(/-/g, " ");
-                                  title = `${make} ${model}`;
+                  <div style={styles.noteContent}>
+                    {emailNote ? (
+                      <>
+                        {note.metadata?.subject ? (
+                          <div style={styles.emailSubject}>{note.metadata.subject}</div>
+                        ) : null}
+                        {renderEmailBody(note, isExpanded)}
+                        {note.type === "EMAIL_SENT" &&
+                        note.metadata?.links &&
+                        Array.isArray(note.metadata.links) &&
+                        note.metadata.links.length > 0 ? (
+                          <div style={{ marginTop: "0.5rem" }}>
+                            <div style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.25rem" }}>
+                              Links:
+                            </div>
+                            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                              {note.metadata.links.map((link, i) => {
+                                let title = link;
+                                try {
+                                  const url = new URL(link);
+                                  const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
+                                  if (match) {
+                                    const make = match[1];
+                                    const model = match[2].replace(/-/g, " ");
+                                    title = `${make} ${model}`;
+                                  }
+                                } catch {
+                                  // ignore malformed URLs
                                 }
-                              } catch (e) {
-                                // ignore
-                              }
-                              return (
-                                <li key={i} style={{ marginBottom: "0.25rem" }}>
-                                  <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>
-                                    {title}
-                                  </a>
-                                </li>
-                              );
-                            })}
-                          </ul>
+                                return (
+                                  <li key={i} style={{ marginBottom: "0.25rem" }}>
+                                    <a
+                                      href={link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ color: "#2563eb", textDecoration: "underline" }}
+                                    >
+                                      {title}
+                                    </a>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        ) : null}
+                        <div style={styles.emailActions}>
+                          <button
+                            type="button"
+                            style={styles.emailActionButton}
+                            onClick={() => handleReplyToNote(note)}
+                          >
+                            Reply
+                          </button>
+                          {allowToggle ? (
+                            <button
+                              type="button"
+                              style={styles.emailActionButton}
+                              onClick={() => toggleEmailBody(note.id)}
+                            >
+                              {isExpanded ? "Zwiń" : "Rozwiń"}
+                            </button>
+                          ) : null}
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    note.content
-                  )}
-                </div>
-              </li>
-            ))
+                      </>
+                    ) : (
+                      <div style={{ whiteSpace: "pre-wrap" }}>{note.content}</div>
+                    )}
+                  </div>
+                </li>
+              );
+            })
           ) : (
             <li style={styles.noteEmpty}>No notes yet.</li>
           )}
@@ -1561,9 +1705,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
       <SendEmailModal
         isOpen={isSendEmailModalOpen}
-        onClose={() => setIsSendEmailModalOpen(false)}
+        onClose={() => {
+          setIsSendEmailModalOpen(false);
+          setReplyContext(null);
+        }}
         leadId={lead.id}
         onSuccess={() => onRefresh()}
+        replyContext={replyContext}
       />
     </section >
   );
@@ -1876,10 +2024,23 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#475569",
     fontSize: "0.85rem",
   },
+  noteMetaLeft: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "0.35rem",
+    minWidth: 0,
+  },
+  noteMetaRight: {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    color: "#475569",
+  },
   noteContent: {
     margin: 0,
     color: "#0f172a",
-    whiteSpace: "pre-wrap",
     lineHeight: 1.5,
   },
   noteLink: {
@@ -1899,6 +2060,43 @@ const styles: Record<string, React.CSSProperties> = {
   noteEmpty: {
     color: "#64748b",
     fontStyle: "italic",
+  },
+  emailIcon: {
+    width: "1.75rem",
+    height: "1.75rem",
+    borderRadius: "999px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "1rem",
+  },
+  emailDirectionBadge: {
+    fontSize: "0.75rem",
+    fontWeight: 600,
+    borderRadius: "999px",
+    padding: "0.1rem 0.75rem",
+  },
+  emailAddress: {
+    fontWeight: 600,
+    color: "#0f172a",
+  },
+  emailSubject: {
+    fontWeight: 600,
+    marginBottom: "0.25rem",
+  },
+  emailActions: {
+    marginTop: "0.75rem",
+    display: "flex",
+    gap: "0.5rem",
+  },
+  emailActionButton: {
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    background: "#fff",
+    color: "#1f2937",
+    fontSize: "0.8rem",
+    padding: "0.25rem 0.75rem",
+    cursor: "pointer",
   },
   assignmentControl: {
     display: "flex",
@@ -2095,4 +2293,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "4px",
     border: "1px solid #fca5a5",
   },
+};
+
+type EmailReplyContext = {
+  noteId: string;
+  subject: string;
+  quotedHtml: string;
+  quotedText: string;
 };

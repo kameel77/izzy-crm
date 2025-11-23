@@ -26,6 +26,28 @@ export class ImapService {
     }
 
     public async fetchUnreadEmails() {
+        const resolveAddressText = (address: unknown): string | undefined => {
+            if (!address) return undefined;
+            if (Array.isArray(address)) {
+                const combined = address
+                    .map((entry) => resolveAddressText(entry))
+                    .filter((value): value is string => Boolean(value))
+                    .join(", ");
+                return combined || undefined;
+            }
+            if (typeof address === "object" && address !== null) {
+                const text = "text" in address ? (address as { text?: string }).text : undefined;
+                const addr = "address" in address ? (address as { address?: string }).address : undefined;
+                if (text || addr) {
+                    return text || addr || undefined;
+                }
+                if ("value" in address) {
+                    return resolveAddressText((address as { value?: unknown }).value);
+                }
+            }
+            return undefined;
+        };
+
         try {
             const connection = await imaps.connect(this.config);
             await connection.openBox("INBOX");
@@ -46,14 +68,23 @@ export class ImapService {
                 if (all) {
                     const parsed = await simpleParser(idHeader + all.body);
 
-                    const from = parsed.from?.text || "";
+                    const from = resolveAddressText(parsed.from) || "";
                     const subject = parsed.subject || "(No Subject)";
                     const text = parsed.text || "";
-                    const html = parsed.html || undefined;
+                    const html = typeof parsed.html === "string" ? parsed.html : undefined;
+                    const messageId = parsed.messageId || undefined;
+                    const to = resolveAddressText(parsed.to);
 
                     if (from) {
                         console.log(`Processing email from: ${from}`);
-                        await processIncomingEmail(from, subject, text, html as string);
+                        await processIncomingEmail({
+                            from,
+                            subject,
+                            text,
+                            html,
+                            messageId,
+                            to,
+                        });
 
                         // Mark as seen only after successful processing
                         await connection.addFlags(id, "SEEN");
