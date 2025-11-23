@@ -233,7 +233,7 @@ export const DashboardPage: React.FC = () => {
       <Modal
         isOpen={isCreateLeadOpen}
         onClose={() => setIsCreateLeadOpen(false)}
-        title="Quick lead capture"
+        title="Formularz wprowadzania danych leada"
       >
         <CreateLeadForm
           onCreate={handleCreateLead}

@@ -119,7 +119,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         });
         setConsentState(initialState);
       } catch (error) {
-        setErrors(prev => ({ ...prev, consents: "Failed to load consent templates." }));
+        setErrors(prev => ({ ...prev, consents: "Nie udało się wczytać wzorów zgód." }));
       } finally {
         setConsentsLoading(false);
       }
@@ -144,7 +144,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         }
       } catch (error) {
         if (!cancelled) {
-          setPartnersError("Failed to load partners.");
+          setPartnersError("Nie udało się wczytać partnerów.");
         }
       } finally {
         if (!cancelled) {
@@ -173,25 +173,25 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (email && !emailRegex.test(email)) {
-      newErrors.email = "Invalid email format (e.g., user@example.com).";
+      newErrors.email = "Nieprawidłowy email (np. user@example.com).";
     }
     if (phone && !phoneRegex.test(phone.replace(/[\s-]+/g, ""))) {
-      newErrors.phone = "Invalid phone number format (e.g., +48 123 456 789).";
+      newErrors.phone = "Nieprawidłowy numer telefonu (np. +48 123 456 789).";
     }
     const allRequiredConsentsGiven = consentTemplates
       .filter(t => t.isRequired)
       .every(t => consentState[t.id]);
     if (!allRequiredConsentsGiven) {
-      newErrors.consents = "All required consents must be accepted.";
+      newErrors.consents = "Wymagane zgody muszą być zaznaczone.";
     }
     const parsedDownPayment = Number(downPayment);
     if (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0) {
-      newErrors.downPayment = "Amount available must be zero or a positive number.";
+      newErrors.downPayment = "Dostępna kwota musi być liczbą nieujemną.";
     }
     if (desiredBudget) {
       const parsedBudget = Number(desiredBudget);
       if (!Number.isFinite(parsedBudget) || parsedBudget < 0) {
-        newErrors.desiredBudget = "Budget must be zero or a positive number.";
+        newErrors.desiredBudget = "Budżet musi być liczbą nieujemną.";
       }
     }
     setErrors(newErrors);
@@ -269,7 +269,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       setCity("");
       setVoivodeship("");
     } catch (err) {
-      setErrors({ form: err instanceof Error ? err.message : "Failed to create lead" });
+      setErrors({ form: err instanceof Error ? err.message : "Nie udało się utworzyć leada" });
     } finally {
       setLoading(false);
     }
@@ -277,10 +277,10 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      <h3 style={styles.title}>Quick Lead Capture</h3>
+      <h3 style={styles.title}>Wprowadź dane klienta</h3>
       <div style={styles.row}>
         <label style={styles.label}>
-          First name
+          Imię
           <input
             style={styles.input}
             value={firstName}
@@ -289,7 +289,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           />
         </label>
         <label style={styles.label}>
-          Last name
+          Nazwisko
           <input
             style={styles.input}
             value={lastName}
@@ -307,7 +307,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                 onChange={(event) => setPartnerId(event.target.value)}
                 disabled={partnersLoading}
               >
-                <option value="">Select partner</option>
+                <option value="">Wybierz partnera</option>
                 {partners.map((partner) => (
                   <option key={partner.id} value={partner.id}>
                     {partner.name}
@@ -321,7 +321,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
               style={{ ...styles.input, background: "#f3f4f6" }}
               value={resolvedPartnerName}
               readOnly
-              placeholder="Partner name"
+              placeholder="Nazwa partnera"
             />
           )}
         </label>
@@ -339,7 +339,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           {errors.email && <span style={styles.fieldError}>{errors.email}</span>}
         </label>
         <label style={styles.label}>
-          Phone
+          Telefon
           <input
             style={styles.input}
             value={phone}
@@ -391,7 +391,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           </select>
         </label>
         <label style={styles.label}>
-          Amount Available (PLN)
+          Dostępna kwota (PLN)
           <input
             style={styles.input}
             value={downPayment}
@@ -406,27 +406,27 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       </div>
       <div style={styles.row}>
         <label style={styles.label}>
-          Current Vehicle Make
+          Marka (obecny pojazd)
           <input
             style={styles.input}
             value={currentMake}
             onChange={(event) => setCurrentMake(event.target.value)}
-            placeholder="e.g. Toyota"
+            placeholder="np. Toyota"
           />
         </label>
         <label style={styles.label}>
-          Current Vehicle Model
+          Model (obecny pojazd)
           <input
             style={styles.input}
             value={currentModel}
             onChange={(event) => setCurrentModel(event.target.value)}
-            placeholder="e.g. Corolla"
+            placeholder="np. Corolla"
           />
         </label>
       </div>
       <div style={styles.row}>
         <label style={styles.label}>
-          Current Vehicle Year
+          Rok produkcji (obecny pojazd)
           <input
             style={styles.input}
             value={currentYear}
@@ -437,7 +437,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           />
         </label>
         <label style={styles.label}>
-          Current Vehicle Mileage (km)
+          Przebieg [km] (obecny pojazd)
           <input
             style={styles.input}
             value={currentMileage}
@@ -450,27 +450,27 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       </div>
       <div style={styles.row}>
         <label style={styles.label}>
-          Desired Vehicle Make
+          Marka (nowy pojazd)
           <input
             style={styles.input}
             value={desiredMake}
             onChange={(event) => setDesiredMake(event.target.value)}
-            placeholder="e.g. Skoda"
+            placeholder="np. Skoda"
           />
         </label>
         <label style={styles.label}>
-          Desired Vehicle Model
+          Model (nowy pojazd)
           <input
             style={styles.input}
             value={desiredModel}
             onChange={(event) => setDesiredModel(event.target.value)}
-            placeholder="e.g. Octavia"
+            placeholder="np. Octavia"
           />
         </label>
       </div>
       <div style={styles.row}>
         <label style={styles.label}>
-          Desired Vehicle Year
+          Rok produkcji (nowy pojazd)
           <input
             style={styles.input}
             value={desiredYear}
@@ -481,7 +481,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           />
         </label>
         <label style={styles.label}>
-          Desired Vehicle Notes
+          Uwagi (nowy pojazd)
           <input
             style={styles.input}
             value={desiredNotes}
@@ -504,9 +504,9 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         </label>
       </div>
       <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Consents</legend>
+        <legend style={styles.legend}>Zgody</legend>
         {consentsLoading ? (
-          <p>Loading consents...</p>
+          <p>Ładowanie zgód...</p>
         ) : (
           consentTemplates.map(consent => (
             <div key={consent.id}>
@@ -526,7 +526,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
       {errors.form ? <div style={styles.error}>{errors.form}</div> : null}
       <button type="submit" style={styles.submit} disabled={loading || consentsLoading}>
-        {loading ? "Creating..." : "Create Lead"}
+        {loading ? "Tworzenie..." : "Utwórz lead"}
       </button>
     </form>
   );
