@@ -680,9 +680,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const getEmailParticipantLabel = (note: LeadNote) => {
     const direction = getEmailDirection(note);
     if (direction === "INCOMING") {
-      return note.metadata?.from || note.metadata?.senderEmail || note.author?.fullName || "Unknown";
+      return note.metadata?.senderEmail || note.metadata?.from || note.author?.fullName || "Unknown";
     }
-    return note.metadata?.to || lead.customerProfile?.email || "Client";
+    return note.metadata?.from || note.author?.email || lead.customerProfile?.email || "Operator";
   };
 
   const stripHtml = (value: string) => value.replace(/<[^>]+>/g, "");

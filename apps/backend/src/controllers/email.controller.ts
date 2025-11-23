@@ -108,6 +108,7 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
                 content: message, // Save only the message content, links are in metadata
                 type: "EMAIL_SENT",
                 metadata: {
+                    from: req.user?.email ?? null,
                     to: lead.customerProfile.email,
                     subject: subjectLine,
                     links: trackedLinks,
