@@ -17,6 +17,12 @@ export interface LeadCustomerProfile {
   lastName: string;
   email?: string | null;
   phone?: string | null;
+  address?: {
+    city?: string | null;
+    voivodeship?: string | null;
+    customerType?: string | null;
+    [key: string]: unknown;
+  } | null;
 }
 
 export interface LeadSummary {
@@ -232,6 +238,9 @@ export interface CreateLeadPayload {
     lastName: string;
     email?: string;
     phone?: string;
+    customerType?: string;
+    city?: string;
+    voivodeship?: string;
   };
   currentVehicle?: {
     make?: string;

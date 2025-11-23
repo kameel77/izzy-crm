@@ -85,6 +85,28 @@ const createLeadSchema = z.object({
     email: z.string().email().optional(),
     phone: z.string().optional(),
     dateOfBirth: z.string().optional(),
+    customerType: z.enum(["osoba fizyczna", "JDG", "spółka"]).optional(),
+    city: z.string().optional(),
+    voivodeship: z
+      .enum([
+        "dolnośląskie",
+        "kujawsko-pomorskie",
+        "lubelskie",
+        "lubuskie",
+        "łódzkie",
+        "małopolskie",
+        "mazowieckie",
+        "opolskie",
+        "podkarpackie",
+        "podlaskie",
+        "pomorskie",
+        "śląskie",
+        "świętokrzyskie",
+        "warmińsko-mazurskie",
+        "wielkopolskie",
+        "zachodniopomorskie",
+      ])
+      .optional(),
   }),
   currentVehicle: z
     .object({

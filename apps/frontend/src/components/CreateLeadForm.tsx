@@ -26,6 +26,25 @@ interface CreateLeadFormProps {
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^(?:\+?48)?(?:[ -]?)?(?:\d[ -]?){9}$/;
+const customerTypes = ["osoba fizyczna", "JDG", "spółka"] as const;
+const voivodeships = [
+  "dolnośląskie",
+  "kujawsko-pomorskie",
+  "lubelskie",
+  "lubuskie",
+  "łódzkie",
+  "małopolskie",
+  "mazowieckie",
+  "opolskie",
+  "podkarpackie",
+  "podlaskie",
+  "pomorskie",
+  "śląskie",
+  "świętokrzyskie",
+  "warmińsko-mazurskie",
+  "wielkopolskie",
+  "zachodniopomorskie",
+] as const;
 
 export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   onCreate,
@@ -36,6 +55,9 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [customerType, setCustomerType] = useState("");
+  const [city, setCity] = useState("");
+  const [voivodeship, setVoivodeship] = useState("");
   const [downPayment, setDownPayment] = useState("");
   const [currentMake, setCurrentMake] = useState("");
   const [currentModel, setCurrentModel] = useState("");
@@ -45,6 +67,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [desiredModel, setDesiredModel] = useState("");
   const [desiredYear, setDesiredYear] = useState("");
   const [desiredNotes, setDesiredNotes] = useState("");
+  const [desiredBudget, setDesiredBudget] = useState("");
   const [partnerId, setPartnerId] = useState(defaultPartnerId ?? "");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -165,6 +188,12 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     if (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0) {
       newErrors.downPayment = "Amount available must be zero or a positive number.";
     }
+    if (desiredBudget) {
+      const parsedBudget = Number(desiredBudget);
+      if (!Number.isFinite(parsedBudget) || parsedBudget < 0) {
+        newErrors.desiredBudget = "Budget must be zero or a positive number.";
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -177,13 +206,18 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
     setLoading(true);
     try {
+      const sanitizedPhone = phone.replace(/[\s-]+/g, "") || undefined;
+      const parsedBudget = desiredBudget === "" ? undefined : Number(desiredBudget);
       const payload: Parameters<typeof onCreate>[0] = {
         partnerId: partnerId || undefined,
         customer: {
           firstName,
           lastName,
           email: email || undefined,
-          phone: phone.replace(/[\s-]+/g, "") || undefined,
+          phone: sanitizedPhone,
+          customerType: customerType || undefined,
+          city: city || undefined,
+          voivodeship: voivodeship || undefined,
         },
         financing: {
           downPayment: Number(downPayment),
@@ -204,11 +238,13 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         };
       }
 
-      if (desiredMake || desiredModel || desiredYear || desiredNotes) {
+      if (desiredMake || desiredModel || desiredYear || desiredNotes || parsedBudget !== undefined) {
         payload.desiredVehicle = {
           make: desiredMake || undefined,
           model: desiredModel || undefined,
           year: desiredYear ? Number(desiredYear) : undefined,
+          budget: parsedBudget,
+          preferences: desiredNotes ? { notes: desiredNotes } : undefined,
         };
       }
 
@@ -228,6 +264,10 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       setDesiredModel("");
       setDesiredYear("");
       setDesiredNotes("");
+      setDesiredBudget("");
+      setCustomerType("");
+      setCity("");
+      setVoivodeship("");
     } catch (err) {
       setErrors({ form: err instanceof Error ? err.message : "Failed to create lead" });
     } finally {
@@ -308,6 +348,47 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             onBlur={validate}
           />
           {errors.phone && <span style={styles.fieldError}>{errors.phone}</span>}
+        </label>
+        <label style={styles.label}>
+          Rodzaj klienta
+          <select
+            style={styles.input}
+            value={customerType}
+            onChange={(event) => setCustomerType(event.target.value)}
+          >
+            <option value="">Wybierz</option>
+            {customerTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          Miasto
+          <input
+            style={styles.input}
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            placeholder="np. Warszawa"
+          />
+        </label>
+        <label style={styles.label}>
+          Województwo
+          <select
+            style={styles.input}
+            value={voivodeship}
+            onChange={(event) => setVoivodeship(event.target.value)}
+          >
+            <option value="">Wybierz</option>
+            {voivodeships.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
         </label>
         <label style={styles.label}>
           Amount Available (PLN)
@@ -407,6 +488,19 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             onChange={(event) => setDesiredNotes(event.target.value)}
             placeholder="np. rodzinne kombi"
           />
+        </label>
+        <label style={styles.label}>
+          Budżet (PLN)
+          <input
+            style={styles.input}
+            value={desiredBudget}
+            type="number"
+            min="0"
+            step="0.01"
+            onChange={(event) => setDesiredBudget(event.target.value)}
+            onBlur={validate}
+          />
+          {errors.desiredBudget && <span style={styles.fieldError}>{errors.desiredBudget}</span>}
         </label>
       </div>
       <fieldset style={styles.fieldset}>

@@ -181,6 +181,9 @@ export interface CreateLeadInput {
     email?: string;
     phone?: string;
     dateOfBirth?: string;
+    customerType?: string;
+    city?: string;
+    voivodeship?: string;
   };
   currentVehicle?: {
     make?: string;
@@ -211,8 +214,23 @@ export interface CreateLeadInput {
   }>;
 }
 
+const buildCustomerAddress = (customer: CreateLeadInput["customer"]) => {
+  const address = {
+    city: customer.city?.trim(),
+    voivodeship: customer.voivodeship,
+    customerType: customer.customerType,
+  };
+
+  const filtered = Object.fromEntries(
+    Object.entries(address).filter(([, value]) => value !== undefined && value !== ""),
+  );
+
+  return Object.keys(filtered).length ? filtered : undefined;
+};
+
 export const createLead = async (input: CreateLeadInput) => {
   try {
+    const customerAddress = buildCustomerAddress(input.customer);
     const lead = await prisma.$transaction(async (tx) => {
       const newLead = await tx.lead.create({
         data: {
@@ -230,6 +248,7 @@ export const createLead = async (input: CreateLeadInput) => {
               dateOfBirth: input.customer.dateOfBirth
                 ? new Date(input.customer.dateOfBirth)
                 : undefined,
+              address: customerAddress,
             },
           },
           vehicleCurrent: input.currentVehicle
