@@ -1,6 +1,9 @@
+import { UserStatus } from "@prisma/client";
+
 import { prisma } from "../lib/prisma.js";
-import { verifyPassword } from "../utils/password.js";
 import { signToken } from "../utils/jwt.js";
+import { generatePassword, hashPassword, verifyPassword } from "../utils/password.js";
+import { sendPasswordResetEmail } from "./mail.service.js";
 
 export const authenticateUser = async (email: string, password: string) => {
   const user = await prisma.user.findUnique({
@@ -53,4 +56,38 @@ export const authenticateUser = async (email: string, password: string) => {
       partner: user.partner,
     },
   };
+};
+
+export const requestPasswordReset = async (email: string) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, fullName: true },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const password = generatePassword();
+  const hashedPassword = await hashPassword(password);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      hashedPassword,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  try {
+    await sendPasswordResetEmail({
+      to: user.email,
+      fullName: user.fullName,
+      password,
+    });
+  } catch (error) {
+    console.error("[mail] Failed to send reset email", error);
+  }
+
+  return { userId: user.id };
 };

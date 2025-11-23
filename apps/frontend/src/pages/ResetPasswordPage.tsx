@@ -1,26 +1,24 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { ApiError } from "../api/client";
-import { useAuth } from "../hooks/useAuth";
+import { requestPasswordReset } from "../api/auth";
 
-export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
-  const navigate = useNavigate();
-
-  const [email, setEmail] = useState("operator@example.com");
-  const [password, setPassword] = useState("Operator123!");
+export const ResetPasswordPage: React.FC = () => {
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setSuccess(false);
     setIsSubmitting(true);
+
     try {
-      await login(email, password);
-      const redirectTo = "/dashboard";
-      navigate(redirectTo, { replace: true });
+      await requestPasswordReset(email);
+      setSuccess(true);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -36,8 +34,8 @@ export const LoginPage: React.FC = () => {
     <div style={styles.overlay}>
       <div style={styles.container}>
         <div style={styles.card}>
-          <h1 style={styles.title}>Izzy CRM</h1>
-          <p style={styles.subtitle}>Sign in to continue</p>
+          <h1 style={styles.title}>Zresetuj hasło</h1>
+          <p style={styles.subtitle}>Podaj adres e-mail konta, a wyślemy nowe hasło.</p>
           <form onSubmit={handleSubmit} style={styles.form}>
             <label style={styles.label}>
               Email
@@ -49,23 +47,18 @@ export const LoginPage: React.FC = () => {
                 required
               />
             </label>
-            <label style={styles.label}>
-              Password
-              <input
-                style={styles.input}
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
             {error ? <div style={styles.error}>{error}</div> : null}
+            {success ? (
+              <div style={styles.success}>
+                Jeśli konto istnieje, wysłaliśmy nowe hasło na podany adres e-mail.
+              </div>
+            ) : null}
             <button type="submit" style={styles.button} disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign In"}
+              {isSubmitting ? "Wysyłanie..." : "Wyślij"}
             </button>
           </form>
-          <Link to="/reset-password" style={styles.link}>
-            Zresetuj hasło
+          <Link to="/login" style={styles.link}>
+            Powrót do logowania
           </Link>
         </div>
       </div>
@@ -77,7 +70,7 @@ const styles: Record<string, React.CSSProperties> = {
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "radial-gradient(circle at 20% 20%, #e0e7ff, transparent 35%), radial-gradient(circle at 80% 0%, #c7d2fe, transparent 30%), #eef2ff",
+    background: "radial-gradient(circle at 20% 20%, #e0f2fe, transparent 35%), radial-gradient(circle at 80% 0%, #bfdbfe, transparent 30%), #eff6ff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -139,6 +132,12 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     background: "#fee2e2",
     color: "#b91c1c",
+    padding: "0.75rem",
+    borderRadius: 8,
+  },
+  success: {
+    background: "#ecfdf3",
+    color: "#166534",
     padding: "0.75rem",
     borderRadius: 8,
   },

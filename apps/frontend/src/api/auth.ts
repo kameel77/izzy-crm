@@ -18,3 +18,9 @@ export const loginRequest = (email: string, password: string) =>
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+
+export const requestPasswordReset = (email: string) =>
+  apiFetch<void>("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });

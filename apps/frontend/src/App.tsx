@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ClientConsentsPage } from "./pages/ClientConsentsPage";
 import { UserAdminPage } from "./pages/UserAdminPage";
 import { AppLayout } from "./components/AppLayout";
@@ -28,6 +29,10 @@ export const App: React.FC = () => {
       <Route
         path="/login"
         element={user ? <Navigate to="/leads" replace /> : <LoginPage />}
+      />
+      <Route
+        path="/reset-password"
+        element={user ? <Navigate to="/leads" replace /> : <ResetPasswordPage />}
       />
       <Route
         path="/leads/*"
