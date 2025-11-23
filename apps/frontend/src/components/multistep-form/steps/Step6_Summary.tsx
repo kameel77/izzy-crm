@@ -29,6 +29,7 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
   const { applicationFormId, leadId } = useParams<{ applicationFormId: string; leadId: string }>();
   const [templates, setTemplates] = useState<ConsentTemplateDto[]>([]);
   const [consentState, setConsentState] = useState<Record<string, boolean>>({});
+  const [consentOpen, setConsentOpen] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -95,6 +96,10 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
     setConsentState((prev) => ({ ...prev, [consentId]: isChecked }));
   };
 
+  const toggleConsentOpen = (consentId: string) => {
+    setConsentOpen((prev) => ({ ...prev, [consentId]: !prev[consentId] }));
+  };
+
   return (
     <div>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 6: Zgody i podsumowanie</h2>
@@ -117,16 +122,28 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
         {templates.map((consent) => {
           const hasError = submitAttempted && consent.isRequired && !consentState[consent.id];
           return (
-            <div key={consent.id} style={styles.field}>
-              <label style={hasError ? { ...styles.label, ...styles.errorLabel } : styles.label}>
-                <input
-                  type="checkbox"
-                  checked={consentState[consent.id] || false}
-                  onChange={(e) => handleConsentChange(consent.id, e.target.checked)}
-                />
-                {consent.content} {consent.isRequired && "*"}
-              </label>
-              {consent.helpText && <small>{consent.helpText}</small>}
+            <div key={consent.id} style={styles.consentItem}>
+              <div style={styles.consentHeader}>
+                <label style={hasError ? { ...styles.consentLabel, ...styles.errorLabel } : styles.consentLabel}>
+                  <input
+                    type="checkbox"
+                    checked={consentState[consent.id] || false}
+                    onChange={(e) => handleConsentChange(consent.id, e.target.checked)}
+                  />
+                  {consent.title || consent.content} {consent.isRequired && "*"}
+                </label>
+                <button
+                  type="button"
+                  style={styles.consentToggle}
+                  onClick={() => toggleConsentOpen(consent.id)}
+                >
+                  {consentOpen[consent.id] ? "Ukryj treść" : "Pokaż treść"}
+                </button>
+              </div>
+              {consent.helpText && <small style={styles.helpText}>{consent.helpText}</small>}
+              {consentOpen[consent.id] ? (
+                <div style={styles.consentContent}>{consent.content || "Brak treści zgody."}</div>
+              ) : null}
             </div>
           );
         })}
@@ -173,11 +190,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "0.5rem",
     marginBottom: "1rem",
   },
-  label: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-  },
   errorLabel: {
     color: "#ef4444",
     fontWeight: "bold",
@@ -195,5 +207,45 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "6px",
     padding: "0.5rem 0.75rem",
     fontSize: "0.9rem",
+  },
+  consentItem: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 8,
+    padding: "0.65rem 0.75rem",
+    marginBottom: "0.75rem",
+  },
+  consentHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "0.5rem",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  consentLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    fontSize: "0.95rem",
+  },
+  consentToggle: {
+    background: "transparent",
+    border: "1px solid #e5e7eb",
+    borderRadius: 6,
+    padding: "0.2rem 0.65rem",
+    fontSize: "0.9rem",
+    cursor: "pointer",
+  },
+  consentContent: {
+    marginTop: "0.5rem",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 6,
+    padding: "0.65rem",
+    whiteSpace: "pre-wrap",
+    fontSize: "0.92rem",
+  },
+  helpText: {
+    color: "#6b7280",
+    fontSize: "0.85rem",
   },
 };

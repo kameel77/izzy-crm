@@ -74,6 +74,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
   const [consentTemplates, setConsentTemplates] = useState<ConsentTemplateDto[]>([]);
   const [consentState, setConsentState] = useState<Record<string, boolean>>({});
+  const [consentOpen, setConsentOpen] = useState<Record<string, boolean>>({});
   const [consentsLoading, setConsentsLoading] = useState(true);
   const [partners, setPartners] = useState<PartnerSummary[]>([]);
   const [partnersLoading, setPartnersLoading] = useState(false);
@@ -168,6 +169,10 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
   const handleConsentChange = (consentId: string, isChecked: boolean) => {
     setConsentState(prev => ({ ...prev, [consentId]: isChecked }));
+  };
+
+  const toggleConsentOpen = (consentId: string) => {
+    setConsentOpen(prev => ({ ...prev, [consentId]: !prev[consentId] }));
   };
 
   const validate = () => {
@@ -509,15 +514,27 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           <p>Ładowanie zgód...</p>
         ) : (
           consentTemplates.map(consent => (
-            <div key={consent.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={consentState[consent.id] || false}
-                  onChange={e => handleConsentChange(consent.id, e.target.checked)}
-                />
-                {consent.title} {consent.isRequired && "*"}
-              </label>
+            <div key={consent.id} style={styles.consentItem}>
+              <div style={styles.consentHeader}>
+                <label style={styles.consentLabel}>
+                  <input
+                    type="checkbox"
+                    checked={consentState[consent.id] || false}
+                    onChange={e => handleConsentChange(consent.id, e.target.checked)}
+                  />
+                  {consent.title} {consent.isRequired && "*"}
+                </label>
+                <button
+                  type="button"
+                  style={styles.consentToggle}
+                  onClick={() => toggleConsentOpen(consent.id)}
+                >
+                  {consentOpen[consent.id] ? "Ukryj treść" : "Pokaż treść"}
+                </button>
+              </div>
+              {consentOpen[consent.id] ? (
+                <div style={styles.consentContent}>{consent.content || "Brak treści zgody."}</div>
+              ) : null}
             </div>
           ))
         )}
@@ -583,12 +600,47 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.8rem",
   },
   fieldset: {
-    border: "1px solid #d1d5db",
+    border: "1px solid #e5e7eb",
     borderRadius: 8,
-    padding: "1rem",
+    padding: "0.75rem 0.75rem 0.5rem",
   },
   legend: {
-    fontWeight: "bold",
+    fontWeight: 600,
     padding: "0 0.5rem",
+    fontSize: "0.95rem",
+  },
+  consentItem: {
+    borderTop: "1px solid #e5e7eb",
+    padding: "0.35rem 0",
+  },
+  consentHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "0.5rem",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  consentLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    fontSize: "0.95rem",
+  },
+  consentToggle: {
+    background: "transparent",
+    border: "1px solid #e5e7eb",
+    borderRadius: 6,
+    padding: "0.2rem 0.65rem",
+    fontSize: "0.9rem",
+    cursor: "pointer",
+  },
+  consentContent: {
+    marginTop: "0.5rem",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 6,
+    padding: "0.65rem",
+    whiteSpace: "pre-wrap",
+    fontSize: "0.92rem",
   },
 };
