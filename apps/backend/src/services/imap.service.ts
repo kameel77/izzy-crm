@@ -4,28 +4,34 @@ import { env } from "../config/env.js";
 import { processIncomingEmail } from "../controllers/email.controller.js";
 
 export class ImapService {
-    private config: imaps.ImapSimpleOptions;
+    private config: imaps.ImapSimpleOptions | null = null;
+    private readonly isConfigured: boolean;
 
     constructor() {
-        const { SMTP_HOST, SMTP_USER, SMTP_PASSWORD } = env;
+        const inbox = env.leadEmail;
 
-        if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) {
-            throw new Error("Missing SMTP environment variables required for IMAP connection");
+        if (inbox?.imapHost && inbox?.user && inbox?.password) {
+            this.config = {
+                imap: {
+                    user: inbox.user,
+                    password: inbox.password,
+                    host: inbox.imapHost,
+                    port: inbox.imapPort ?? 993,
+                    tls: inbox.imapSecure ?? true,
+                    authTimeout: 3000,
+                },
+            };
         }
 
-        this.config = {
-            imap: {
-                user: SMTP_USER,
-                password: SMTP_PASSWORD,
-                host: SMTP_HOST,
-                port: 993,
-                tls: true,
-                authTimeout: 3000,
-            },
-        };
+        this.isConfigured = Boolean(this.config);
     }
 
     public async fetchUnreadEmails() {
+        if (!this.config) {
+            console.warn("[imap] Lead inbox not configured; skipping fetch");
+            return;
+        }
+
         const resolveAddressText = (address: unknown): string | undefined => {
             if (!address) return undefined;
             if (Array.isArray(address)) {
@@ -99,7 +105,12 @@ export class ImapService {
     }
 
     public startPolling(intervalMs: number = 60000) {
-        console.log("Starting IMAP polling...");
+        if (!this.config) {
+            console.warn("[imap] Lead inbox not configured; IMAP polling disabled");
+            return;
+        }
+
+        console.log("[imap] Starting IMAP polling for lead inbox...");
         this.fetchUnreadEmails(); // Initial fetch
         setInterval(() => {
             this.fetchUnreadEmails();

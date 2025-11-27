@@ -88,16 +88,16 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Send Email to Client">
+    <Modal isOpen={isOpen} onClose={onClose} title="Wyślij wiadomość do klienta">
       <form onSubmit={handleSubmit} style={styles.form}>
         {replyContext?.noteId ? (
           <div style={styles.replyBanner}>
-            Replying to previous message – conversation history will be attached automatically.
+            Odpowiadasz na poprzednią wiadomość – historia rozmowy zostanie dołączona automatycznie.
           </div>
         ) : null}
 
         <label style={styles.label}>
-          Subject
+          Temat
           <input
             type="text"
             value={subject}
@@ -108,19 +108,19 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         </label>
 
         <label style={styles.label}>
-          Message
+          Wiadomość
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             style={styles.textarea}
             required
             rows={6}
-            placeholder="Type your message here..."
+            placeholder="Wpisz swoją wiadomość tutaj..."
           />
         </label>
 
         <div style={styles.linksSection}>
-          <label style={styles.label}>Links to Offers</label>
+          <label style={styles.label}>Linki do ofert</label>
           {links.map((link, index) => (
             <div key={index} style={styles.linkRow}>
               <input
@@ -143,13 +143,13 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
             </div>
           ))}
           <button type="button" onClick={addLinkField} style={styles.addButton}>
-            + Add another link
+            + Dodaj kolejny link
           </button>
         </div>
 
         {replyContext?.quotedHtml ? (
           <div style={styles.previewContainer}>
-            <div style={styles.previewLabel}>Quoted history preview</div>
+            <div style={styles.previewLabel}>Podgląd cytowanej historii</div>
             <div
               style={styles.previewContent}
               dangerouslySetInnerHTML={{ __html: replyContext.quotedHtml }}
@@ -159,10 +159,10 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
 
         <div style={styles.actions}>
           <button type="button" onClick={onClose} style={styles.secondaryButton}>
-            Cancel
+            Anuluj
           </button>
           <button type="submit" disabled={isSending} style={styles.primaryButton}>
-            {isSending ? "Sending..." : "Send Email"}
+            {isSending ? "Wysyłanie..." : "Wyślij wiadomość"}
           </button>
         </div>
       </form>

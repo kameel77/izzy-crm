@@ -46,6 +46,36 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val ? val === "true" || val === "1" : undefined)),
+  LEAD_EMAIL_FROM: z.string().optional(),
+  LEAD_EMAIL_HOST: z.string().optional(),
+  LEAD_EMAIL_PORT: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : undefined;
+    }),
+  LEAD_EMAIL_USER: z.string().optional(),
+  LEAD_EMAIL_PASSWORD: z.string().optional(),
+  LEAD_EMAIL_SECURE: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val === "true" || val === "1" : undefined)),
+  LEAD_IMAP_HOST: z.string().optional(),
+  LEAD_IMAP_PORT: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : undefined;
+    }),
+  LEAD_IMAP_SECURE: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val === "true" || val === "1" : undefined)),
+  LEAD_INBOX_PARTNER_ID: z.string().optional(),
   APP_BASE_URL: z.string().default("http://localhost:5173"),
   CRM_WEBHOOK_URL: z.string().url().optional(),
   CRM_WEBHOOK_TOKEN: z.string().optional(),
@@ -95,6 +125,21 @@ export const env = {
           secure: parsed.data.SMTP_SECURE ?? false,
         }
       : null,
+  leadEmail:
+    parsed.data.LEAD_EMAIL_HOST && parsed.data.LEAD_EMAIL_USER && parsed.data.LEAD_EMAIL_PASSWORD
+      ? {
+          from: parsed.data.LEAD_EMAIL_FROM ?? parsed.data.EMAIL_FROM ?? undefined,
+          host: parsed.data.LEAD_EMAIL_HOST,
+          port: parsed.data.LEAD_EMAIL_PORT ?? 587,
+          user: parsed.data.LEAD_EMAIL_USER,
+          password: parsed.data.LEAD_EMAIL_PASSWORD,
+          secure: parsed.data.LEAD_EMAIL_SECURE ?? false,
+          imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST,
+          imapPort: parsed.data.LEAD_IMAP_PORT ?? 993,
+          imapSecure: parsed.data.LEAD_IMAP_SECURE ?? true,
+        }
+      : null,
+  leadInboxPartnerId: parsed.data.LEAD_INBOX_PARTNER_ID,
   app: {
     baseUrl: parsed.data.APP_BASE_URL,
   },

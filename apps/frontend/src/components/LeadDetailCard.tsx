@@ -2013,7 +2013,17 @@ const formatAuditAction = (action: string, field?: string | null) => {
 
 const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
   if (log.action === "status_change" && typeof log.newValue === "string") {
-    return <div style={styles.auditDetails}>Status: {LEAD_STATUS_LABELS[log.newValue as LeadStatus] || log.newValue}</div>;
+    const note =
+      log.metadata && typeof log.metadata === "object" && "notes" in log.metadata
+        ? (log.metadata as { notes?: string }).notes
+        : null;
+
+    return (
+      <div style={styles.auditDetails}>
+        <div>Status: {LEAD_STATUS_LABELS[log.newValue as LeadStatus] || log.newValue}</div>
+        {note ? <div>Notatka: {note}</div> : null}
+      </div>
+    );
   }
 
   if (log.action === "document_added" && log.metadata) {

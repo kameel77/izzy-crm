@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { loginRequest, AuthUser } from "../api/auth";
+import { AUTH_STORAGE_KEY } from "../constants/auth";
 
 interface AuthContextValue {
   token: string | null;
@@ -11,8 +12,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-const STORAGE_KEY = "izzy-crm-auth";
 
 interface StoredAuth {
   token: string;
@@ -25,7 +24,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as StoredAuth;
@@ -33,7 +32,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         setUser(parsed.user);
       } catch (error) {
         console.warn("Failed to parse auth payload", error);
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
       }
     }
     setIsLoading(false);
@@ -43,13 +42,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     const response = await loginRequest(email, password);
     setToken(response.token);
     setUser(response.user);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(response));
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response));
   }, []);
 
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
   }, []);
 
   const value = useMemo(

@@ -73,6 +73,22 @@ System notifications (consent links, reminders) rely on the backend `MailService
    ```
 4. Start backend/frontend as usual. Each email sent by the app shows up in `http://localhost:8025`.
 
+#### 1b. Lead inbox (nowy proces z izzylease.pl)
+Nowy nasłuch maili (IMAP) dla leadów online korzysta z osobnej skrzynki:
+```bash
+export LEAD_EMAIL_HOST=imap.example.com      # SMTP host tej skrzynki (używany też do IMAP fallback)
+export LEAD_EMAIL_PORT=587
+export LEAD_EMAIL_USER=lead-inbox@example.com
+export LEAD_EMAIL_PASSWORD=***
+export LEAD_EMAIL_SECURE=true                # dla SMTP; IMAP ma osobne flagi poniżej
+export LEAD_IMAP_HOST=imap.example.com       # opcjonalnie, jeśli inny niż LEAD_EMAIL_HOST
+export LEAD_IMAP_PORT=993
+export LEAD_IMAP_SECURE=true                 # IMAP TLS
+export LEAD_EMAIL_FROM=lead-inbox@example.com
+export LEAD_INBOX_PARTNER_ID=<partner-id>    # wymagane do auto-tworzenia leadów z maili
+```
+Brak `LEAD_EMAIL_*` → nasłuch IMAP się nie uruchomi. Brak `LEAD_INBOX_PARTNER_ID` → brak auto-leadów (tylko log z ostrzeżeniem).
+
 #### 2. Production / staging SMTP
 - For Coolify/Hetzner deploys, provide the same variables in `.env` / `apps/backend/.env` (or platform secrets) with the real SMTP host, port, credentials, and `EMAIL_FROM`.
 - Backend logs include `[mail] Transport not configured` or `[mail] Failed to send message …` – use `docker compose logs -f backend | grep mail` to diagnose connectivity/auth issues after rollouts.

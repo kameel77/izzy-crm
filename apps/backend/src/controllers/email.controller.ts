@@ -1,7 +1,39 @@
+import { LeadNoteType, LeadStatus } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { Request, Response } from "express";
+import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { sendMail } from "../services/mail.service.js";
+
+const ANTISPAM_WINDOW_MS = 60 * 60 * 1000; // 1h
+const ANTISPAM_MAX_LEADS_PER_WINDOW = 10;
+
+const extractNameParts = (from: string) => {
+    const nameMatch = from.match(/"?(.*?)"?\s*<.*?>/);
+    const displayName = nameMatch?.[1]?.trim();
+    const fallbackFrom = nameMatch ? from.replace(nameMatch[0], "").trim() : from;
+    const base = displayName?.length ? displayName : fallbackFrom.split("@")[0]?.replace(/["<>]/g, "");
+    if (!base) {
+        return { firstName: "Unknown", lastName: "Sender" };
+    }
+    const [first, ...rest] = base.split(/\s+/).filter(Boolean);
+    return {
+        firstName: first || "Unknown",
+        lastName: rest.join(" ") || "Sender",
+    };
+};
+
+const extractPhone = (text?: string | null) => {
+    if (!text) return null;
+    const match = text.match(/(\+?\d[\d\s\-]{6,}\d)/);
+    return match ? match[1].replace(/\s+/g, "") : null;
+};
+
+const detectCustomerType = (subject?: string | null, body?: string | null) => {
+    const haystack = [subject, body].filter(Boolean).join(" ").toLowerCase();
+    const isCompany = /sp\.?\s*z\.?\s*o\.?\s*o|spółka|s\.a\.|s\.c\.|spj|sp k|firma|company|ltd/.test(haystack);
+    return isCompany ? "firma" : "osoba prywatna";
+};
 
 export const sendLeadEmail = async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -156,15 +188,89 @@ export const processIncomingEmail = async (params: {
     });
 
     if (!customerProfile) {
-        console.warn(`Received email from unknown sender: ${senderEmail}`);
-        return { success: false, message: "Unknown sender" };
+        const partnerId = env.leadInboxPartnerId;
+        if (!partnerId) {
+            console.warn(`[email-inbound] Missing LEAD_INBOX_PARTNER_ID – cannot auto-create lead for ${senderEmail}`);
+            return { success: false, message: "Unknown sender (partner missing)" };
+        }
+
+        const windowStart = new Date(Date.now() - ANTISPAM_WINDOW_MS);
+        const recentLeadCount = await prisma.lead.count({
+            where: {
+                partnerId,
+                leadCreatedAt: { gte: windowStart },
+                customerProfile: { email: senderEmail },
+            },
+        });
+
+        if (recentLeadCount >= ANTISPAM_MAX_LEADS_PER_WINDOW) {
+            console.warn(
+                `[email-inbound] Rate limited auto-lead for ${senderEmail}: ${recentLeadCount} leads in last hour`,
+            );
+            return { success: false, message: "Rate limited" };
+        }
+
+        const names = extractNameParts(from);
+        const phone = extractPhone(text ?? html ?? "");
+        const customerType = detectCustomerType(subject, text ?? html ?? "");
+        const notesLines = [
+            "Lead utworzony automatycznie z wiadomości e-mail (izzylease.pl).",
+            `From: ${from}`,
+            `To: ${to ?? "(unknown)"}`,
+            `Subject: ${subject ?? "(No Subject)"}`,
+            "",
+            text || "(No content)",
+        ];
+
+        const newLead = await prisma.lead.create({
+            data: {
+                partnerId,
+                status: LeadStatus.NEW,
+                sourceMetadata: {
+                    source: "izzylease.pl",
+                    direction: "INCOMING_EMAIL",
+                    messageId: messageId ?? null,
+                    customerType,
+                },
+                notes: notesLines.join("\n"),
+                customerProfile: {
+                    create: {
+                        firstName: names.firstName,
+                        lastName: names.lastName,
+                        email: senderEmail,
+                        phone,
+                    },
+                },
+            },
+            select: { id: true },
+        });
+
+        await prisma.leadNote.create({
+            data: {
+                leadId: newLead.id,
+                content: text || "(No content)",
+                type: LeadNoteType.EMAIL_RECEIVED,
+                metadata: {
+                    from,
+                    senderEmail,
+                    to,
+                    subject,
+                    html,
+                    direction: "INCOMING",
+                    messageId: messageId ?? null,
+                    source: "izzylease.pl",
+                },
+            },
+        });
+
+        return { success: true, message: "Lead auto-created from incoming email" };
     }
 
     await prisma.leadNote.create({
         data: {
             leadId: customerProfile.leadId,
             content: text || "(No content)",
-            type: "EMAIL_RECEIVED",
+            type: LeadNoteType.EMAIL_RECEIVED,
             metadata: {
                 from,
                 senderEmail,
