@@ -558,6 +558,20 @@ export interface UpdateLeadVehiclesInput {
   amountAvailable?: number | null;
 }
 
+export interface UpdateLeadCustomerInput {
+  leadId: string;
+  actorUserId: string;
+  payload: {
+    firstName?: string;
+    lastName?: string;
+    email?: string | null;
+    phone?: string | null;
+    customerType?: string | null;
+    city?: string | null;
+    voivodeship?: string | null;
+  };
+}
+
 export const updateLeadVehicles = async (input: UpdateLeadVehiclesInput) => {
   return prisma.$transaction(async (tx) => {
     const existingLead = await tx.lead.findUnique({
@@ -701,6 +715,80 @@ export const updateLeadVehicles = async (input: UpdateLeadVehiclesInput) => {
     });
 
     return updatedVehicles;
+  });
+};
+
+export const updateLeadCustomerProfile = async (input: UpdateLeadCustomerInput) => {
+  return prisma.$transaction(async (tx) => {
+    const existingLead = await tx.lead.findUnique({
+      where: { id: input.leadId },
+      include: { customerProfile: true },
+    });
+
+    if (!existingLead) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    const existingAddress =
+      (existingLead.customerProfile?.address as
+        | { city?: string | null; voivodeship?: string | null; customerType?: string | null }
+        | null
+        | undefined) || {};
+
+    const nextAddress: Record<string, string | null> = {};
+    if (typeof existingAddress.city !== "undefined") nextAddress.city = existingAddress.city ?? null;
+    if (typeof existingAddress.voivodeship !== "undefined")
+      nextAddress.voivodeship = existingAddress.voivodeship ?? null;
+    if (typeof existingAddress.customerType !== "undefined")
+      nextAddress.customerType = existingAddress.customerType ?? null;
+    if (typeof input.payload.city !== "undefined") nextAddress.city = input.payload.city;
+    if (typeof input.payload.voivodeship !== "undefined")
+      nextAddress.voivodeship = input.payload.voivodeship;
+    if (typeof input.payload.customerType !== "undefined")
+      nextAddress.customerType = input.payload.customerType;
+
+    const data: Prisma.CustomerProfileUpdateInput = {};
+    if (typeof input.payload.firstName !== "undefined") data.firstName = input.payload.firstName;
+    if (typeof input.payload.lastName !== "undefined") data.lastName = input.payload.lastName;
+    if (typeof input.payload.email !== "undefined") data.email = input.payload.email;
+    if (typeof input.payload.phone !== "undefined") data.phone = input.payload.phone;
+    data.address = nextAddress as Prisma.JsonValue;
+
+    const updatedProfile = existingLead.customerProfile
+      ? await tx.customerProfile.update({
+          where: { id: existingLead.customerProfile.id },
+          data,
+        })
+      : await tx.customerProfile.create({
+          data: {
+            leadId: existingLead.id,
+            firstName: input.payload.firstName ?? "",
+            lastName: input.payload.lastName ?? "",
+            email: input.payload.email ?? null,
+            phone: input.payload.phone ?? null,
+            address: nextAddress as Prisma.JsonValue,
+          },
+        });
+
+    await tx.auditLog.create({
+      data: {
+        leadId: input.leadId,
+        userId: input.actorUserId,
+        action: "customer_updated",
+        field: "customerProfile",
+        newValue: {
+          firstName: updatedProfile.firstName,
+          lastName: updatedProfile.lastName,
+          email: updatedProfile.email,
+          phone: updatedProfile.phone,
+          address: updatedProfile.address,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return updatedProfile;
   });
 };
 

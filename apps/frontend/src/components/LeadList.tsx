@@ -244,7 +244,7 @@ const styles: Record<string, React.CSSProperties> = {
   tableCell: {
     padding: "1rem 0.75rem",
     borderBottom: "1px solid #f1f5f9",
-    verticalAlign: "top",
+    verticalAlign: "middle",
   },
   clickableRow: {
     cursor: "pointer",

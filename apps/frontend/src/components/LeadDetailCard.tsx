@@ -10,6 +10,7 @@ import {
   generateApplicationFormLink,
   CreateApplicationFormLinkResponse,
   anonymizeLead,
+  updateLeadCustomer,
 } from "../api/leads";
 import { LEAD_STATUS_LABELS, LeadStatus } from "../constants/leadStatus";
 import { DocumentForm } from "./DocumentForm";
@@ -62,6 +63,16 @@ type VehicleFormState = {
   };
 };
 
+type ClientFormState = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  customerType: string;
+  city: string;
+  voivodeship: string;
+};
+
 const resolveDocumentUrl = (path: string) => {
   if (!path) return "#";
   if (/^https?:\/\//i.test(path)) {
@@ -74,6 +85,25 @@ const resolveDocumentUrl = (path: string) => {
 };
 
 type FormStatusTone = "neutral" | "info" | "success" | "warning" | "danger";
+const CUSTOMER_TYPES = ["osoba fizyczna", "JDG", "spółka"] as const;
+const VOIVODESHIPS = [
+  "dolnośląskie",
+  "kujawsko-pomorskie",
+  "lubelskie",
+  "lubuskie",
+  "łódzkie",
+  "małopolskie",
+  "mazowieckie",
+  "opolskie",
+  "podkarpackie",
+  "podlaskie",
+  "pomorskie",
+  "śląskie",
+  "świętokrzyskie",
+  "warmińsko-mazurskie",
+  "wielkopolskie",
+  "zachodniopomorskie",
+] as const;
 
 const FORM_STATUS_META: Record<string, { label: string; tone: FormStatusTone }> = {
   draft: { label: "Roboczy", tone: "neutral" },
@@ -112,6 +142,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const isAdmin = user?.role === "ADMIN";
   const canEditVehicles =
     user?.role === "ADMIN" || user?.role === "SUPERVISOR" || user?.role === "OPERATOR";
+  const canEditClient = user?.role === "ADMIN" || user?.role === "OPERATOR";
   const [operatorOptions, setOperatorOptions] = useState<Array<{ id: string; email: string; fullName?: string | null }>>([]);
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
@@ -174,6 +205,25 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false);
   const [replyContext, setReplyContext] = useState<EmailReplyContext | null>(null);
   const [expandedEmailNoteIds, setExpandedEmailNoteIds] = useState<Record<string, boolean>>({});
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [clientForm, setClientForm] = useState<ClientFormState>(() => {
+    const address =
+      (lead?.customerProfile?.address as
+        | { city?: string | null; voivodeship?: string | null; customerType?: string | null }
+        | null
+        | undefined) || {};
+    return {
+      firstName: lead?.customerProfile?.firstName ?? "",
+      lastName: lead?.customerProfile?.lastName ?? "",
+      email: lead?.customerProfile?.email ?? "",
+      phone: lead?.customerProfile?.phone ?? "",
+      customerType: address.customerType ?? "",
+      city: address.city ?? "",
+      voivodeship: address.voivodeship ?? "",
+    };
+  });
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+  const [isSavingClient, setIsSavingClient] = useState(false);
 
   const applicationForm = lead?.applicationForm;
 
@@ -199,6 +249,37 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     return digits.slice(-4);
   }, [lead?.customerProfile?.phone]);
 
+  const customerAddress = useMemo(
+    () =>
+      (lead?.customerProfile?.address as
+        | { city?: string | null; voivodeship?: string | null; customerType?: string | null }
+        | null
+        | undefined) || {},
+    [lead?.customerProfile?.address],
+  );
+
+  const buildClientFormState = useCallback((): ClientFormState => {
+    return {
+      firstName: lead?.customerProfile?.firstName ?? "",
+      lastName: lead?.customerProfile?.lastName ?? "",
+      email: lead?.customerProfile?.email ?? "",
+      phone: lead?.customerProfile?.phone ?? "",
+      customerType: customerAddress.customerType ?? "",
+      city: customerAddress.city ?? "",
+      voivodeship: customerAddress.voivodeship ?? "",
+    };
+  }, [customerAddress.city, customerAddress.customerType, customerAddress.voivodeship, lead?.customerProfile?.email, lead?.customerProfile?.firstName, lead?.customerProfile?.lastName, lead?.customerProfile?.phone]);
+
+  const lastContactValue = useMemo(() => {
+    const timestamps: number[] = [];
+    if (lead.lastContactAt) timestamps.push(new Date(lead.lastContactAt).getTime());
+    if (applicationForm?.lastClientActivity)
+      timestamps.push(new Date(applicationForm.lastClientActivity).getTime());
+    if (!timestamps.length) return "—";
+    const latest = new Date(Math.max(...timestamps));
+    return latest.toLocaleString();
+  }, [applicationForm?.lastClientActivity, lead.lastContactAt]);
+
   const formStatusMeta = useMemo(() => {
     if (!applicationForm?.status) return null;
     const key = applicationForm.status.toLowerCase();
@@ -216,6 +297,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     setAreActivitiesExpanded(false);
     setExpandedEmailNoteIds({});
   }, [lead]);
+
+  useEffect(() => {
+    setClientForm(buildClientFormState());
+    setClientErrors({});
+  }, [buildClientFormState]);
 
   useEffect(() => {
     setVehicleForm(buildVehicleFormState());
@@ -277,6 +363,61 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       addToast(message, "error");
     } finally {
       setIsUpdatingAssignment(false);
+    }
+  };
+
+  const handleOpenClientModal = () => {
+    setClientForm(buildClientFormState());
+    setClientErrors({});
+    setIsClientModalOpen(true);
+  };
+
+  const handleCloseClientModal = () => {
+    setIsClientModalOpen(false);
+    setClientErrors({});
+  };
+
+  const handleClientFieldChange = (field: keyof ClientFormState, value: string) => {
+    setClientForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveClient = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!token || !lead || !canEditClient) return;
+    const errors: Record<string, string> = {};
+    if (!clientForm.firstName.trim()) errors.firstName = "Imię jest wymagane";
+    if (!clientForm.lastName.trim()) errors.lastName = "Nazwisko jest wymagane";
+    if (clientForm.email && !/^\S+@\S+\.\S+$/.test(clientForm.email.trim())) {
+      errors.email = "Nieprawidłowy email";
+    }
+    if (Object.keys(errors).length) {
+      setClientErrors(errors);
+      return;
+    }
+
+    setIsSavingClient(true);
+    setClientErrors({});
+    try {
+      await updateLeadCustomer(token, lead.id, {
+        firstName: clientForm.firstName.trim(),
+        lastName: clientForm.lastName.trim(),
+        email: clientForm.email.trim() || null,
+        phone: clientForm.phone.trim() || null,
+        customerType: clientForm.customerType || null,
+        city: clientForm.city || null,
+        voivodeship: clientForm.voivodeship || null,
+      });
+      addToast("Zaktualizowano dane klienta", "success");
+      setIsClientModalOpen(false);
+      await Promise.resolve(onRefresh());
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Nie udało się zapisać danych klienta";
+      addToast(message, "error");
+    } finally {
+      setIsSavingClient(false);
     }
   };
 
@@ -766,47 +907,58 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   return (
     <section style={styles.container}>
       <header style={styles.header}>
-        <div>
-          <h2 style={styles.title}>
-            {lead.customerProfile
-              ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
-              : "Lead Detail"}
-          </h2>
-          {lead.customerProfile?.email ? (
-            <p style={styles.subtitle}>
-              Email:{" "}
-              <a href={`mailto:${lead.customerProfile.email}`} style={styles.contactLink}>
-                {lead.customerProfile.email}
-              </a>
+        <div style={styles.titleArea}>
+          <div style={styles.titleRow}>
+            <h2 style={styles.title}>
+              {lead.customerProfile
+                ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
+                : "Lead Detail"}
+            </h2>
+            {lead.customerProfile?.email ? (
               <button
                 type="button"
                 onClick={handleComposeEmail}
-                style={{ ...styles.ghostButton, marginLeft: "0.5rem", fontSize: "0.75rem" }}
+                style={styles.secondaryButton}
               >
-                ✉️ Send Email
+                ✉️ Wyślij wiadomość
               </button>
-            </p>
-          ) : null}
-          {formattedPhone ? (
-            <p style={styles.subtitle}>
-              Telefon:{" "}
-              <a href={`tel:${lead.customerProfile?.phone ?? ""}`} style={styles.contactLink}>
-                {formattedPhone}
-              </a>
-            </p>
-          ) : null}
+            ) : null}
+            <span style={styles.statusPill}>{LEAD_STATUS_LABELS[lead.status] || lead.status}</span>
+          </div>
+          <div style={styles.contactRow}>
+            {lead.customerProfile?.email ? (
+              <span style={styles.subtitle}>
+                Email:{" "}
+                <a href={`mailto:${lead.customerProfile.email}`} style={styles.contactLink}>
+                  {lead.customerProfile.email}
+                </a>
+              </span>
+            ) : null}
+            {formattedPhone ? (
+              <span style={styles.subtitle}>
+                Telefon:{" "}
+                <a href={`tel:${lead.customerProfile?.phone ?? ""}`} style={styles.contactLink}>
+                  {formattedPhone}
+                </a>
+              </span>
+            ) : null}
+          </div>
         </div>
-        <button type="button" style={styles.refreshButton} onClick={onRefresh}>
-          Refresh
-        </button>
+        <div style={styles.headerActions}>
+          <button type="button" style={styles.refreshButton} onClick={onRefresh}>
+            Odśwież
+          </button>
+        </div>
       </header>
 
       <div style={styles.section}>
-        <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
         <div style={styles.grid}>
-          <InfoItem label="Partner" value={lead.partner?.name || lead.partnerId} />
           <InfoItem
-            label="Assigned To"
+            label="Status"
+            value={<span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>}
+          />
+          <InfoItem
+            label="Przypisany do"
             value={
               isAdmin ? (
                 <div style={styles.assignmentControl}>
@@ -835,27 +987,39 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             }
           />
           <InfoItem
-            label="Created"
-            value={new Date(lead.leadCreatedAt).toLocaleString()}
-          />
-          <InfoItem
             label="Last Contact"
-            value={lead.lastContactAt ? new Date(lead.lastContactAt).toLocaleString() : "—"}
+            value={lastContactValue}
           />
         </div>
       </div>
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Vehicle Interest</h3>
-          {canEditVehicles ? (
-            <button type="button" style={styles.secondaryButton} onClick={handleVehicleModalOpen}>
-              Edit
+          <h3 style={styles.sectionTitle}>Informacje o kliencie</h3>
+          {canEditClient ? (
+            <button type="button" style={styles.secondaryButton} onClick={handleOpenClientModal}>
+              Edytuj
             </button>
           ) : null}
         </div>
-        <InfoItem label="Current Vehicle" value={formatCurrentVehicle()} />
-        <InfoItem label="Desired Vehicle" value={formatDesiredVehicle()} />
+        <div style={{ ...styles.grid, ...styles.clientInfoGrid }}>
+          <InfoItem label="Rodzaj klienta" value={customerAddress.customerType || "—"} />
+          <InfoItem label="Miasto" value={customerAddress.city || "—"} />
+          <InfoItem label="Województwo" value={customerAddress.voivodeship || "—"} />
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>Informacje o pojeździe</h3>
+          {canEditVehicles ? (
+            <button type="button" style={styles.secondaryButton} onClick={handleVehicleModalOpen}>
+              Edytuj
+            </button>
+          ) : null}
+        </div>
+        <InfoItem label="Aktualny pojazd" value={formatCurrentVehicle()} />
+        <InfoItem label="Żądany pojazd" value={formatDesiredVehicle()} />
       </div>
 
       <div style={styles.section}>
@@ -956,11 +1120,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div style={styles.sectionTitleGroup}>
-            <h3 style={styles.sectionTitle}>Notes</h3>
+            <h3 style={styles.sectionTitle}>Notatki</h3>
             <span style={styles.noteCount}>({notes.length})</span>
           </div>
           <button type="button" style={styles.primaryButton} onClick={() => setIsNoteModalOpen(true)}>
-            New note
+            Nowa notatka
           </button>
         </div>
         <ul style={styles.noteList}>
@@ -1028,7 +1192,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                         note.metadata.links.length > 0 ? (
                           <div style={{ marginTop: "0.5rem" }}>
                             <div style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.25rem" }}>
-                              Links:
+                              Linki:
                             </div>
                             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                               {note.metadata.links.map((link, i) => {
@@ -1066,7 +1230,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                             style={styles.emailActionButton}
                             onClick={() => handleReplyToNote(note)}
                           >
-                            Reply
+                            Odpowiedz
                           </button>
                           {allowToggle ? (
                             <button
@@ -1087,7 +1251,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               );
             })
           ) : (
-            <li style={styles.noteEmpty}>No notes yet.</li>
+            <li style={styles.noteEmpty}>Żadnych notatek jeszcze nie dodano.</li>
           )}
         </ul>
         {canToggleNotes ? (
@@ -1112,7 +1276,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       />
 
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Documents</h3>
+        <h3 style={styles.sectionTitle}>Dokumenty</h3>
         <ul style={styles.docList}>
           {lead.documents.length ? (
             lead.documents.map((doc) => (
@@ -1140,7 +1304,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               </li>
             ))
           ) : (
-            <li style={styles.subtleText}>No documents yet.</li>
+            <li style={styles.subtleText}>Brak dokumentów.</li>
           )}
         </ul>
         <DocumentForm
@@ -1157,7 +1321,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div style={styles.sectionTitleGroup}>
-            <h3 style={styles.sectionTitle}>Recent Activity</h3>
+            <h3 style={styles.sectionTitle}>Ostatnia aktywność</h3>
             <span style={styles.noteCount}>({auditLogs.length})</span>
           </div>
         </div>
@@ -1175,7 +1339,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               </li>
             ))
           ) : (
-            <li style={styles.subtleText}>No activity logged yet.</li>
+            <li style={styles.subtleText}>Brak aktywności.</li>
           )}
         </ul>
         {canToggleAuditLogs ? (
@@ -1232,6 +1396,17 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </ul>
       </div>
 
+      <div style={styles.metaRow}>
+        <div style={styles.metaItem}>
+          <span style={styles.metaLabel}>Partner</span>
+          <span style={styles.metaValue}>{lead.partner?.name || lead.partnerId || "—"}</span>
+        </div>
+        <div style={styles.metaItem}>
+          <span style={styles.metaLabel}>Utworzono</span>
+          <span style={styles.metaValue}>{new Date(lead.leadCreatedAt).toLocaleString()}</span>
+        </div>
+      </div>
+
       {isAdmin && (
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Admin Actions</h3>
@@ -1241,7 +1416,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               style={styles.dangerButton}
               onClick={() => setIsAnonymizeModalOpen(true)}
             >
-              Anonymize Lead
+              Anominizuj klienta
             </button>
           </div>
         </div>
@@ -1255,6 +1430,105 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <div style={styles.consentContentModal}>
           <pre style={styles.consentContentPre}>{selectedConsentContent}</pre>
         </div>
+      </Modal>
+
+      <Modal isOpen={isClientModalOpen} onClose={handleCloseClientModal} title="Informacje o kliencie">
+        <form onSubmit={handleSaveClient} style={styles.modalForm}>
+          <div style={styles.modalGrid}>
+            <label style={styles.modalLabel}>
+              Imię
+              <input
+                type="text"
+                value={clientForm.firstName}
+                onChange={(event) => handleClientFieldChange("firstName", event.target.value)}
+                style={styles.modalInput}
+                required
+              />
+              {clientErrors.firstName ? (
+                <span style={styles.errorText}>{clientErrors.firstName}</span>
+              ) : null}
+            </label>
+            <label style={styles.modalLabel}>
+              Nazwisko
+              <input
+                type="text"
+                value={clientForm.lastName}
+                onChange={(event) => handleClientFieldChange("lastName", event.target.value)}
+                style={styles.modalInput}
+                required
+              />
+              {clientErrors.lastName ? (
+                <span style={styles.errorText}>{clientErrors.lastName}</span>
+              ) : null}
+            </label>
+            <label style={styles.modalLabel}>
+              Email
+              <input
+                type="email"
+                value={clientForm.email}
+                onChange={(event) => handleClientFieldChange("email", event.target.value)}
+                style={styles.modalInput}
+              />
+              {clientErrors.email ? <span style={styles.errorText}>{clientErrors.email}</span> : null}
+            </label>
+            <label style={styles.modalLabel}>
+              Telefon
+              <input
+                type="text"
+                value={clientForm.phone}
+                onChange={(event) => handleClientFieldChange("phone", event.target.value)}
+                style={styles.modalInput}
+              />
+            </label>
+            <label style={styles.modalLabel}>
+              Rodzaj klienta
+              <select
+                value={clientForm.customerType}
+                onChange={(event) => handleClientFieldChange("customerType", event.target.value)}
+                style={styles.modalInput}
+              >
+                <option value="">Wybierz</option>
+                {CUSTOMER_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={styles.modalLabel}>
+              Miasto
+              <input
+                type="text"
+                value={clientForm.city}
+                onChange={(event) => handleClientFieldChange("city", event.target.value)}
+                style={styles.modalInput}
+              />
+            </label>
+            <label style={styles.modalLabel}>
+              Województwo
+              <select
+                value={clientForm.voivodeship}
+                onChange={(event) => handleClientFieldChange("voivodeship", event.target.value)}
+                style={styles.modalInput}
+              >
+                <option value="">Wybierz</option>
+                {VOIVODESHIPS.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div style={styles.modalActions}>
+            <button type="button" onClick={handleCloseClientModal} style={styles.ghostButton}>
+              Anuluj
+            </button>
+            <button type="submit" style={styles.primaryButton} disabled={isSavingClient}>
+              {isSavingClient ? "Zapisywanie..." : "Zapisz"}
+            </button>
+          </div>
+        </form>
       </Modal>
 
       <Modal isOpen={isNoteModalOpen} onClose={handleCloseNoteModal} title="Add note">
@@ -1674,7 +1948,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             <strong>Warning:</strong> This action is irreversible. All personal data will be permanently anonymized.
           </p>
           <label style={styles.modalLabel}>
-            To confirm, type "ANONIMIZUJ" below:
+            Aby potwierdzić, wpisz "ANONIMIZUJ" poniżej:
             <input
               type="text"
               value={anonymizeConfirmation}
@@ -1834,6 +2108,23 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "flex-start",
     gap: "1rem",
   },
+  titleArea: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.35rem",
+  },
+  titleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    flexWrap: "wrap",
+  },
+  contactRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+    flexWrap: "wrap",
+  },
   title: {
     margin: 0,
     fontSize: "1.5rem",
@@ -1845,6 +2136,15 @@ const styles: Record<string, React.CSSProperties> = {
   contactLink: {
     color: "#2563eb",
     textDecoration: "none",
+  },
+  statusPill: {
+    background: "rgba(79, 70, 229, 0.12)",
+    color: "#4338ca",
+    borderRadius: 999,
+    padding: "0.35rem 0.8rem",
+    fontWeight: 700,
+    fontSize: "0.85rem",
+    letterSpacing: "0.01em",
   },
   refreshButton: {
     padding: "0.5rem 0.75rem",
@@ -1886,6 +2186,9 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     gap: "0.75rem",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  },
+  clientInfoGrid: {
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   },
   infoItem: {
     display: "flex",
@@ -2098,6 +2401,27 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0.25rem 0.75rem",
     cursor: "pointer",
   },
+  metaRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "0.5rem 1rem",
+    marginTop: "0.5rem",
+  },
+  metaItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.15rem",
+  },
+  metaLabel: {
+    fontSize: "0.75rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    color: "#94a3b8",
+  },
+  metaValue: {
+    fontSize: "0.9rem",
+    color: "#1e293b",
+  },
   assignmentControl: {
     display: "flex",
     flexDirection: "column",
@@ -2167,6 +2491,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "1rem",
+  },
+  modalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "0.75rem 1rem",
   },
   modalLabel: {
     display: "flex",

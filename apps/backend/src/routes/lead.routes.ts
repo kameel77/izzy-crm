@@ -18,6 +18,7 @@ import {
   upsertFinancingApplication,
   updateLeadVehicles,
   anonymizeLead,
+  updateLeadCustomerProfile,
 } from "../services/lead.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -144,6 +145,36 @@ const createLeadSchema = z.object({
         given: z.boolean(),
       }),
     )
+    .optional(),
+});
+
+const customerUpdateSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  customerType: z.enum(["osoba fizyczna", "JDG", "spółka"]).nullable().optional(),
+  city: z.string().nullable().optional(),
+  voivodeship: z
+    .enum([
+      "dolnośląskie",
+      "kujawsko-pomorskie",
+      "lubelskie",
+      "lubuskie",
+      "łódzkie",
+      "małopolskie",
+      "mazowieckie",
+      "opolskie",
+      "podkarpackie",
+      "podlaskie",
+      "pomorskie",
+      "śląskie",
+      "świętokrzyskie",
+      "warmińsko-mazurskie",
+      "wielkopolskie",
+      "zachodniopomorskie",
+    ])
+    .nullable()
     .optional(),
 });
 
@@ -449,6 +480,45 @@ router.post(
     });
 
     return res.status(201).json(note);
+  }),
+);
+
+router.patch(
+  "/:id/customer",
+  authorize(UserRole.OPERATOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const payload = customerUpdateSchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
+    }
+
+    const updatedCustomer = await updateLeadCustomerProfile({
+      leadId: id,
+      actorUserId: req.user.id,
+      payload,
+    });
+
+    return res.json({ customerProfile: updatedCustomer });
   }),
 );
 

@@ -3,6 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { fetchCurrentPartner } from "../api/partners";
 
+const logo = "/logo.svg";
+
 interface AppHeaderProps {
   onToggleSidebar: () => void;
   isSidebarCollapsed: boolean;
@@ -54,7 +56,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
         >
           <SidebarToggleIcon isCollapsed={isSidebarCollapsed} />
         </button>
-        <div style={styles.brandMark}>Izzy</div>
+        <img src={logo} alt="Izzy CRM" style={styles.brandMark} />
         <div>
           <div style={styles.productName}>Izzy CRM</div>
           <div style={styles.productTagline}>Financing Operations Control Room</div>
@@ -123,17 +125,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "1rem",
   },
   brandMark: {
-    width: "40px",
-    height: "40px",
+    width: "45px",
+    height: "45px",
     borderRadius: "12px",
-    background: "linear-gradient(135deg, #38bdf8, #0ea5e9)",
-    color: "#0f172a",
-    display: "grid",
-    placeItems: "center",
-    fontWeight: 800,
-    fontSize: "1rem",
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
+    objectFit: "contain",
+    padding: "6px",
   },
   productName: {
     fontSize: "1.25rem",

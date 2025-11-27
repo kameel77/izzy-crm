@@ -317,6 +317,27 @@ export const updateLeadStatus = (
     body: JSON.stringify(payload),
   });
 
+export interface UpdateLeadCustomerPayload {
+  firstName?: string;
+  lastName?: string;
+  email?: string | null;
+  phone?: string | null;
+  customerType?: string | null;
+  city?: string | null;
+  voivodeship?: string | null;
+}
+
+export const updateLeadCustomer = (
+  token: string,
+  leadId: string,
+  payload: UpdateLeadCustomerPayload,
+) =>
+  apiFetch<Pick<LeadDetail, "customerProfile">>(`/api/leads/${leadId}/customer`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+
 export interface CreateLeadNotePayload {
   content: string;
   link?: string;

@@ -1,3 +1,5 @@
+import { AUTH_STORAGE_KEY } from "../constants/auth";
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
@@ -11,6 +13,30 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_BASE_URL = "http://localhost:4000";
+
+let hasScheduledLogout = false;
+
+const clearStoredAuth = () => {
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (error) {
+    console.warn("Failed to clear stored auth", error);
+  }
+};
+
+const redirectToLogin = () => {
+  if (typeof window === "undefined") return;
+  const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const redirectParam = encodeURIComponent(currentLocation || "/");
+  window.location.replace(`/login?reason=expired&from=${redirectParam}`);
+};
+
+const handleUnauthorized = () => {
+  if (hasScheduledLogout) return;
+  hasScheduledLogout = true;
+  clearStoredAuth();
+  redirectToLogin();
+};
 
 export const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
@@ -35,7 +61,7 @@ export async function apiFetch<TResponse>(
 
   let token = tokenOption;
   if (token === undefined) {
-    const rawAuth = localStorage.getItem("izzy-crm-auth");
+    const rawAuth = localStorage.getItem(AUTH_STORAGE_KEY);
     if (rawAuth) {
       try {
         const parsedAuth = JSON.parse(rawAuth);
@@ -71,6 +97,10 @@ export async function apiFetch<TResponse>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      handleUnauthorized();
+    }
+
     const message =
       (typeof payload === "object" && payload && "message" in payload
         ? (payload as { message?: string }).message
