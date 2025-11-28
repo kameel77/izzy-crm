@@ -3,7 +3,7 @@ version: '3.8'
 services:
   prisma-studio:
     build:
-      context: ../../
+      context: .
       dockerfile: ops/prisma-studio/Dockerfile
     ports:
       - "5555:5555"
