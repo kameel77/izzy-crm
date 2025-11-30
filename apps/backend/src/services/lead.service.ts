@@ -253,47 +253,47 @@ export const createLead = async (input: CreateLeadInput) => {
           },
           vehicleCurrent: input.currentVehicle
             ? {
-                create: {
-                  make: input.currentVehicle.make,
-                  model: input.currentVehicle.model,
-                  year: input.currentVehicle.year ?? undefined,
-                  mileage: input.currentVehicle.mileage ?? undefined,
-                  ownershipStatus: input.currentVehicle.ownershipStatus,
-                },
-              }
+              create: {
+                make: input.currentVehicle.make,
+                model: input.currentVehicle.model,
+                year: input.currentVehicle.year ?? undefined,
+                mileage: input.currentVehicle.mileage ?? undefined,
+                ownershipStatus: input.currentVehicle.ownershipStatus,
+              },
+            }
             : undefined,
           vehicleDesired: input.desiredVehicle
             ? {
-                create: {
-                  make: input.desiredVehicle.make,
-                  model: input.desiredVehicle.model,
-                  year: input.desiredVehicle.year ?? undefined,
-                  budget: input.desiredVehicle.budget
-                    ? new Prisma.Decimal(input.desiredVehicle.budget)
-                    : undefined,
-                  preferences: toJson(input.desiredVehicle.preferences),
-                },
-              }
+              create: {
+                make: input.desiredVehicle.make,
+                model: input.desiredVehicle.model,
+                year: input.desiredVehicle.year ?? undefined,
+                budget: input.desiredVehicle.budget
+                  ? new Prisma.Decimal(input.desiredVehicle.budget)
+                  : undefined,
+                preferences: toJson(input.desiredVehicle.preferences),
+              },
+            }
             : undefined,
           financingApps: input.financing
             ? {
-                create: {
-                  bank: input.financing.bank ?? "TBD",
-                  loanAmount: input.financing.loanAmount
-                    ? new Prisma.Decimal(input.financing.loanAmount)
-                    : undefined,
-                  downPayment: input.financing.downPayment
-                    ? new Prisma.Decimal(input.financing.downPayment)
-                    : undefined,
-                  termMonths: input.financing.termMonths ?? undefined,
-                  income: input.financing.income
-                    ? new Prisma.Decimal(input.financing.income)
-                    : undefined,
-                  expenses: input.financing.expenses
-                    ? new Prisma.Decimal(input.financing.expenses)
-                    : undefined,
-                },
-              }
+              create: {
+                bank: input.financing.bank ?? "TBD",
+                loanAmount: input.financing.loanAmount
+                  ? new Prisma.Decimal(input.financing.loanAmount)
+                  : undefined,
+                downPayment: input.financing.downPayment
+                  ? new Prisma.Decimal(input.financing.downPayment)
+                  : undefined,
+                termMonths: input.financing.termMonths ?? undefined,
+                income: input.financing.income
+                  ? new Prisma.Decimal(input.financing.income)
+                  : undefined,
+                expenses: input.financing.expenses
+                  ? new Prisma.Decimal(input.financing.expenses)
+                  : undefined,
+              },
+            }
             : undefined,
         },
         select: {
@@ -460,19 +460,19 @@ export const getLeadById = async (id: string) => {
       customerProfile: true,
       vehicleCurrent: true,
       vehicleDesired: true,
-            applicationForm: {
-              select: {
-                id: true,
-                status: true,
-                isClientActive: true,
-                uniqueLink: true,
-                linkExpiresAt: true,
-                submittedAt: true,
-                lastClientActivity: true,
-                unlockHistory: true,
-                formData: true,
-              },
-            },
+      applicationForm: {
+        select: {
+          id: true,
+          status: true,
+          isClientActive: true,
+          uniqueLink: true,
+          linkExpiresAt: true,
+          submittedAt: true,
+          lastClientActivity: true,
+          unlockHistory: true,
+          formData: true,
+        },
+      },
       financingApps: {
         orderBy: { createdAt: "desc" },
       },
@@ -701,11 +701,11 @@ export const updateLeadVehicles = async (input: UpdateLeadVehiclesInput) => {
           vehicleCurrent: updatedVehicles?.vehicleCurrent ?? null,
           vehicleDesired: updatedVehicles?.vehicleDesired
             ? {
-                ...updatedVehicles.vehicleDesired,
-                budget: updatedVehicles.vehicleDesired.budget
-                  ? updatedVehicles.vehicleDesired.budget.toString()
-                  : null,
-              }
+              ...updatedVehicles.vehicleDesired,
+              budget: updatedVehicles.vehicleDesired.budget
+                ? updatedVehicles.vehicleDesired.budget.toString()
+                : null,
+            }
             : null,
           amountAvailable: updatedVehicles?.financingApps?.[0]?.downPayment
             ? updatedVehicles.financingApps[0].downPayment.toString()
@@ -754,23 +754,23 @@ export const updateLeadCustomerProfile = async (input: UpdateLeadCustomerInput) 
     if (typeof input.payload.lastName !== "undefined") data.lastName = input.payload.lastName;
     if (typeof input.payload.email !== "undefined") data.email = input.payload.email;
     if (typeof input.payload.phone !== "undefined") data.phone = input.payload.phone;
-    data.address = nextAddress as Prisma.JsonValue;
+    data.address = nextAddress as Prisma.InputJsonValue;
 
     const updatedProfile = existingLead.customerProfile
       ? await tx.customerProfile.update({
-          where: { id: existingLead.customerProfile.id },
-          data,
-        })
+        where: { id: existingLead.customerProfile.id },
+        data,
+      })
       : await tx.customerProfile.create({
-          data: {
-            leadId: existingLead.id,
-            firstName: input.payload.firstName ?? "",
-            lastName: input.payload.lastName ?? "",
-            email: input.payload.email ?? null,
-            phone: input.payload.phone ?? null,
-            address: nextAddress as Prisma.JsonValue,
-          },
-        });
+        data: {
+          leadId: existingLead.id,
+          firstName: input.payload.firstName ?? "",
+          lastName: input.payload.lastName ?? "",
+          email: input.payload.email ?? null,
+          phone: input.payload.phone ?? null,
+          address: nextAddress as Prisma.InputJsonValue,
+        },
+      });
 
     await tx.auditLog.create({
       data: {
