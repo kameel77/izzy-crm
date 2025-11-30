@@ -3,6 +3,7 @@ import { apiFetch } from "./client";
 export interface AuthUser {
   id: string;
   email: string;
+  fullName?: string | null;
   role: string;
   partnerId?: string | null;
   partner?: { id: string; name: string } | null;
