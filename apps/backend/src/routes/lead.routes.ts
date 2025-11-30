@@ -796,11 +796,7 @@ router.post(
       return res.status(403).json({ message: "Access denied" });
     }
 
-    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      if (lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-    }
+
 
     if (req.user?.role === UserRole.OPERATOR) {
       await ensureOperatorCanMutateLead({
