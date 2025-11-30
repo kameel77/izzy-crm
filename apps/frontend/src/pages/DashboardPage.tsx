@@ -177,7 +177,7 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleAddDocument = async (payload: { type: string; file: File; checksum?: string }) => {
+  const handleAddDocument = async (payload: { type: string; file: File }) => {
     if (!token || !selectedLeadId) return;
     setNotification(null);
     setError(null);

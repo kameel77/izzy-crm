@@ -127,7 +127,7 @@ interface LeadDetailCardProps {
   onRefresh: () => void | Promise<void>;
   onStatusUpdate: (payload: { status: LeadStatus; notes?: string }) => Promise<void>;
   onSaveFinancing: (payload: FinancingPayload) => Promise<void>;
-  onAddDocument: (payload: { type: string; file: File; checksum?: string }) => Promise<void>;
+  onAddDocument: (payload: { type: string; file: File }) => Promise<void>;
 }
 
 export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({

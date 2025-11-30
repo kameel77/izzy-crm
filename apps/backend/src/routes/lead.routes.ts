@@ -243,7 +243,6 @@ const leadNoteSchema = z.object({
 
 const uploadDocumentBodySchema = z.object({
   type: z.string().min(1).optional(),
-  checksum: z.string().optional(),
 });
 
 const createApplicationFormSchema = z.object({
@@ -758,7 +757,6 @@ router.post(
       userId: req.user!.id,
       type: payload.type,
       filePath: payload.filePath,
-      checksum: payload.checksum,
     });
 
     res.status(201).json(document);
@@ -813,7 +811,6 @@ router.post(
       userId: req.user!.id,
       type,
       filePath: stored.filePath,
-      checksum: body.checksum,
       originalName: stored.originalName,
       mimeType: stored.mimeType,
       size: stored.size,

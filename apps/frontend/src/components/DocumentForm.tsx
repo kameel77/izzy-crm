@@ -1,18 +1,18 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 import { ApiError } from "../api/client";
 
 interface DocumentFormProps {
-  onSubmit: (payload: { type: string; file: File; checksum?: string }) => Promise<void>;
+  onSubmit: (payload: { type: string; file: File }) => Promise<void>;
 }
 
 export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
   const [type, setType] = useState("agreement");
   const [file, setFile] = useState<File | null>(null);
-  const [checksum, setChecksum] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,11 +27,11 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
       await onSubmit({
         type,
         file,
-        checksum: checksum.trim() || undefined,
       });
       setFile(null);
-      setChecksum("");
-      (event.currentTarget.elements.namedItem("file") as HTMLInputElement).value = "";
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       setSuccess("Document uploaded");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to upload document");
@@ -42,35 +42,39 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ onSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      <h3 style={styles.title}>Attach Document</h3>
+      <h3 style={styles.title}>Załącz nowy dokument</h3>
       <div style={styles.grid}>
         <label style={styles.label}>
-          Type
+          Rodzaj dokumentu
           <input value={type} onChange={(event) => setType(event.target.value)} style={styles.input} />
         </label>
-        <label style={styles.label}>
-          File
+        <div style={styles.label}>
+          Plik
           <input
-            name="file"
+            ref={fileInputRef}
             type="file"
-            style={styles.input}
+            style={{ display: 'none' }}
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             required
           />
-        </label>
+          <div style={styles.fileInputContainer}>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={styles.fileButton}
+            >
+              Wybierz plik
+            </button>
+            <span style={styles.fileName}>
+              {file ? file.name : "Nie wybrano pliku"}
+            </span>
+          </div>
+        </div>
       </div>
-      <label style={styles.label}>
-        Checksum (optional)
-        <input
-          value={checksum}
-          onChange={(event) => setChecksum(event.target.value)}
-          style={styles.input}
-        />
-      </label>
       {error ? <div style={styles.error}>{error}</div> : null}
       {success ? <div style={styles.success}>{success}</div> : null}
       <button type="submit" style={styles.submit} disabled={isSubmitting}>
-        {isSubmitting ? "Uploading..." : "Upload"}
+        {isSubmitting ? "Załączanie pliku..." : "Załącz plik"}
       </button>
     </form>
   );
@@ -104,6 +108,24 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0.5rem 0.75rem",
     borderRadius: 8,
     border: "1px solid #d1d5db",
+  },
+  fileInputContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+  },
+  fileButton: {
+    background: "transparent",
+    color: "#2563eb",
+    border: "1px solid rgba(37, 99, 235, 0.3)",
+    borderRadius: 8,
+    padding: "0.45rem 0.9rem",
+    cursor: "pointer",
+    fontWeight: 500,
+  },
+  fileName: {
+    fontSize: "0.875rem",
+    color: "#64748b",
   },
   submit: {
     alignSelf: "flex-start",

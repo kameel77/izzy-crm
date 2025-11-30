@@ -1079,7 +1079,6 @@ export interface AddDocumentInput {
   userId: string;
   type: string;
   filePath: string;
-  checksum?: string;
   originalName?: string;
   mimeType?: string;
   size?: number;
@@ -1094,7 +1093,6 @@ export const addLeadDocument = async (input: AddDocumentInput) => {
       type: input.type,
       filePath: input.filePath,
       uploadedBy: input.userId,
-      checksum: input.checksum,
       originalName: input.originalName,
       mimeType: input.mimeType,
       sizeBytes: input.size ?? null,
