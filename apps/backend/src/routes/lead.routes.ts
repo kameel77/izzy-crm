@@ -792,18 +792,8 @@ router.post(
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    console.log("Upload Debug:", {
-      userRole: req.user?.role,
-      userPartnerId: req.user?.partnerId,
-      leadPartnerId: lead.partnerId,
-      isPartnerScoped: isPartnerScopedRole(req.user?.role),
-    });
-
-    if (isPartnerScopedRole(req.user?.role)) {
-      if (!req.user?.partnerId || lead.partnerId !== req.user.partnerId) {
-        console.log("Access denied: Partner mismatch");
-        return res.status(403).json({ message: "Access denied" });
-      }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
