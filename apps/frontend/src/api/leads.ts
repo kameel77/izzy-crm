@@ -393,7 +393,6 @@ export const saveFinancingApplication = (
 export interface CreateDocumentPayload {
   type: string;
   file: File;
-  checksum?: string;
 }
 
 export const uploadLeadDocument = (
@@ -404,9 +403,6 @@ export const uploadLeadDocument = (
   const formData = new FormData();
   formData.append("file", payload.file);
   formData.append("type", payload.type);
-  if (payload.checksum) {
-    formData.append("checksum", payload.checksum);
-  }
 
   return apiFetch<{ id: string }>(`/api/leads/${leadId}/documents/upload`, {
     method: "POST",

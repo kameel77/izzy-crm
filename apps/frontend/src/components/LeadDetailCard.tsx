@@ -127,7 +127,7 @@ interface LeadDetailCardProps {
   onRefresh: () => void | Promise<void>;
   onStatusUpdate: (payload: { status: LeadStatus; notes?: string }) => Promise<void>;
   onSaveFinancing: (payload: FinancingPayload) => Promise<void>;
-  onAddDocument: (payload: { type: string; file: File; checksum?: string }) => Promise<void>;
+  onAddDocument: (payload: { type: string; file: File }) => Promise<void>;
 }
 
 export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
@@ -830,6 +830,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const truncateText = (value: string, max = 400) =>
     value.length <= max ? value : `${value.slice(0, max)}…`;
 
+  const truncateFileName = (name: string, maxLength: number = 40) => {
+    if (name.length <= maxLength) return name;
+    return `${name.slice(0, maxLength)}...`;
+  };
+
   const renderEmailBody = (note: LeadNote, expanded: boolean) => {
     const html = note.metadata?.html;
     if (html) {
@@ -1187,9 +1192,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                         ) : null}
                         {renderEmailBody(note, isExpanded)}
                         {note.type === "EMAIL_SENT" &&
-                        note.metadata?.links &&
-                        Array.isArray(note.metadata.links) &&
-                        note.metadata.links.length > 0 ? (
+                          note.metadata?.links &&
+                          Array.isArray(note.metadata.links) &&
+                          note.metadata.links.length > 0 ? (
                           <div style={{ marginTop: "0.5rem" }}>
                             <div style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.25rem" }}>
                               Linki:
@@ -1288,8 +1293,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                       href={resolveDocumentUrl(doc.filePath)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      title={doc.originalName || doc.filePath}
                     >
-                      {doc.originalName || doc.filePath}
+                      {truncateFileName(doc.originalName || doc.filePath)}
                     </a>
                   </div>
                   <div style={styles.subtleText}>

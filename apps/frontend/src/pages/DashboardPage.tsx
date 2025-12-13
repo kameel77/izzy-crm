@@ -177,7 +177,7 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleAddDocument = async (payload: { type: string; file: File; checksum?: string }) => {
+  const handleAddDocument = async (payload: { type: string; file: File }) => {
     if (!token || !selectedLeadId) return;
     setNotification(null);
     setError(null);
@@ -204,7 +204,7 @@ export const DashboardPage: React.FC = () => {
         <div>
           <h1 style={styles.heading}>Lead Dashboard</h1>
           <p style={styles.meta}>
-            Zalogowany/a jako <strong>{user?.fullName || user?.email}</strong>{user?.partnerId ? ` (Partner: ${user.partnerId})` : ""} · {metaSummary}
+            Zalogowany/a jako <strong>{user?.fullName || user?.email}</strong>{user?.partner ? ` (Partner: ${user.partner.name})` : ""} · {metaSummary}
           </p>
         </div>
       </div>
