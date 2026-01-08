@@ -94,6 +94,13 @@ const corsOrigins = parsed.data.CORS_ORIGIN.split(",")
   .filter(Boolean);
 const normalizedCorsOrigins = corsOrigins.length > 0 ? corsOrigins : ["*"];
 
+const leadEmailUsesSmtpFallback = Boolean(
+  !parsed.data.LEAD_EMAIL_HOST &&
+    !parsed.data.LEAD_EMAIL_USER &&
+    !parsed.data.LEAD_EMAIL_PASSWORD &&
+    (parsed.data.SMTP_HOST || parsed.data.SMTP_USER || parsed.data.SMTP_PASSWORD),
+);
+
 export const env = {
   ...parsed.data,
   port: Number(parsed.data.PORT) || 4000,
@@ -126,15 +133,17 @@ export const env = {
         }
       : null,
   leadEmail:
-    parsed.data.LEAD_EMAIL_HOST && parsed.data.LEAD_EMAIL_USER && parsed.data.LEAD_EMAIL_PASSWORD
+    (parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST) &&
+    (parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER) &&
+    (parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD)
       ? {
           from: parsed.data.LEAD_EMAIL_FROM ?? parsed.data.EMAIL_FROM ?? undefined,
-          host: parsed.data.LEAD_EMAIL_HOST,
-          port: parsed.data.LEAD_EMAIL_PORT ?? 587,
-          user: parsed.data.LEAD_EMAIL_USER,
-          password: parsed.data.LEAD_EMAIL_PASSWORD,
-          secure: parsed.data.LEAD_EMAIL_SECURE ?? false,
-          imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST,
+          host: parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
+          port: parsed.data.LEAD_EMAIL_PORT ?? parsed.data.SMTP_PORT ?? 587,
+          user: parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER ?? "",
+          password: parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD ?? "",
+          secure: parsed.data.LEAD_EMAIL_SECURE ?? parsed.data.SMTP_SECURE ?? false,
+          imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
           imapPort: parsed.data.LEAD_IMAP_PORT ?? 993,
           imapSecure: parsed.data.LEAD_IMAP_SECURE ?? true,
         }
@@ -152,3 +161,25 @@ export const env = {
       : null,
   },
 };
+
+if (env.leadEmail) {
+  const source = leadEmailUsesSmtpFallback ? "SMTP_* fallback" : "LEAD_EMAIL_*";
+  // eslint-disable-next-line no-console
+  console.info(`[env] Lead email config source: ${source}`);
+} else {
+  const missingLeadEmailFields = [
+    parsed.data.LEAD_EMAIL_HOST ? null : "LEAD_EMAIL_HOST",
+    parsed.data.LEAD_EMAIL_USER ? null : "LEAD_EMAIL_USER",
+    parsed.data.LEAD_EMAIL_PASSWORD ? null : "LEAD_EMAIL_PASSWORD",
+  ].filter((field): field is string => Boolean(field));
+  const missingSmtpFields = [
+    parsed.data.SMTP_HOST ? null : "SMTP_HOST",
+    parsed.data.SMTP_USER ? null : "SMTP_USER",
+    parsed.data.SMTP_PASSWORD ? null : "SMTP_PASSWORD",
+  ].filter((field): field is string => Boolean(field));
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[env] Lead email config missing; set LEAD_EMAIL_* or SMTP_*",
+    { missingLeadEmailFields, missingSmtpFields },
+  );
+}

@@ -89,6 +89,13 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
   - `PATCH http://localhost:4000/api/users/{userId}` to update role/status/contact
   - `POST http://localhost:4000/api/users/{userId}/reset-password`
 
+## Email Configuration
+- Outbound SMTP (required for sending emails): `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`.
+- Lead inbox polling prefers `LEAD_EMAIL_*` but falls back to `SMTP_*` if not set:
+  - `LEAD_EMAIL_HOST`, `LEAD_EMAIL_USER`, `LEAD_EMAIL_PASSWORD`
+  - Optional overrides: `LEAD_EMAIL_PORT`, `LEAD_EMAIL_SECURE`, `LEAD_IMAP_HOST`, `LEAD_IMAP_PORT`, `LEAD_IMAP_SECURE`
+- Auto-create leads from unknown senders requires `LEAD_INBOX_PARTNER_ID`.
+
 ## Frontend Routes
 - Login: `http://localhost:5173/login`
 - Operator dashboard: `http://localhost:5173/leads`

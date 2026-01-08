@@ -21,6 +21,19 @@ export class ImapService {
                     authTimeout: 3000,
                 },
             };
+            console.info("[imap] Lead inbox configured", {
+                host: inbox.imapHost,
+                port: inbox.imapPort ?? 993,
+                secure: inbox.imapSecure ?? true,
+                userConfigured: Boolean(inbox.user),
+                passwordConfigured: Boolean(inbox.password),
+            });
+        } else {
+            console.warn("[imap] Lead inbox not configured", {
+                hasImapHost: Boolean(inbox?.imapHost),
+                hasUser: Boolean(inbox?.user),
+                hasPassword: Boolean(inbox?.password),
+            });
         }
 
         this.isConfigured = Boolean(this.config);
