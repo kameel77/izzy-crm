@@ -106,6 +106,7 @@ model CustomerProfile {
   dateOfBirth    DateTime?
   nationalIdHash String?
   email          String?
+  alternateEmails String[] @default([])
   phone          String?
   employmentInfo Json?
   address        Json?
@@ -356,6 +357,7 @@ enum PartnerStatus {
 }
 
 enum LeadStatus {
+  INBOUND
   NEW
   FIRST_CONTACT
   FOLLOW_UP
@@ -372,6 +374,7 @@ enum LeadStatus {
   CLOSED_LOST
   CLOSED_NO_FINANCING
   CANCELLED
+  MERGED
 }
 
 model LeadStatusHistory {

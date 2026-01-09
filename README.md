@@ -95,6 +95,11 @@ Bootstrapped repository for the automotive financing CRM. The project uses a mon
   - `LEAD_EMAIL_HOST`, `LEAD_EMAIL_USER`, `LEAD_EMAIL_PASSWORD`
   - Optional overrides: `LEAD_EMAIL_PORT`, `LEAD_EMAIL_SECURE`, `LEAD_IMAP_HOST`, `LEAD_IMAP_PORT`, `LEAD_IMAP_SECURE`
 - Auto-create leads from unknown senders requires `LEAD_INBOX_PARTNER_ID`.
+- Optional mapping by recipient address: `LEAD_INBOX_PARTNER_MAP` (JSON), e.g.
+  ```json
+  {"sales@company.com":"partner-id-1","fleet@company.com":"partner-id-2"}
+  ```
+  When set, the system uses the partner ID mapped to the inbound email's `to` address, otherwise falls back to `LEAD_INBOX_PARTNER_ID`.
 
 ## Frontend Routes
 - Login: `http://localhost:5173/login`

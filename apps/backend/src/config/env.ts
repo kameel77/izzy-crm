@@ -75,7 +75,16 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val ? val === "true" || val === "1" : undefined)),
+  LEAD_IMAP_AUTH_TIMEOUT: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : undefined;
+    }),
   LEAD_INBOX_PARTNER_ID: z.string().optional(),
+  LEAD_INBOX_PARTNER_MAP: z.string().optional(),
   APP_BASE_URL: z.string().default("http://localhost:5173"),
   CRM_WEBHOOK_URL: z.string().url().optional(),
   CRM_WEBHOOK_TOKEN: z.string().optional(),
@@ -146,9 +155,20 @@ export const env = {
           imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
           imapPort: parsed.data.LEAD_IMAP_PORT ?? 993,
           imapSecure: parsed.data.LEAD_IMAP_SECURE ?? true,
+          imapAuthTimeout: parsed.data.LEAD_IMAP_AUTH_TIMEOUT ?? 10000,
         }
       : null,
   leadInboxPartnerId: parsed.data.LEAD_INBOX_PARTNER_ID,
+  leadInboxPartnerMap: (() => {
+    if (!parsed.data.LEAD_INBOX_PARTNER_MAP) return undefined;
+    try {
+      return JSON.parse(parsed.data.LEAD_INBOX_PARTNER_MAP) as Record<string, string>;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("[env] Invalid LEAD_INBOX_PARTNER_MAP JSON; ignoring.");
+      return undefined;
+    }
+  })(),
   app: {
     baseUrl: parsed.data.APP_BASE_URL,
   },

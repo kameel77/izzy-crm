@@ -35,6 +35,26 @@ const detectCustomerType = (subject?: string | null, body?: string | null) => {
     return isCompany ? "firma" : "osoba prywatna";
 };
 
+const extractEmails = (input?: string | null) => {
+    if (!input) return [];
+    const matches = input.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi);
+    return matches ? matches.map((value) => value.toLowerCase()) : [];
+};
+
+const resolveLeadInboxPartnerId = (params: { to?: string | null }) => {
+    const map = env.leadInboxPartnerMap;
+    if (map) {
+        const toEmails = extractEmails(params.to);
+        for (const email of toEmails) {
+            const partnerId = map[email];
+            if (partnerId) {
+                return { partnerId, source: "map" as const };
+            }
+        }
+    }
+    return { partnerId: env.leadInboxPartnerId, source: "fallback" as const };
+};
+
 export const sendLeadEmail = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { message, links = [], subject, replyToNoteId, quotedHtml, quotedText } = req.body ?? {};
@@ -183,16 +203,25 @@ export const processIncomingEmail = async (params: {
     const senderEmail = emailMatch ? emailMatch[1] : from;
 
     const customerProfile = await prisma.customerProfile.findFirst({
-        where: { email: senderEmail },
+        where: {
+            OR: [
+                { email: senderEmail },
+                { alternateEmails: { has: senderEmail } },
+            ],
+        },
         include: { lead: true },
     });
 
     if (!customerProfile) {
-        const partnerId = env.leadInboxPartnerId;
-        if (!partnerId) {
-            console.warn(`[email-inbound] Missing LEAD_INBOX_PARTNER_ID – cannot auto-create lead for ${senderEmail}`);
+        const partnerResolution = resolveLeadInboxPartnerId({ to });
+        if (!partnerResolution.partnerId) {
+            console.warn(
+                `[email-inbound] Missing LEAD_INBOX_PARTNER_ID – cannot auto-create lead for ${senderEmail}`,
+                { to: to ?? null, resolution: partnerResolution.source },
+            );
             return { success: false, message: "Unknown sender (partner missing)" };
         }
+        const partnerId = partnerResolution.partnerId;
 
         const windowStart = new Date(Date.now() - ANTISPAM_WINDOW_MS);
         const recentLeadCount = await prisma.lead.count({
@@ -225,7 +254,7 @@ export const processIncomingEmail = async (params: {
         const newLead = await prisma.lead.create({
             data: {
                 partnerId,
-                status: LeadStatus.NEW,
+                status: LeadStatus.INBOUND,
                 sourceMetadata: {
                     source: "izzylease.pl",
                     direction: "INCOMING_EMAIL",
@@ -243,6 +272,18 @@ export const processIncomingEmail = async (params: {
                 },
             },
             select: { id: true },
+        });
+
+        await prisma.leadNote.create({
+            data: {
+                leadId: newLead.id,
+                content: "Źródło: inbound email (auto)",
+                type: LeadNoteType.MANUAL,
+                metadata: {
+                    source: "INBOUND_EMAIL",
+                    partnerId,
+                },
+            },
         });
 
         await prisma.leadNote.create({

@@ -19,6 +19,7 @@ import {
   updateLeadVehicles,
   anonymizeLead,
   updateLeadCustomerProfile,
+  mergeLeads,
 } from "../services/lead.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -239,6 +240,13 @@ const leadNoteSchema = z.object({
       return value;
     }, z.string().trim().url().max(2048))
     .optional(),
+});
+
+const mergeLeadSchema = z.object({
+  sourceLeadId: z.string().min(1),
+  mergeNotes: z.boolean().optional().default(false),
+  desiredVehicleSource: z.enum(["target", "source"]).optional().default("target"),
+  primaryEmail: z.string().email(),
 });
 
 const uploadDocumentBodySchema = z.object({
@@ -593,6 +601,56 @@ router.patch(
     });
 
     return res.json(updatedVehicles);
+  }),
+);
+
+router.post(
+  "/:id/merge",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = mergeLeadSchema.parse(req.body ?? {});
+
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const [targetLead, sourceLead] = await Promise.all([
+      getLeadById(id),
+      getLeadById(body.sourceLeadId),
+    ]);
+
+    if (!targetLead || !sourceLead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (!canAccessLead(targetLead, req.user) || !canAccessLead(sourceLead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
+      await ensureOperatorCanMutateLead({
+        leadId: body.sourceLeadId,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
+    }
+
+    const merged = await mergeLeads({
+      targetLeadId: id,
+      sourceLeadId: body.sourceLeadId,
+      actorUserId: req.user.id,
+      mergeNotes: body.mergeNotes,
+      desiredVehicleSource: body.desiredVehicleSource,
+      primaryEmail: body.primaryEmail,
+    });
+
+    return res.json(merged);
   }),
 );
 

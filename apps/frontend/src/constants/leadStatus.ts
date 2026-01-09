@@ -1,4 +1,5 @@
 export const LEAD_STATUSES = [
+  "INBOUND",
   "NEW",
   "FIRST_CONTACT",
   "FOLLOW_UP",
@@ -15,11 +16,13 @@ export const LEAD_STATUSES = [
   "CLOSED_LOST",
   "CLOSED_NO_FINANCING",
   "CANCELLED",
+  "MERGED",
 ] as const;
 
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  INBOUND: "Inbound",
   NEW: "New",
   FIRST_CONTACT: "First Contact",
   FOLLOW_UP: "Follow-up",
@@ -36,4 +39,5 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   CLOSED_LOST: "Closed - Lost",
   CLOSED_NO_FINANCING: "Closed - No Financing",
   CANCELLED: "Cancelled",
+  MERGED: "Merged",
 };

@@ -18,7 +18,7 @@ export class ImapService {
                     host: inbox.imapHost,
                     port: inbox.imapPort ?? 993,
                     tls: inbox.imapSecure ?? true,
-                    authTimeout: 3000,
+                    authTimeout: inbox.imapAuthTimeout ?? 10000,
                 },
             };
             console.info("[imap] Lead inbox configured", {

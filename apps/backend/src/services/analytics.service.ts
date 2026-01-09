@@ -3,6 +3,7 @@ import { LeadStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 const LEAD_STATUS_SEQUENCE: LeadStatus[] = [
+  LeadStatus.INBOUND,
   LeadStatus.NEW,
   LeadStatus.FIRST_CONTACT,
   LeadStatus.FOLLOW_UP,
@@ -19,6 +20,7 @@ const LEAD_STATUS_SEQUENCE: LeadStatus[] = [
   LeadStatus.CLOSED_LOST,
   LeadStatus.CLOSED_NO_FINANCING,
   LeadStatus.CANCELLED,
+  LeadStatus.MERGED,
 ];
 
 const MS_IN_DAY = 1000 * 60 * 60 * 24;

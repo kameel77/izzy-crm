@@ -140,8 +140,9 @@ const leadSummarySelect = {
 } satisfies Prisma.LeadSelect;
 
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
+  INBOUND: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED],
   NEW: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED],
-  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW],
+  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW, LeadStatus.INBOUND],
   FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED],
   VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED],
   UNQUALIFIED: [],
@@ -166,6 +167,7 @@ const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
   CLOSED_LOST: [],
   CLOSED_NO_FINANCING: [],
   CANCELLED: [],
+  MERGED: [],
 };
 
 export interface CreateLeadInput {
@@ -907,10 +909,10 @@ export const transitionLeadStatus = async (input: TransitionLeadInput) => {
       data.claimedAt = new Date();
     }
 
-    if (input.targetStatus === LeadStatus.NEW) {
-      data.assignedUserId = null;
-      data.claimedAt = null;
-    }
+  if (input.targetStatus === LeadStatus.NEW || input.targetStatus === LeadStatus.INBOUND) {
+    data.assignedUserId = null;
+    data.claimedAt = null;
+  }
 
     if (input.lastContactAt) {
       data.lastContactAt = input.lastContactAt;
@@ -968,6 +970,174 @@ export const transitionLeadStatus = async (input: TransitionLeadInput) => {
     });
 
     return updatedLead;
+  });
+};
+
+export interface MergeLeadsInput {
+  targetLeadId: string;
+  sourceLeadId: string;
+  actorUserId: string;
+  mergeNotes: boolean;
+  desiredVehicleSource: "target" | "source";
+  primaryEmail: string;
+}
+
+const normalizeEmail = (value?: string | null) =>
+  value?.trim().toLowerCase() ?? null;
+
+export const mergeLeads = async (input: MergeLeadsInput) => {
+  return prisma.$transaction(async (tx) => {
+    if (input.targetLeadId === input.sourceLeadId) {
+      const error = new Error("Source and target leads must be different");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }
+
+    const [target, source] = await Promise.all([
+      tx.lead.findUnique({
+        where: { id: input.targetLeadId },
+        select: {
+          id: true,
+          partnerId: true,
+          status: true,
+          customerProfile: {
+            select: {
+              id: true,
+              email: true,
+              alternateEmails: true,
+            },
+          },
+          vehicleDesired: true,
+        },
+      }),
+      tx.lead.findUnique({
+        where: { id: input.sourceLeadId },
+        select: {
+          id: true,
+          partnerId: true,
+          status: true,
+          customerProfile: {
+            select: {
+              id: true,
+              email: true,
+              alternateEmails: true,
+            },
+          },
+          vehicleDesired: true,
+        },
+      }),
+    ]);
+
+    if (!target || !source) {
+      const error = new Error("Lead not found");
+      (error as Error & { status: number }).status = 404;
+      throw error;
+    }
+
+    if (target.partnerId !== source.partnerId) {
+      const error = new Error("Leads belong to different partners");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }
+
+    if (!target.customerProfile || !source.customerProfile) {
+      const error = new Error("Customer profile missing for merge");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }
+
+    const primaryEmail = normalizeEmail(input.primaryEmail);
+    if (!primaryEmail) {
+      const error = new Error("Primary email is required");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }
+
+    const emailCandidates = [
+      target.customerProfile.email,
+      source.customerProfile.email,
+      ...(target.customerProfile.alternateEmails ?? []),
+      ...(source.customerProfile.alternateEmails ?? []),
+      primaryEmail,
+    ]
+      .map(normalizeEmail)
+      .filter((value): value is string => Boolean(value));
+
+    const uniqueEmails = Array.from(new Set(emailCandidates));
+    const alternateEmails = uniqueEmails.filter((value) => value !== primaryEmail);
+
+    await tx.customerProfile.update({
+      where: { id: target.customerProfile.id },
+      data: {
+        email: primaryEmail,
+        alternateEmails,
+      },
+    });
+
+    if (input.mergeNotes) {
+      await tx.leadNote.updateMany({
+        where: { leadId: source.id },
+        data: { leadId: target.id },
+      });
+    }
+
+    if (input.desiredVehicleSource === "source" && source.vehicleDesired) {
+      await tx.vehicleDesired.upsert({
+        where: { leadId: target.id },
+        create: {
+          leadId: target.id,
+          make: source.vehicleDesired.make,
+          model: source.vehicleDesired.model,
+          year: source.vehicleDesired.year,
+          budget: source.vehicleDesired.budget,
+          preferences: source.vehicleDesired.preferences ?? undefined,
+        },
+        update: {
+          make: source.vehicleDesired.make,
+          model: source.vehicleDesired.model,
+          year: source.vehicleDesired.year,
+          budget: source.vehicleDesired.budget,
+          preferences: source.vehicleDesired.preferences ?? undefined,
+        },
+      });
+    }
+
+    await tx.lead.update({
+      where: { id: source.id },
+      data: { status: LeadStatus.MERGED },
+    });
+
+    await tx.auditLog.createMany({
+      data: [
+        {
+          leadId: target.id,
+          userId: input.actorUserId,
+          action: "lead_merge",
+          metadata: {
+            sourceLeadId: source.id,
+            mergeNotes: input.mergeNotes,
+            desiredVehicleSource: input.desiredVehicleSource,
+            primaryEmail,
+          },
+        },
+        {
+          leadId: source.id,
+          userId: input.actorUserId,
+          action: "lead_merged_into",
+          metadata: {
+            targetLeadId: target.id,
+            mergeNotes: input.mergeNotes,
+            desiredVehicleSource: input.desiredVehicleSource,
+            primaryEmail,
+          },
+        },
+      ],
+    });
+
+    return tx.lead.findUnique({
+      where: { id: target.id },
+      select: leadSummarySelect,
+    });
   });
 };
 
