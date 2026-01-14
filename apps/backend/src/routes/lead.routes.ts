@@ -22,6 +22,7 @@ import {
 } from "../services/lead.service.js";
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { buildOfferLink } from "../utils/offerLink.js";
 
 const router = Router();
 
@@ -248,6 +249,11 @@ const uploadDocumentBodySchema = z.object({
 const createApplicationFormSchema = z.object({
   accessCode: z.string().trim().min(4).max(32),
   expiresInDays: z.number().int().min(1).max(30).optional(),
+});
+
+const offerLinkSchema = z.object({
+  baseUrl: z.string().url(),
+  discountPln: z.coerce.number().int().min(0),
 });
 
 
@@ -841,6 +847,32 @@ router.post(
     });
 
     return res.status(201).json(result);
+  }),
+);
+
+router.post(
+  "/:id/offer-link",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { id } = leadIdParamSchema.parse(req.params);
+    const body = offerLinkSchema.parse(req.body ?? {});
+
+    const lead = await getLeadById(id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { finalUrl } = buildOfferLink({
+      baseUrl: body.baseUrl,
+      discountPln: body.discountPln,
+    });
+
+    return res.json({ finalUrl });
   }),
 );
 

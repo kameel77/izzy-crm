@@ -196,6 +196,20 @@ export const sendLeadEmail = (
     body: JSON.stringify(payload),
   });
 
+export const generateOfferLink = (
+  token: string,
+  leadId: string,
+  payload: {
+    baseUrl: string;
+    discountPln: number;
+  },
+) =>
+  apiFetch<{ finalUrl: string }>(`/api/leads/${leadId}/offer-link`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
 export interface LeadListFilters {
   page?: number;
   perPage?: number;
