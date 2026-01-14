@@ -249,6 +249,30 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     return digits.slice(-4);
   }, [lead?.customerProfile?.phone]);
 
+  const offerBudgetValue = useMemo(() => {
+    const rawBudget = lead?.vehicleDesired?.budget;
+    if (typeof rawBudget === "number") {
+      return Number.isFinite(rawBudget) ? rawBudget : null;
+    }
+    if (typeof rawBudget === "string") {
+      const parsed = Number(rawBudget);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }, [lead?.vehicleDesired?.budget]);
+
+  const offerAmountAvailableValue = useMemo(() => {
+    const rawAmount = lead?.financingApps?.[0]?.downPayment;
+    if (typeof rawAmount === "number") {
+      return Number.isFinite(rawAmount) ? rawAmount : null;
+    }
+    if (typeof rawAmount === "string") {
+      const parsed = Number(rawAmount);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }, [lead?.financingApps]);
+
   const customerAddress = useMemo(
     () =>
       (lead?.customerProfile?.address as
@@ -1992,6 +2016,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         leadId={lead.id}
         onSuccess={() => onRefresh()}
         replyContext={replyContext}
+        offerBudget={offerBudgetValue}
+        offerAmountAvailable={offerAmountAvailableValue}
       />
     </section >
   );
