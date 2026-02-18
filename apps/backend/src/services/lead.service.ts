@@ -760,12 +760,12 @@ export const addLeadNote = async (input: AddLeadNoteInput) => {
       throw error;
     }
 
-    const note = await tx.leadNote.create({
+    const note = await tx.leadNoteEntry.create({
       data: {
         leadId: input.leadId,
         authorId: input.userId,
         content: input.content,
-        link: input.link ?? null,
+        url: input.link ?? null,
       },
       include: {
         author: {
@@ -787,7 +787,7 @@ export const addLeadNote = async (input: AddLeadNoteInput) => {
         newValue: {
           id: note.id,
           content: note.content,
-          link: note.link,
+          link: note.url,
         } as Prisma.InputJsonValue,
       },
     });

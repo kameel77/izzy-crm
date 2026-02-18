@@ -9,7 +9,7 @@ import {
   assignLeadOwner,
   createLead,
   getLeadById,
-  listLeadNotes,
+  listLeadNotes as listLeadNotesLegacy,
   listLeads,
   transitionLeadStatus,
   upsertFinancingApplication,
@@ -355,7 +355,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = leadIdParamSchema.parse(req.params);
 
-    const notesPayload = await listLeadNotes(id);
+    const notesPayload = await listLeadNotesLegacy(id);
 
     if (!notesPayload) {
       return res.status(404).json({ message: "Lead not found" });
