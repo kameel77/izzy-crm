@@ -11,9 +11,101 @@ interface Step6Props {
   onFormChange: (data: Record<string, unknown>) => void;
   submitAttempted: boolean;
   submittedAt?: string | null;
+  isReadOnly?: boolean;
 }
 
-const SummaryItem: React.FC<{ label: string; value: unknown }> = ({ label, value }) => (
+const FIELD_LABELS: Record<string, string> = {
+  pesel: "PESEL",
+  firstName: "Imię",
+  lastName: "Nazwisko",
+  mobilePhone: "Telefon",
+  email: "E-mail",
+  birthDate: "Data urodzenia",
+  gender: "Płeć",
+  birthPlace: "Miejsce urodzenia",
+  countryOfBirth: "Kraj urodzenia",
+  citizenship: "Obywatelstwo",
+  secondCitizenship: "Drugie obywatelstwo",
+  nationality: "Narodowość",
+  maidenName: "Nazwisko rodowe",
+  maritalStatus: "Stan cywilny",
+  mothersMaidenName: "Nazwisko panieńskie matki",
+  childrenCount: "Liczba dzieci",
+  isTaxResident: "Rezydent podatkowy",
+  documentType: "Rodzaj dokumentu",
+  documentNumber: "Numer dokumentu",
+  issueDate: "Data wydania",
+  expiryDate: "Data ważności",
+  education: "Wykształcenie",
+  registeredStreet: "Ulica zameldowania",
+  registeredPostalCode: "Kod pocztowy zameldowania",
+  registeredCity: "Miejscowość zameldowania",
+  registeredPostOffice: "Poczta zameldowania",
+  residentialCountry: "Kraj zamieszkania",
+  residentialStreet: "Ulica zamieszkania",
+  residentialPostalCode: "Kod pocztowy zamieszkania",
+  residentialCity: "Miejscowość zamieszkania",
+  residentialPostOffice: "Poczta zamieszkania",
+  propertyType: "Typ lokalu",
+  ownershipType: "Rodzaj własności",
+  addressFrom: "Adres od",
+  incomeSource: "Źródło dochodów",
+  employmentSince: "Zatrudnienie od",
+  profession: "Zawód",
+  position: "Stanowisko",
+  employmentSector: "Sektor zatrudnienia",
+  totalWorkExperience: "Staż pracy",
+  workplaceType: "Rodzaj zakładu pracy",
+  employerName: "Nazwa pracodawcy",
+  employerStreet: "Ulica pracodawcy",
+  employerPostalCode: "Kod pocztowy pracodawcy",
+  employerCity: "Miejscowość pracodawcy",
+  employerPostOffice: "Poczta pracodawcy",
+  employerPhone: "Telefon pracodawcy",
+  employerNip: "NIP pracodawcy",
+  employerRegon: "REGON pracodawcy",
+  mainIncome: "Główne dochody",
+  otherIncome: "Inne dochody",
+  housingFees: "Opłaty za mieszkanie",
+  otherLivingCosts: "Pozostałe koszty życia",
+  loanInstallments: "Kwota rat kredytów",
+  cardLimits: "Kwota limitów kart/kredytów",
+  otherFinancialLiabilities: "Inne obciążenia finansowe",
+};
+
+const SUMMARY_SECTIONS: Array<{ title: string; keys: string[] }> = [
+  {
+    title: "Dane osobowe",
+    keys: [
+      "pesel", "firstName", "lastName", "mobilePhone", "email", "birthDate", "gender", "birthPlace", "countryOfBirth",
+      "citizenship", "secondCitizenship", "nationality", "maidenName", "maritalStatus", "mothersMaidenName", "childrenCount", "isTaxResident",
+    ],
+  },
+  {
+    title: "Dokument",
+    keys: ["documentType", "documentNumber", "issueDate", "expiryDate", "education"],
+  },
+  {
+    title: "Adresy",
+    keys: [
+      "registeredStreet", "registeredPostalCode", "registeredCity", "registeredPostOffice", "isResidentialSameAsRegistered", "residentialCountry",
+      "residentialStreet", "residentialPostalCode", "residentialCity", "residentialPostOffice", "propertyType", "ownershipType", "addressFrom",
+    ],
+  },
+  {
+    title: "Zatrudnienie",
+    keys: [
+      "incomeSource", "employmentSince", "profession", "position", "employmentSector", "totalWorkExperience", "workplaceType", "employerName",
+      "employerStreet", "employerPostalCode", "employerCity", "employerPostOffice", "employerPhone", "employerNip", "employerRegon",
+    ],
+  },
+  {
+    title: "Budżet",
+    keys: ["mainIncome", "otherIncome", "housingFees", "otherLivingCosts", "loanInstallments", "cardLimits", "otherFinancialLiabilities"],
+  },
+];
+
+const SummaryItem = ({ label, value }: { label: string; value: unknown }) => (
   <div style={styles.summaryItem}>
     <span style={styles.summaryLabel}>{label}</span>
     <span style={styles.summaryValue}>{String(value ?? "—")}</span>
@@ -25,6 +117,7 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
   onFormChange,
   submitAttempted,
   submittedAt,
+  isReadOnly = false,
 }, ref) => {
   const { applicationFormId, leadId } = useParams<{ applicationFormId: string; leadId: string }>();
   const [templates, setTemplates] = useState<ConsentTemplateDto[]>([]);
@@ -37,9 +130,8 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
       const requiredConsents = templates.filter((c) => c.isRequired);
-      if (requiredConsents.length === 0) return true; 
-      const allRequiredAccepted = requiredConsents.every((c) => consentState[c.id]);
-      return allRequiredAccepted;
+      if (requiredConsents.length === 0) return true;
+      return requiredConsents.every((c) => consentState[c.id]);
     },
   }));
 
@@ -59,7 +151,6 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
         setTemplates(fetchedTemplates);
       } catch (err) {
         setError("Nie udało się załadować szablonów zgód.");
-        console.error(err);
       } finally {
         setIsLoading(false);
       }
@@ -72,8 +163,8 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
       const initialConsentState: Record<string, boolean> = {};
       const savedConsents = formData.consents as Array<{ templateId: string; given: boolean }> | undefined;
 
-      templates.forEach(template => {
-        const saved = savedConsents?.find(c => c.templateId === template.id);
+      templates.forEach((template) => {
+        const saved = savedConsents?.find((c) => c.templateId === template.id);
         initialConsentState[template.id] = saved ? saved.given : false;
       });
 
@@ -84,7 +175,7 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
 
   useEffect(() => {
     if (!isInitialized) return;
-    const consentsForForm = templates.map(t => ({
+    const consentsForForm = templates.map((t) => ({
       templateId: t.id,
       version: t.version,
       given: consentState[t.id] || false,
@@ -108,11 +199,22 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
         <legend style={styles.legend}>Podsumowanie danych</legend>
         <p>Proszę zweryfikować poprawność wprowadzonych danych przed wysłaniem wniosku.</p>
 
-        {Object.entries(formData)
-          .filter(([key]) => key !== 'consents')
-          .map(([key, value]) => (
-            <SummaryItem key={key} label={key} value={value} />
-        ))}
+        {SUMMARY_SECTIONS.map((section) => {
+          const sectionRows = section.keys
+            .filter((key) => key in formData)
+            .map((key) => (
+              <SummaryItem key={key} label={FIELD_LABELS[key] ?? key} value={formData[key]} />
+            ));
+
+          if (sectionRows.length === 0) return null;
+
+          return (
+            <div key={section.title} style={styles.summarySection}>
+              <h3 style={styles.summarySectionTitle}>{section.title}</h3>
+              {sectionRows}
+            </div>
+          );
+        })}
       </fieldset>
 
       <fieldset style={styles.fieldset}>
@@ -129,6 +231,7 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
                     type="checkbox"
                     checked={consentState[consent.id] || false}
                     onChange={(e) => handleConsentChange(consent.id, e.target.checked)}
+                    disabled={isReadOnly}
                   />
                   {consent.title || consent.content} {consent.isRequired && "*"}
                 </label>
@@ -148,14 +251,14 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
           );
         })}
         {submittedAt ? (
-          <p style={styles.submittedNote}>
-            Wniosek został wysłany: {new Date(submittedAt).toLocaleString()}
-          </p>
+          <p style={styles.submittedNote}>Wniosek został wysłany: {new Date(submittedAt).toLocaleString()}</p>
         ) : null}
       </fieldset>
     </div>
   );
 });
+
+Step6_Summary.displayName = "Step6_Summary";
 
 const styles: Record<string, React.CSSProperties> = {
   fieldset: {
@@ -171,6 +274,12 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     borderBottom: "1px solid #e5e7eb",
   },
+  summarySection: {
+    marginBottom: "1rem",
+  },
+  summarySectionTitle: {
+    marginBottom: "0.5rem",
+  },
   summaryItem: {
     display: "flex",
     justifyContent: "space-between",
@@ -179,16 +288,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   summaryLabel: {
     color: "#475569",
-    textTransform: "capitalize",
   },
   summaryValue: {
     fontWeight: 500,
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    marginBottom: "1rem",
   },
   errorLabel: {
     color: "#ef4444",

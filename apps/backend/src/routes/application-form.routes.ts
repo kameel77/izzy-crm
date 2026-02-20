@@ -7,10 +7,12 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import {
   getApplicationFormById,
+  heartbeatApplicationForm,
   logUnlockAttempt,
   saveApplicationFormProgress,
   submitApplicationForm,
   unlockApplicationForm,
+  verifyApplicationFormAccess,
 } from "../services/application-form.service.js";
 
 const router = Router();
@@ -30,12 +32,36 @@ const saveProgressSchema = z.object({
   completionPercent: z.number().min(0).max(100),
 });
 
+const verifyAccessSchema = z.object({
+  applicationFormId: z.string().cuid(),
+  leadId: z.string().cuid(),
+  code: z.string().trim().min(1),
+});
+
 router.get(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = formIdSchema.parse(req.params);
     const form = await getApplicationFormById({ applicationFormId: id });
     return res.json(form);
+  }),
+);
+
+router.post(
+  "/verify-access",
+  asyncHandler(async (req, res) => {
+    const body = verifyAccessSchema.parse(req.body ?? {});
+    const result = await verifyApplicationFormAccess(body);
+    return res.status(200).json(result);
+  }),
+);
+
+router.post(
+  "/:id/heartbeat",
+  asyncHandler(async (req, res) => {
+    const { id } = formIdSchema.parse(req.params);
+    const result = await heartbeatApplicationForm(id);
+    return res.status(200).json(result);
   }),
 );
 

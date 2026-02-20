@@ -38,13 +38,14 @@ type FormValues = z.infer<typeof schema>;
 interface Step1Props {
   onFormChange: (data: Partial<FormValues>) => void;
   formData: Partial<FormValues>;
+  isReadOnly?: boolean;
 }
 
 export interface Step1Ref {
   triggerValidation: () => Promise<boolean>;
 }
 
-export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChange, formData }, ref) => {
+export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
     watch,
@@ -112,6 +113,7 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 
   return (
     <form>
+      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 1: Dane osobowe</h2>
       <div style={styles.grid}>
         {/* Row 1 */}
@@ -223,9 +225,12 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
           </label>
         </div>
       </div>
+      </fieldset>
     </form>
   );
 });
+
+Step1_PersonalData.displayName = "Step1_PersonalData";
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {
@@ -241,5 +246,10 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     color: "#ef4444",
     fontSize: "0.875rem",
+  },
+  readOnlyFieldset: {
+    border: "none",
+    padding: 0,
+    margin: 0,
   },
 };

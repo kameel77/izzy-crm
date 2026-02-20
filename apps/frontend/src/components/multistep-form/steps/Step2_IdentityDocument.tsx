@@ -16,13 +16,14 @@ type FormValues = z.infer<typeof schema>;
 interface Step2Props {
   onFormChange: (data: Partial<FormValues>) => void;
   formData: Partial<FormValues>;
+  isReadOnly?: boolean;
 }
 
 export interface Step2Ref {
   triggerValidation: () => Promise<boolean>;
 }
 
-export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onFormChange, formData }, ref) => {
+export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
     watch,
@@ -43,7 +44,7 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
 
   useEffect(() => {
     onFormChange(watchedData);
-  }, [JSON.stringify(watchedData), onFormChange]);
+  }, [watchedData, onFormChange]);
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
@@ -53,6 +54,7 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
 
   return (
     <form>
+      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 2: Dokument tożsamości</h2>
       <div style={styles.grid}>
         <div style={styles.field}>
@@ -91,9 +93,12 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
           {errors.education && <span style={styles.error}>{errors.education.message}</span>}
         </div>
       </div>
+      </fieldset>
     </form>
   );
 });
+
+Step2_IdentityDocument.displayName = "Step2_IdentityDocument";
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {
@@ -109,5 +114,10 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     color: "#ef4444",
     fontSize: "0.875rem",
+  },
+  readOnlyFieldset: {
+    border: "none",
+    padding: 0,
+    margin: 0,
   },
 };
