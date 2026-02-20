@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDebounce } from "use-debounce";
-import { getApplicationForm, saveApplicationFormProgress, submitApplicationForm } from "../../api/application-forms";
+import {
+  getApplicationForm,
+  heartbeatApplicationForm,
+  saveApplicationFormProgress,
+  submitApplicationForm,
+} from "../../api/application-forms";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -74,6 +79,27 @@ export const MultiStepForm: React.FC = () => {
 
     loadFormData();
   }, [applicationFormId]);
+
+  useEffect(() => {
+    if (isLoading || !applicationFormId || formStatus === 'SUBMITTED' || formStatus === 'LOCKED') {
+      return;
+    }
+
+    const pingHeartbeat = async () => {
+      try {
+        await heartbeatApplicationForm(applicationFormId);
+      } catch (error) {
+        console.error("Heartbeat failed", error);
+      }
+    };
+
+    pingHeartbeat();
+    const interval = window.setInterval(pingHeartbeat, 60_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [applicationFormId, formStatus, isLoading]);
 
   useEffect(() => {
     const performSave = async () => {
@@ -173,18 +199,22 @@ export const MultiStepForm: React.FC = () => {
     return <div>Ładowanie...</div>;
   }
 
+  const isReadOnly = formStatus === 'SUBMITTED' || formStatus === 'LOCKED';
+
   const steps = [
-    <Step1_PersonalData ref={stepRefs.current[0] as React.Ref<Step1Ref>} onFormChange={handleFormChange} formData={formData} />,
-    <Step2_IdentityDocument ref={stepRefs.current[1] as React.Ref<Step2Ref>} onFormChange={handleFormChange} formData={formData} />,
-    <Step3_Addresses ref={stepRefs.current[2] as React.Ref<Step3Ref>} onFormChange={handleFormChange} formData={formData} />,
-    <Step4_Employment ref={stepRefs.current[3] as React.Ref<Step4Ref>} onFormChange={handleFormChange} formData={formData} />,
-    <Step5_Budget ref={stepRefs.current[4] as React.Ref<Step5Ref>} onFormChange={handleFormChange} formData={formData} />,
+    <Step1_PersonalData key="step-1" ref={stepRefs.current[0] as React.Ref<Step1Ref>} onFormChange={handleFormChange} formData={formData} isReadOnly={isReadOnly} />,
+    <Step2_IdentityDocument key="step-2" ref={stepRefs.current[1] as React.Ref<Step2Ref>} onFormChange={handleFormChange} formData={formData} isReadOnly={isReadOnly} />,
+    <Step3_Addresses key="step-3" ref={stepRefs.current[2] as React.Ref<Step3Ref>} onFormChange={handleFormChange} formData={formData} isReadOnly={isReadOnly} />,
+    <Step4_Employment key="step-4" ref={stepRefs.current[3] as React.Ref<Step4Ref>} onFormChange={handleFormChange} formData={formData} isReadOnly={isReadOnly} />,
+    <Step5_Budget key="step-5" ref={stepRefs.current[4] as React.Ref<Step5Ref>} onFormChange={handleFormChange} formData={formData} isReadOnly={isReadOnly} />,
     <Step6_Summary
+      key="step-6"
       ref={stepRefs.current[5] as React.Ref<Step6Ref>}
       formData={formData}
       submitAttempted={submitAttempted}
       onFormChange={handleFormChange}
       submittedAt={submittedAt}
+      isReadOnly={isReadOnly}
     />
   ];
 
@@ -207,7 +237,7 @@ export const MultiStepForm: React.FC = () => {
         onBack={handleBack}
         onNext={handleNext}
         onSubmit={handleSubmit}
-        isSubmittable={currentStep === TOTAL_STEPS && formStatus !== 'SUBMITTED'}
+        isSubmittable={currentStep === TOTAL_STEPS && !isReadOnly}
       />
     </div>
   );

@@ -110,6 +110,31 @@ const buildUnlockHistory = (existing: unknown, entry: unknown) => {
 
 const hashAccessCode = (code: string) => createHash("sha256").update(code).digest("hex");
 
+const VERIFY_RATE_LIMIT_MAX_ATTEMPTS = 5;
+const VERIFY_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const verifyFailuresByFormId = new Map<string, number[]>();
+
+const getRecentFailedAttempts = (applicationFormId: string, nowMs: number) => {
+  const attempts = verifyFailuresByFormId.get(applicationFormId) ?? [];
+  const recentAttempts = attempts.filter((timestamp) => nowMs - timestamp < VERIFY_RATE_LIMIT_WINDOW_MS);
+  if (recentAttempts.length > 0) {
+    verifyFailuresByFormId.set(applicationFormId, recentAttempts);
+  } else {
+    verifyFailuresByFormId.delete(applicationFormId);
+  }
+  return recentAttempts;
+};
+
+const registerFailedAttempt = (applicationFormId: string, nowMs: number) => {
+  const recentAttempts = getRecentFailedAttempts(applicationFormId, nowMs);
+  recentAttempts.push(nowMs);
+  verifyFailuresByFormId.set(applicationFormId, recentAttempts);
+};
+
+const clearFailedAttempts = (applicationFormId: string) => {
+  verifyFailuresByFormId.delete(applicationFormId);
+};
+
 type GenerateLinkInput = {
   leadId: string;
   actorUserId: string;
@@ -182,7 +207,7 @@ export const generateApplicationFormLink = async ({
     },
   });
 
-  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}&hash=${accessCodeHash}`;
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}`;
 
   await prisma.leadNote.create({
     data: {
@@ -298,7 +323,7 @@ export const unlockApplicationForm = async (params: {
   });
 
   // Build link to send to the client (reuse existing accessCodeHash)
-  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}&hash=${form.accessCodeHash}`;
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}`;
 
   // Enrich unlock history with actor user display data (best-effort)
   const actor = await prisma.user.findUnique({
@@ -390,6 +415,88 @@ export const unlockApplicationForm = async (params: {
   }
 
   return updatedForm;
+};
+
+export const verifyApplicationFormAccess = async (params: {
+  applicationFormId: string;
+  leadId: string;
+  code: string;
+}) => {
+  const now = new Date();
+  const nowMs = now.getTime();
+
+  const recentAttempts = getRecentFailedAttempts(params.applicationFormId, nowMs);
+  if (recentAttempts.length >= VERIFY_RATE_LIMIT_MAX_ATTEMPTS) {
+    throw createHttpError({
+      status: 429,
+      code: "TOO_MANY_ATTEMPTS",
+      message: "Zbyt wiele nieudanych prób. Spróbuj ponownie później.",
+    });
+  }
+
+  const form = await prisma.applicationForm.findUnique({
+    where: { id: params.applicationFormId },
+    select: {
+      id: true,
+      leadId: true,
+      status: true,
+      accessCodeHash: true,
+      linkExpiresAt: true,
+    },
+  });
+
+  if (!form || form.leadId !== params.leadId || !form.accessCodeHash) {
+    registerFailedAttempt(params.applicationFormId, nowMs);
+    throw createHttpError({ status: 401, code: "INVALID_CODE", message: "Nieprawidłowy kod dostępu" });
+  }
+
+  if (form.linkExpiresAt && form.linkExpiresAt <= now) {
+    throw createHttpError({ status: 401, code: "LINK_EXPIRED", message: "Link do formularza wygasł" });
+  }
+
+  if (form.status === ApplicationFormStatus.SUBMITTED || form.status === ApplicationFormStatus.LOCKED) {
+    throw createHttpError({ status: 401, code: "INVALID_CODE", message: "Formularz jest zablokowany" });
+  }
+
+  const providedCodeHash = hashAccessCode(params.code.trim());
+  if (providedCodeHash !== form.accessCodeHash) {
+    registerFailedAttempt(params.applicationFormId, nowMs);
+    throw createHttpError({ status: 401, code: "INVALID_CODE", message: "Nieprawidłowy kod dostępu" });
+  }
+
+  clearFailedAttempts(params.applicationFormId);
+
+  await prisma.applicationForm.update({
+    where: { id: form.id },
+    data: {
+      isClientActive: true,
+      lastClientActivity: now,
+    },
+  });
+
+  return { ok: true as const };
+};
+
+export const heartbeatApplicationForm = async (applicationFormId: string) => {
+  const now = new Date();
+  const form = await prisma.applicationForm.findUnique({
+    where: { id: applicationFormId },
+    select: { id: true },
+  });
+
+  if (!form) {
+    throw createHttpError({ status: 404, message: "Application form not found" });
+  }
+
+  await prisma.applicationForm.update({
+    where: { id: applicationFormId },
+    data: {
+      isClientActive: true,
+      lastClientActivity: now,
+    },
+  });
+
+  return { ok: true as const };
 };
 
 export const saveApplicationFormProgress = async (params: {
@@ -522,16 +629,20 @@ export const submitApplicationForm = async (id: string, formData: Prisma.JsonObj
       return form;
     }
 
-    const consents = (formData.consents as Prisma.JsonArray) || [];
+    const consents = ((formData.consents as Prisma.JsonArray) ?? []) as Array<{
+      templateId: string;
+      given: boolean;
+    }>;
+
     if (consents.length > 0) {
-      const templateIds = consents.map((c: any) => c.templateId as string);
+      const templateIds = consents.map((c) => c.templateId);
       const templates = await tx.consentTemplate.findMany({
         where: { id: { in: templateIds } },
       });
-      const templateMap = new Map(templates.map(t => [t.id, t]));
+      const templateMap = new Map(templates.map((t) => [t.id, t]));
 
-      const consentRecordsData = consents.map((c: any) => {
-        const template = templateMap.get(c.templateId as string);
+      const consentRecordsData = consents.map((c) => {
+        const template = templateMap.get(c.templateId);
         if (!template) {
           throw createHttpError({ status: 400, message: `Consent template ${c.templateId} not found` });
         }
@@ -540,7 +651,7 @@ export const submitApplicationForm = async (id: string, formData: Prisma.JsonObj
           applicationFormId: form.id,
           consentTemplateId: template.id,
           version: template.version,
-          consentGiven: c.given as boolean,
+          consentGiven: c.given,
           consentMethod: ConsentMethod.ONLINE_FORM,
           consentType: template.consentType,
           consentText: template.content,

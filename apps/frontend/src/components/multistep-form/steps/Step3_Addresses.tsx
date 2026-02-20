@@ -24,13 +24,14 @@ type FormValues = z.infer<typeof schema>;
 interface Step3Props {
   onFormChange: (data: Partial<FormValues>) => void;
   formData: Partial<FormValues>;
+  isReadOnly?: boolean;
 }
 
 export interface Step3Ref {
   triggerValidation: () => Promise<boolean>;
 }
 
-export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange, formData }, ref) => {
+export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
     watch,
@@ -63,7 +64,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 
   useEffect(() => {
     onFormChange(watchedData);
-  }, [JSON.stringify(watchedData), onFormChange]);
+  }, [watchedData, onFormChange]);
 
   // Copy on toggle only: when checked -> copy; when unchecked -> clear residential fields
   const prevIsSameRef = useRef<boolean | undefined>(isResidentialSame);
@@ -72,7 +73,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
     if (prev !== isResidentialSame) {
       if (isResidentialSame) {
         const copy = (field: keyof FormValues, value?: string | null) => {
-          setValue(field as any, value ?? "", { shouldValidate: true });
+          setValue(field, (value ?? "") as FormValues[keyof FormValues], { shouldValidate: true });
         };
         copy("residentialStreet", regStreet);
         copy("residentialPostalCode", regPostal);
@@ -80,7 +81,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
         copy("residentialPostOffice", regPostOffice);
       } else {
         const clear = (field: keyof FormValues) => {
-          setValue(field as any, "", { shouldValidate: true });
+          setValue(field, "" as FormValues[keyof FormValues], { shouldValidate: true });
         };
         clear("residentialStreet");
         clear("residentialPostalCode");
@@ -93,6 +94,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 
   return (
     <form>
+      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 3: Adresy</h2>
       
       <fieldset style={styles.fieldset}>
@@ -165,9 +167,12 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
           </div>
         </div>
       </fieldset>
+      </fieldset>
     </form>
   );
 });
+
+Step3_Addresses.displayName = "Step3_Addresses";
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {
@@ -196,5 +201,10 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     color: "#ef4444",
     fontSize: "0.875rem",
+  },
+  readOnlyFieldset: {
+    border: "none",
+    padding: 0,
+    margin: 0,
   },
 };

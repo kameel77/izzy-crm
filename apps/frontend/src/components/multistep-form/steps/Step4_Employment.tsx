@@ -26,13 +26,14 @@ type FormValues = z.infer<typeof schema>;
 interface Step4Props {
   onFormChange: (data: Partial<FormValues>) => void;
   formData: Partial<FormValues>;
+  isReadOnly?: boolean;
 }
 
 export interface Step4Ref {
   triggerValidation: () => Promise<boolean>;
 }
 
-export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange, formData }, ref) => {
+export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
     watch,
@@ -58,10 +59,11 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
   const watchedData = watch();
   useEffect(() => {
     onFormChange(watchedData);
-  }, [JSON.stringify(watchedData), onFormChange]);
+  }, [watchedData, onFormChange]);
 
   return (
     <form>
+      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 4: Zatrudnienie</h2>
       
       <fieldset style={styles.fieldset}>
@@ -148,9 +150,12 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
           </div>
         </div>
       </fieldset>
+      </fieldset>
     </form>
   );
 });
+
+Step4_Employment.displayName = "Step4_Employment";
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {
@@ -179,5 +184,10 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     color: "#ef4444",
     fontSize: "0.875rem",
+  },
+  readOnlyFieldset: {
+    border: "none",
+    padding: 0,
+    margin: 0,
   },
 };

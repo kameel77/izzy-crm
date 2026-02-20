@@ -18,13 +18,14 @@ type FormValues = z.infer<typeof schema>;
 interface Step5Props {
   onFormChange: (data: Partial<FormValues>) => void;
   formData: Partial<FormValues>;
+  isReadOnly?: boolean;
 }
 
 export interface Step5Ref {
   triggerValidation: () => Promise<boolean>;
 }
 
-export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, formData }, ref) => {
+export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
     watch,
@@ -50,7 +51,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
   const watchedData = watch();
   useEffect(() => {
     onFormChange(watchedData);
-  }, [JSON.stringify(watchedData), onFormChange]);
+  }, [watchedData, onFormChange]);
 
   const safeParse = (value: unknown) => parseFloat(String(value)) || 0;
 
@@ -66,6 +67,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 
   return (
     <form>
+      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 5: Budżet</h2>
       
       <fieldset style={styles.fieldset}>
@@ -119,9 +121,12 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
         <p><strong>Suma wydatków:</strong> {totalExpenses.toFixed(2)} PLN</p>
         <p><strong>Zdolność kredytowa (informacyjnie):</strong> {creditAbility.toFixed(2)} PLN</p>
       </div>
+      </fieldset>
     </form>
   );
 });
+
+Step5_Budget.displayName = "Step5_Budget";
 
 const styles: Record<string, React.CSSProperties> = {
   grid: {
@@ -157,5 +162,10 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     color: "#ef4444",
     fontSize: "0.875rem",
+  },
+  readOnlyFieldset: {
+    border: "none",
+    padding: 0,
+    margin: 0,
   },
 };

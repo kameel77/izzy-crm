@@ -37,3 +37,22 @@ export const unlockApplicationForm = (applicationFormId: string, reason?: string
   });
 };
 
+export const verifyApplicationFormAccess = (payload: {
+  applicationFormId: string;
+  leadId: string;
+  code: string;
+}) => {
+  return apiFetch<{ ok: true }>(`/api/application-forms/verify-access`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    token: null,
+  });
+};
+
+export const heartbeatApplicationForm = (applicationFormId: string) => {
+  return apiFetch<{ ok: true }>(`/api/application-forms/${applicationFormId}/heartbeat`, {
+    method: "POST",
+    token: null,
+  });
+};
+
