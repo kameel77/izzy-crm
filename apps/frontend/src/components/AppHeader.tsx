@@ -14,16 +14,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
   const { user, token, logout } = useAuth();
   const [partnerName, setPartnerName] = useState<string | null>(user?.partner?.name ?? null);
 
-  if (!user) {
-    return null;
-  }
-
   useEffect(() => {
+    if (!user) return;
     setPartnerName(user.partner?.name ?? null);
-  }, [user.partner?.name]);
+  }, [user?.partner?.name]);
 
   useEffect(() => {
-    if (!token || partnerName || !user.partnerId) {
+    if (!user || !token || partnerName || !user.partnerId) {
       return;
     }
     let cancelled = false;
@@ -40,6 +37,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
       cancelled = true;
     };
   }, [token, partnerName, user.partnerId]);
+
+  if (!user) {
+    return null;
+  }
 
   const isPartnerRole = user.role === "PARTNER_MANAGER" || user.role === "PARTNER_EMPLOYEE" || user.role === "PARTNER";
   const partnerLabel = partnerName || user.partnerId || null;

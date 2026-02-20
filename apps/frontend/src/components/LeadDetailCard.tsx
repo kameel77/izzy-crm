@@ -1204,7 +1204,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                                 let title = link;
                                 try {
                                   const url = new URL(link);
-                                  const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
+                                  const match = url.pathname.match(/[/]samochod[/]([^/]+)[/]([^/]+)/);
                                   if (match) {
                                     const make = match[1];
                                     const model = match[2].replace(/-/g, " ");
@@ -1954,7 +1954,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             <strong>Warning:</strong> This action is irreversible. All personal data will be permanently anonymized.
           </p>
           <label style={styles.modalLabel}>
-            Aby potwierdzić, wpisz "ANONIMIZUJ" poniżej:
+            Aby potwierdzić, wpisz &quot;ANONIMIZUJ&quot; poniżej:
             <input
               type="text"
               value={anonymizeConfirmation}

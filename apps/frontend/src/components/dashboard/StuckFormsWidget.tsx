@@ -25,7 +25,7 @@ const timeAgo = (date: string) => {
 export const StuckFormsWidget: React.FC<StuckFormsWidgetProps> = ({ forms, loading }) => {
   return (
     <div style={styles.card}>
-      <h3 style={styles.title}>"Zawieszone" formularze</h3>
+      <h3 style={styles.title}>&quot;Zawieszone&quot; formularze</h3>
       {loading ? (
         <p>Ładowanie...</p>
       ) : forms.length === 0 ? (

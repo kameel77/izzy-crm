@@ -33,7 +33,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, _setPageSize] = useState(50);
   const [clientSearch, setClientSearch] = useState("");
   const [filters, setFilters] = useState<Partial<FetchConsentRecordsParams>>({
     consentType: undefined,
