@@ -1,4 +1,4 @@
-import { ApplicationFormStatus, BankDecisionStatus, ConsentType, LeadStatus, Prisma, UserRole } from "@prisma/client";
+import { ApplicationFormStatus, BankDecisionStatus, LeadStatus, Prisma, UserRole } from "@prisma/client";
 import { createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { createHttpError } from "../utils/httpError.js";
