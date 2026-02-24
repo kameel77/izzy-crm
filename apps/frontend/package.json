@@ -7,7 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "vitest --run --passWithNoTests --exclude tests/**/*.spec.ts",
+    "test": "vitest --passWithNoTests --exclude tests/**/*.spec.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

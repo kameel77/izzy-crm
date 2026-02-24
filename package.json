@@ -5,7 +5,7 @@
   "description": "Monorepo for the Izzy automotive financing CRM.",
   "scripts": {
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces",
+    "test": "npm run test --workspaces --if-present -- --run",
     "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces"
   },
