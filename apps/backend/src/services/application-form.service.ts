@@ -207,7 +207,7 @@ export const generateApplicationFormLink = async ({
     },
   });
 
-  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}`;
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}&hash=${accessCodeHash}`;
 
   await prisma.leadNote.create({
     data: {
@@ -323,7 +323,7 @@ export const unlockApplicationForm = async (params: {
   });
 
   // Build link to send to the client (reuse existing accessCodeHash)
-  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}`;
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}&hash=${form.accessCodeHash}`;
 
   // Enrich unlock history with actor user display data (best-effort)
   const actor = await prisma.user.findUnique({
