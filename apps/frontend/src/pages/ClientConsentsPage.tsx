@@ -73,9 +73,6 @@ export const ClientConsentsPage: React.FC = () => {
     return null;
   });
 
-  const [pinModalOpen, setPinModalOpen] = React.useState(
-    Boolean(expectedHash && resolvedAccessCodeHash !== expectedHash),
-  );
   const [pinInput, setPinInput] = React.useState("");
   const [pinError, setPinError] = React.useState<string | null>(null);
   const requiresAccessCode = Boolean(expectedHash) && resolvedAccessCodeHash !== expectedHash;
@@ -98,8 +95,6 @@ export const ClientConsentsPage: React.FC = () => {
       setResolvedAccessCodeHash(hash);
       setPinInput("");
       setPinError(null);
-      setPinModalOpen(false);
-      navigate(`/client-form/${applicationFormId}/${leadId}`);
     } catch (error) {
       setPinError("Nie udało się przetworzyć kodu. Spróbuj ponownie");
     }
@@ -208,18 +203,6 @@ export const ClientConsentsPage: React.FC = () => {
   }, [loadTemplates, requiresAccessCode]);
 
   React.useEffect(() => {
-    if (!expectedHash) {
-      setPinModalOpen(false);
-      return;
-    }
-    if (resolvedAccessCodeHash === expectedHash) {
-      setPinModalOpen(false);
-    } else {
-      setPinModalOpen(true);
-    }
-  }, [expectedHash, resolvedAccessCodeHash]);
-
-  React.useEffect(() => {
     if (!applicationFormId || !leadId || !templates.length) return;
     clientFormStore.save({
       applicationFormId,
@@ -285,7 +268,6 @@ export const ClientConsentsPage: React.FC = () => {
     }
 
     if (requiresAccessCode) {
-      setPinModalOpen(true);
       return;
     }
 
@@ -311,9 +293,9 @@ export const ClientConsentsPage: React.FC = () => {
           acceptedAt: consentState[tpl.id]?.acceptedAt,
         })),
       });
-      setSuccess("Zgody zostały zapisane. Możesz wrócić do formularza.");
+      setSuccess("Zgody zostały zapisane. Przechodzę do formularza...");
       track("consents_submit_success", { applicationFormId, leadId });
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate(`/client-form/${applicationFormId}/${leadId}`), 1500);
     } catch (error) {
       if (error instanceof ApiError) {
         if (modalCopy[error.status]) {
@@ -338,65 +320,77 @@ export const ClientConsentsPage: React.FC = () => {
   return (
     <div style={styles.shell}>
       <div style={styles.lockWrapper}>
-        <div
-          style={{
-            ...styles.card,
-            filter: requiresAccessCode ? "blur(6px)" : "none",
-            pointerEvents: requiresAccessCode ? "none" : "auto",
-          }}
-        >
-          <h1 style={styles.title}>Zgody RODO</h1>
-          {isClientActive ? (
-            <div style={styles.banner} role="status">
-              Klient jest aktualnie zalogowany w formularzu. Edycja zgód została tymczasowo zablokowana.
-            </div>
-          ) : null}
-          {loading ? (
-            <p>Ładuję zgody…</p>
-          ) : (
-            <form onSubmit={handleSubmit} style={styles.form}>
-              {templates.map((tpl) => (
-                <div key={tpl.id} style={styles.template}>
-                  <label style={styles.label}>
-                    <input
-                      type="checkbox"
-                      checked={consentState[tpl.id]?.accepted ?? false}
-                      onChange={(event) => toggleConsent(tpl, event.target.checked)}
-                      required={tpl.isRequired}
-                      disabled={isClientActive || requiresAccessCode}
-                    />
-                    <span>
-                      <strong>{tpl.title}</strong>
-                      {tpl.isRequired ? <span style={styles.required}> (wymagana)</span> : null}
-                    </span>
-                  </label>
-                  <p style={styles.content}>{tpl.content}</p>
-                  {tpl.helpText ? <p style={styles.help}>{tpl.helpText}</p> : null}
-                </div>
-              ))}
-              {success ? <p style={styles.success}>{success}</p> : null}
-              <button
-                type="submit"
-                style={{
-                  ...styles.button,
-                  opacity: isClientActive || requiresAccessCode ? 0.5 : 1,
-                  cursor: isClientActive || requiresAccessCode ? "not-allowed" : styles.button.cursor,
-                }}
-                disabled={submitting || !allRequiredAccepted || isClientActive || requiresAccessCode}
-              >
-                {submitting ? "Zapisuję…" : "Zapisz zgody"}
+        {requiresAccessCode ? (
+          <div style={styles.card}>
+            <h1 style={styles.title}>Podaj kod dostępu</h1>
+            <p style={{ marginBottom: "2rem", color: "hsl(215, 25%, 25%)", lineHeight: 1.5 }}>
+              Formularz został zabezpieczony kodem dostępu. Wprowadź kod z wiadomości, aby kontynuować.
+            </p>
+            <form onSubmit={handlePinSubmit} style={styles.modalForm}>
+              <label style={styles.modalLabel}>
+                Kod (4 cyfry)
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pinInput}
+                  onChange={(event) => setPinInput(event.target.value.replace(/[^0-9]/g, ""))}
+                  style={styles.modalInput}
+                />
+                {pinError ? <span style={styles.errorText}>{pinError}</span> : null}
+              </label>
+              <button type="submit" style={styles.button}>
+                Odblokuj
               </button>
             </form>
-          )}
-        </div>
-        {requiresAccessCode ? (
-          <div style={styles.lockOverlay}>
-            <p>Formularz został zabezpieczony kodem dostępu. Wprowadź kod z wiadomości, aby kontynuować.</p>
-            <button type="button" style={styles.primaryButton} onClick={() => setPinModalOpen(true)}>
-              Wprowadź kod
-            </button>
           </div>
-        ) : null}
+        ) : (
+          <div style={styles.card}>
+            <h1 style={styles.title}>Zgody RODO</h1>
+            {isClientActive ? (
+              <div style={styles.banner} role="status">
+                Klient jest aktualnie zalogowany w formularzu. Edycja zgód została tymczasowo zablokowana.
+              </div>
+            ) : null}
+            {loading ? (
+              <p>Ładuję zgody…</p>
+            ) : (
+              <form onSubmit={handleSubmit} style={styles.form}>
+                {templates.map((tpl) => (
+                  <div key={tpl.id} style={styles.template}>
+                    <label style={styles.label}>
+                      <input
+                        type="checkbox"
+                        checked={consentState[tpl.id]?.accepted ?? false}
+                        onChange={(event) => toggleConsent(tpl, event.target.checked)}
+                        required={tpl.isRequired}
+                        disabled={isClientActive || requiresAccessCode}
+                      />
+                      <span>
+                        <strong>{tpl.title}</strong>
+                        {tpl.isRequired ? <span style={styles.required}> (wymagana)</span> : null}
+                      </span>
+                    </label>
+                    <p style={styles.content}>{tpl.content}</p>
+                    {tpl.helpText ? <p style={styles.help}>{tpl.helpText}</p> : null}
+                  </div>
+                ))}
+                {success ? <p style={styles.success}>{success}</p> : null}
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.button,
+                    opacity: isClientActive || requiresAccessCode ? 0.5 : 1,
+                    cursor: isClientActive || requiresAccessCode ? "not-allowed" : styles.button.cursor,
+                  }}
+                  disabled={submitting || !allRequiredAccepted || isClientActive || requiresAccessCode}
+                >
+                  {submitting ? "Zapisuję…" : "Zapisz zgody"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
       <Modal
         isOpen={Boolean(errorModal)}
@@ -407,30 +401,6 @@ export const ClientConsentsPage: React.FC = () => {
         title={errorModal?.title}
       >
         <p>{errorModal?.message}</p>
-      </Modal>
-      <Modal isOpen={pinModalOpen} onClose={() => setPinModalOpen(false)} title="Podaj kod dostępu">
-        <form onSubmit={handlePinSubmit} style={styles.modalForm}>
-          <label style={styles.modalLabel}>
-            Kod (4 cyfry)
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={pinInput}
-              onChange={(event) => setPinInput(event.target.value.replace(/[^0-9]/g, ""))}
-              style={styles.modalInput}
-            />
-            {pinError ? <span style={styles.errorText}>{pinError}</span> : null}
-          </label>
-          <div style={styles.modalActions}>
-            <button type="button" style={styles.secondaryButton} onClick={() => setPinModalOpen(false)}>
-              Anuluj
-            </button>
-            <button type="submit" style={styles.primaryButton}>
-              Odblokuj
-            </button>
-          </div>
-        </form>
       </Modal>
     </div>
   );

@@ -70,7 +70,7 @@ export const ApplicationFormPage: React.FC = () => {
       <main style={styles.main}>
         {!isUnlocked ? (
           <form onSubmit={handleVerify} style={styles.gateForm}>
-            <h2 style={{ marginTop: 0 }}>Wpisz 4 ostatnie cyfry telefonu</h2>
+            <h2 style={{ marginTop: 0 }}>Podaj 4-cyfrowy kod dostępu</h2>
             <input
               type="password"
               inputMode="numeric"
