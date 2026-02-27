@@ -38,7 +38,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   progress: {
     height: "100%",
-    background: "#2563eb",
+    background: "linear-gradient(135deg, hsl(24, 95%, 53%) 0%, hsl(28, 95%, 48%) 100%)",
     borderRadius: "4px",
     transition: "width 0.3s ease-in-out",
   },

@@ -19,11 +19,16 @@ export const ApplicationFormPage: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    background: "#f1f5f9",
+    background: "#f4f6fb",
+    width: "100%",
     minHeight: "100vh",
     padding: "2rem",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
   },
   header: {
+    width: "100%",
     maxWidth: "800px",
     margin: "0 auto 2rem auto",
     textAlign: "center",
@@ -32,12 +37,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "2.25rem",
     fontWeight: 700,
     color: "#1e293b",
+    marginBottom: "0.5rem",
   },
   subtitle: {
     fontSize: "1.125rem",
     color: "#475569",
+    marginTop: 0,
   },
   main: {
+    width: "100%",
     maxWidth: "800px",
     margin: "0 auto",
     background: "#ffffff",

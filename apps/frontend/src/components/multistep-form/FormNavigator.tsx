@@ -20,7 +20,7 @@ export const FormNavigator: React.FC<FormNavigatorProps> = ({
   return (
     <div style={styles.navigator}>
       <button
-        style={{...styles.button, background: '#64748b'}}
+        style={{ ...styles.button, background: '#64748b' }}
         onClick={onBack}
         disabled={currentStep === 1}
       >
@@ -33,12 +33,12 @@ export const FormNavigator: React.FC<FormNavigatorProps> = ({
             ...(isSubmittable
               ? {}
               : {
-                  background: "#94a3b8",
-                  color: "#e2e8f0",
-                  borderColor: "transparent",
-                  cursor: "not-allowed",
-                  opacity: 0.85,
-                }),
+                background: "#94a3b8",
+                color: "#e2e8f0",
+                borderColor: "transparent",
+                cursor: "not-allowed",
+                opacity: 0.85,
+              }),
           }}
           onClick={onSubmit}
           disabled={!isSubmittable}
@@ -70,9 +70,10 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid transparent",
     borderRadius: "0.5rem",
     fontSize: "1rem",
-    fontWeight: 500,
+    fontWeight: 600,
     cursor: "pointer",
-    background: "#2563eb",
+    background: "linear-gradient(135deg, hsl(24, 95%, 53%) 0%, hsl(28, 95%, 48%) 100%)",
+    boxShadow: "0 4px 6px -1px rgba(249, 115, 22, 0.2)",
     color: "#ffffff",
   },
 };
