@@ -28,3 +28,4 @@ docker-compose.override.yml
 planning.md
 appFoundationRequirements.md
 start_locally.md
+.agent/
