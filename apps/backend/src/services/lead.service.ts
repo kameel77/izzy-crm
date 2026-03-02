@@ -145,6 +145,8 @@ const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
   FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED],
   VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED],
   UNQUALIFIED: [],
+  MERGED: [],
+  INBOUND: [LeadStatus.NEW, LeadStatus.UNQUALIFIED, LeadStatus.MERGED],
   GATHERING_DOCUMENTS: [LeadStatus.CREDIT_ANALYSIS, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   CREDIT_ANALYSIS: [
     LeadStatus.OFFER_PRESENTED,
