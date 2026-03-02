@@ -25,10 +25,11 @@ model User {
   leadNotes               LeadNote[]
   consentTemplates        ConsentTemplate[] @relation("ConsentTemplateCreatedBy")
   recordedConsents        ConsentRecord[]   @relation("ConsentRecordRecordedBy")
-  createdApplicationForms ApplicationForm[] @relation("ApplicationFormCreatedBy")
-  leadStatusChanges       LeadStatusHistory[]
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  createdApplicationForms        ApplicationForm[]              @relation("ApplicationFormCreatedBy")
+  leadStatusChanges              LeadStatusHistory[]
+  sentOnboardingSessions         InsuranceOnboardingSession[]
+  createdAt                      DateTime                       @default(now())
+  updatedAt                      DateTime                       @updatedAt
 }
 
 model Partner {
@@ -63,19 +64,21 @@ model Lead {
   customerProfile CustomerProfile?
   vehicleCurrent  VehicleCurrent?
   vehicleDesired  VehicleDesired?
-  financingApps   FinancingApplication[]
-  documents       Document[]
-  offers          Offer[]
-  agreement       Agreement?
-  reminders       Reminder[]
-  auditLogs       AuditLog[]
-  leadNotes       LeadNote[]
-  consentRecords  ConsentRecord[]
-  applicationForm ApplicationForm?
-  emailLogs       EmailLog[]
-  leadStatusHistory LeadStatusHistory[]
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  financingApps         FinancingApplication[]
+  documents             Document[]
+  offers                Offer[]
+  agreement             Agreement?
+  reminders             Reminder[]
+  auditLogs             AuditLog[]
+  leadNotes             LeadNote[]
+  consentRecords        ConsentRecord[]
+  applicationForm       ApplicationForm?
+  emailLogs             EmailLog[]
+  leadStatusHistory     LeadStatusHistory[]
+  insuranceOnboarding   InsuranceOnboardingSession?
+  contactSchedules      ContactSchedule[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 }
 
 model LeadNote {
@@ -98,19 +101,20 @@ enum LeadNoteType {
 }
 
 model CustomerProfile {
-  id             String    @id @default(cuid())
-  lead           Lead      @relation(fields: [leadId], references: [id])
-  leadId         String    @unique
-  firstName      String
-  lastName       String
-  dateOfBirth    DateTime?
-  nationalIdHash String?
-  email          String?
-  phone          String?
-  employmentInfo Json?
-  address        Json?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  lead            Lead      @relation(fields: [leadId], references: [id])
+  leadId          String    @unique
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime?
+  nationalIdHash  String?
+  email           String?
+  phone           String?
+  alternateEmails String[]  @default([])
+  employmentInfo  Json?
+  address         Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model VehicleCurrent {
@@ -372,6 +376,8 @@ enum LeadStatus {
   CLOSED_LOST
   CLOSED_NO_FINANCING
   CANCELLED
+  MERGED
+  INBOUND
 }
 
 model LeadStatusHistory {
@@ -429,6 +435,7 @@ enum ConsentType {
   MARKETING
   FINANCIAL_PARTNERS
   VEHICLE_PARTNERS
+  PHONE_CONTACT
 }
 
 enum ConsentMethod {
@@ -450,4 +457,99 @@ enum EmailLogStatus {
   DELIVERED
   FAILED
   OPENED
+}
+
+// ─── Insurance Onboarding ─────────────────────────────────────────────────────
+
+enum InsuranceOnboardingStatus {
+  CREATED
+  ONBOARDING_SENT
+  LINK_OPENED
+  SLOT_SELECTED
+  CONSENTS_CAPTURED
+  COMPLETED
+}
+
+enum CommChannel {
+  SMS
+  EMAIL
+}
+
+enum CommStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model InsuranceOnboardingSession {
+  id                String                     @id @default(cuid())
+  lead              Lead                       @relation(fields: [leadId], references: [id])
+  leadId            String                     @unique
+  status            InsuranceOnboardingStatus  @default(CREATED)
+  token             String                     @unique
+  tokenExpiresAt    DateTime
+  sentByUser        User?                      @relation(fields: [sentByUserId], references: [id])
+  sentByUserId      String?
+  smsSentAt         DateTime?
+  emailSentAt       DateTime?
+  openedAt          DateTime?
+  slotSelectedAt    DateTime?
+  consentsCapAt     DateTime?
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  contactSchedule   ContactSchedule?
+  communicationLogs CommunicationLog[]
+
+  @@index([token])
+  @@index([leadId])
+}
+
+model ContactSchedule {
+  id            String                     @id @default(cuid())
+  session       InsuranceOnboardingSession @relation(fields: [sessionId], references: [id])
+  sessionId     String                     @unique
+  lead          Lead                       @relation(fields: [leadId], references: [id])
+  leadId        String
+  preferredDate DateTime
+  preferredSlot String
+  timezone      String                     @default("Europe/Warsaw")
+  source        String                     @default("lp_onboarding")
+  createdAt     DateTime                   @default(now())
+
+  @@index([leadId])
+}
+
+model CommunicationLog {
+  id                String                     @id @default(cuid())
+  session           InsuranceOnboardingSession @relation(fields: [sessionId], references: [id])
+  sessionId         String
+  channel           CommChannel
+  templateKey       String?
+  status            CommStatus                 @default(PENDING)
+  providerMessageId String?
+  sentTo            String?
+  payload           Json?
+  retries           Int                        @default(0)
+  errorMessage      String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime                   @default(now())
+
+  @@index([sessionId])
+}
+
+model MessageTemplate {
+  id        String      @id @default(cuid())
+  key       String      @unique
+  channel   CommChannel
+  subject   String?
+  body      String
+  isActive  Boolean     @default(true)
+  version   Int         @default(1)
+  updatedBy String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 }

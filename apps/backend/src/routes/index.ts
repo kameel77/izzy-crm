@@ -6,6 +6,7 @@ import { analyticsRouter } from "./analytics.routes.js";
 import { applicationFormRouter } from "./application-form.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { consentRouter } from "./consent.routes.js";
+import { insuranceOnboardingRouter } from "./insurance-onboarding.routes.js";
 import { leadRouter } from "./lead.routes.js";
 import { partnerRouter } from "./partner.routes.js";
 import { userRouter } from "./user.routes.js";
@@ -18,6 +19,7 @@ router.get("/health", (_req, res) => {
 });
 
 router.use(consentRouter);
+router.use(insuranceOnboardingRouter);
 router.use("/auth", authRouter);
 router.use("/analytics", authenticate, analyticsRouter);
 router.use("/leads", authenticate, leadRouter);

@@ -22,6 +22,7 @@ import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
 import { SendEmailModal } from "./SendEmailModal";
+import { LeadInsuranceOnboarding } from "./LeadInsuranceOnboarding";
 import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
 
 type UnlockHistoryEntry = {
@@ -1381,6 +1382,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             {areActivitiesExpanded ? "Pokaż mniej" : "Pokaż całą aktywność"}
           </button>
         ) : null}
+      </div>
+
+      <div style={styles.section}>
+        <LeadInsuranceOnboarding leadId={lead.id} />
       </div>
 
       <div style={styles.section}>

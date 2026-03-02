@@ -14,6 +14,7 @@ import { AdminConsentsPage } from "./pages/AdminConsentsPage";
 import { AdminConsentRecordsPage } from "./pages/AdminConsentRecordsPage";
 import { ThankYouPage } from "./pages/ThankYouPage";
 import { AdminPartnersPage } from "./pages/AdminPartnersPage";
+import { InsuranceOnboardingPage } from "./pages/InsuranceOnboardingPage";
 
 export const App: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -105,6 +106,7 @@ export const App: React.FC = () => {
         }
       />
       <Route path="/thank-you" element={<ThankYouPage />} />
+      <Route path="/onboarding" element={<InsuranceOnboardingPage />} />
       <Route path="/" element={<Navigate to={user ? "/leads" : "/login"} replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
