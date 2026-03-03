@@ -90,7 +90,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
             return;
         }
 
-        fetchJson(`${API_BASE}/insurance-onboarding/verify?token=${encodeURIComponent(token)}`)
+        fetchJson(`${API_BASE}/api/insurance-onboarding/verify?token=${encodeURIComponent(token)}`)
             .then((data: VerifyResponse) => {
                 setSession(data);
                 setAvailableDays(buildAvailableDays(data.daysAhead ?? 14));
@@ -109,7 +109,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
     // ── Load consent templates when moving to consent step ───────────────────
     const loadConsents = React.useCallback(async () => {
         try {
-            const data = await fetchJson(`${API_BASE}/consent-templates?form_type=onboarding_insurance`);
+            const data = await fetchJson(`${API_BASE}/api/consent-templates?form_type=onboarding_insurance`);
             const templates: ConsentTemplateDto[] = data.data ?? [];
             setConsentTemplates(templates);
             const initial: Record<string, boolean> = {};
@@ -128,7 +128,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
         if (!selectedDay || !selectedSlot) return;
         setSubmittingSlot(true);
         try {
-            await fetchJson(`${API_BASE}/insurance-onboarding/contact-slot`, {
+            await fetchJson(`${API_BASE}/api/insurance-onboarding/contact-slot`, {
                 method: "POST",
                 body: JSON.stringify({
                     token,
@@ -160,7 +160,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
         setSubmittingConsents(true);
         try {
             const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-            await fetchJson(`${API_BASE}/insurance-onboarding/consents`, {
+            await fetchJson(`${API_BASE}/api/insurance-onboarding/consents`, {
                 method: "POST",
                 body: JSON.stringify({
                     token,
@@ -188,7 +188,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
             <div style={s.card}>
                 {/* Header */}
                 <div style={s.header}>
-                    <div style={s.logo}>🚗 Carsalon</div>
+                    <img src="/logo.svg" alt="Carsalon" style={s.logoImg} />
                     <h1 style={s.heading}>Znajdziemy Ci nowe auto</h1>
                 </div>
 
@@ -399,7 +399,7 @@ const s: Record<string, React.CSSProperties> = {
         padding: "2rem 2.5rem",
         color: "#fff",
     },
-    logo: { fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem", opacity: 0.9 },
+    logoImg: { height: "2.5rem", marginBottom: "1.25rem", objectFit: "contain" },
     heading: { margin: 0, fontSize: "1.75rem", fontWeight: 800, lineHeight: 1.2 },
     intro: { padding: "0 2.5rem", color: "hsl(215,25%,30%)", lineHeight: 1.65, fontSize: "0.95rem", marginTop: "1.5rem" },
     subheading: { padding: "0 2.5rem", fontSize: "1.1rem", fontWeight: 700, color: "hsl(213,45%,20%)", margin: "1.5rem 0 0.75rem" },
