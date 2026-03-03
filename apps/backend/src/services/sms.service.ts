@@ -6,7 +6,7 @@ export type SmsResult = {
     status: CommStatus;
 };
 
-const SMSAPI_URL = "https://api.smsapi.com/sms.do";
+const SMSAPI_URL = "https://api.smsapi.pl/sms.do";
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
