@@ -56,6 +56,7 @@ const ConsentTemplateForm: React.FC<{
         <select name="formType" value={formData.formType} onChange={handleChange} required style={styles.input}>
           <option value="financing_application">Financing Application</option>
           <option value="lead_creation">Lead Creation</option>
+          <option value="onboarding_insurance">Onboarding Insurance</option>
         </select>
       </label>
       <label style={styles.label}>
@@ -105,7 +106,8 @@ export const AdminConsentsPage: React.FC = () => {
       setLoading(true);
       const data = await fetchAuthenticatedConsentTemplates({ formType: "lead_creation", includeInactive: true });
       const financingData = await fetchAuthenticatedConsentTemplates({ formType: "financing_application", includeInactive: true });
-      setTemplates([...data, ...financingData]);
+      const onboardingData = await fetchAuthenticatedConsentTemplates({ formType: "onboarding_insurance", includeInactive: true });
+      setTemplates([...data, ...financingData, ...onboardingData]);
     } catch (err) {
       setError("Failed to load consent templates.");
     } finally {
