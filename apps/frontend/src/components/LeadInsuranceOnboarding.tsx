@@ -246,10 +246,10 @@ const TimelineItem: React.FC<{
 );
 
 const ti: Record<string, React.CSSProperties> = {
-    row: { display: "flex", gap: "0.75rem", alignItems: "flex-start", padding: "0.3rem 0" },
+    row: { display: "flex", gap: "0.75rem", alignItems: "center", padding: "0.3rem 0", justifyContent: "center", textAlign: "center", flexDirection: "column" },
     dot: { width: "1.75rem", height: "1.75rem", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", background: "hsl(215,20%,92%)", color: "hsl(215,20%,55%)", flexShrink: 0, marginTop: "0.1rem" },
     dotDone: { background: "hsl(142,65%,90%)", color: "hsl(142,60%,30%)" },
-    content: { display: "flex", flexDirection: "column", gap: "0.1rem" },
+    content: { display: "flex", flexDirection: "column", gap: "0.1rem", alignItems: "center" },
     label: { fontSize: "0.85rem", color: "hsl(215,20%,55%)", fontWeight: 500 },
     labelDone: { color: "hsl(213,45%,20%)" },
     date: { fontSize: "0.75rem", color: "hsl(215,20%,55%)" },
@@ -292,17 +292,17 @@ const s: Record<string, React.CSSProperties> = {
     hint: { color: "hsl(215,20%,55%)", fontSize: "0.85rem" },
     successMsg: { color: "hsl(142,60%,30%)", fontSize: "0.85rem", margin: "0.25rem 0" },
     errorMsg: { color: "hsl(0,75%,50%)", fontSize: "0.85rem", margin: "0.25rem 0" },
-    details: { marginTop: "0.5rem" },
-    timeline: { display: "flex", flexDirection: "column", gap: "0.1rem", marginBottom: "1rem" },
+    details: { marginTop: "1rem", display: "flex", flexDirection: "column", alignItems: "center" },
+    timeline: { display: "flex", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem", marginBottom: "1.5rem" },
     slotHighlight: {
-        display: "flex", alignItems: "center", gap: "0.75rem",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
         background: "hsl(24,95%,96%)", border: "1px solid hsl(24,95%,88%)",
         borderRadius: "0.625rem", padding: "0.75rem 1rem", marginBottom: "0.75rem",
     },
     slotIcon: { fontSize: "1.4rem" },
-    slotLabel: { fontSize: "0.75rem", color: "hsl(24,80%,40%)", fontWeight: 600, marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "0.04em" },
-    slotValue: { fontSize: "0.92rem", color: "hsl(213,45%,20%)" },
-    expiry: { fontSize: "0.75rem", color: "hsl(215,20%,60%)", margin: "0.5rem 0 0" },
+    slotLabel: { fontSize: "0.75rem", color: "hsl(24,80%,40%)", fontWeight: 600, marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center" },
+    slotValue: { fontSize: "0.92rem", color: "hsl(213,45%,20%)", textAlign: "center" },
+    expiry: { fontSize: "0.75rem", color: "hsl(215,20%,60%)", margin: "0.5rem 0 0", textAlign: "center" },
 };
 
 export default LeadInsuranceOnboarding;

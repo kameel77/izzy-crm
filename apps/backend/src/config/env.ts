@@ -168,7 +168,7 @@ export const env = {
   smsapi: parsed.data.SMSAPI_TOKEN
     ? {
       token: parsed.data.SMSAPI_TOKEN,
-      senderName: parsed.data.SMSAPI_SENDER_NAME ?? "Carsalon",
+      senderName: parsed.data.SMSAPI_SENDER_NAME ?? "Test",
     }
     : null,
   onboarding: {

@@ -1148,6 +1148,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       ) : null}
 
       <div style={styles.section}>
+        <LeadInsuranceOnboarding leadId={lead.id} />
+      </div>
+
+      <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div style={styles.sectionTitleGroup}>
             <h3 style={styles.sectionTitle}>Notatki</h3>
@@ -1382,10 +1386,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             {areActivitiesExpanded ? "Pokaż mniej" : "Pokaż całą aktywność"}
           </button>
         ) : null}
-      </div>
-
-      <div style={styles.section}>
-        <LeadInsuranceOnboarding leadId={lead.id} />
       </div>
 
       <div style={styles.section}>
