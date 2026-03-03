@@ -177,27 +177,30 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                             date={session.smsSentAt ?? session.emailSentAt}
                             sub={
                                 [
-                                    session.smsSentAt ? "SMS ✓" : null,
-                                    session.emailSentAt ? "Email ✓" : null,
+                                    session.smsSentAt ? <span key="sms">SMS ✓</span> : null,
+                                    session.emailSentAt ? <span key="email">Email ✓</span> : null,
                                 ]
                                     .filter(Boolean)
-                                    .join(" | ") || "–"
                             }
                         />
                         <TimelineItem
                             icon="👁"
                             label="Link otwarty"
                             date={session.openedAt}
+                            sub={session.openedAt ? <span>Link ✓</span> : undefined}
                         />
                         <TimelineItem
                             icon="📅"
                             label="Termin wybrany"
                             date={session.slotSelectedAt}
+                            sub={session.slotSelectedAt ? <span>Termin ✓</span> : undefined}
+                            badge={session.slotSelectedAt ? "Termin wybrany" : undefined}
                         />
                         <TimelineItem
                             icon="✅"
                             label="Zgody zebrane"
                             date={session.consentsCapAt}
+                            sub={session.consentsCapAt ? <span>Zgody ✓</span> : undefined}
                         />
                     </div>
 
@@ -228,14 +231,16 @@ const TimelineItem: React.FC<{
     icon: string;
     label: string;
     date: string | null | undefined;
-    sub?: string;
-}> = ({ icon, label, date, sub }) => (
+    sub?: React.ReactNode;
+    badge?: string;
+}> = ({ icon, label, date, sub, badge }) => (
     <div style={ti.row}>
         <div style={{ ...ti.dot, ...(date ? ti.dotDone : {}) }}>{date ? icon : "○"}</div>
         <div style={ti.content}>
             <span style={{ ...ti.label, ...(date ? ti.labelDone : {}) }}>{label}</span>
             {date && <span style={ti.date}>{fmtDate(date)}</span>}
             {sub && <span style={ti.sub}>{sub}</span>}
+            {badge && <span style={ti.badge}>{badge}</span>}
         </div>
     </div>
 );
@@ -247,8 +252,9 @@ const ti: Record<string, React.CSSProperties> = {
     content: { display: "flex", flexDirection: "column", gap: "0.1rem", alignItems: "center" },
     label: { fontSize: "0.85rem", color: "hsl(215,20%,55%)", fontWeight: 500 },
     labelDone: { color: "hsl(213,45%,20%)" },
-    date: { fontSize: "0.75rem", color: "hsl(215,20%,55%)" },
-    sub: { fontSize: "0.78rem", color: "hsl(24,95%,48%)", fontWeight: 600 },
+    date: { fontSize: "0.8rem", color: "hsl(215,20%,55%)" },
+    sub: { fontSize: "0.8rem", color: "hsl(142,60%,35%)", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.2rem" },
+    badge: { fontSize: "0.75rem", color: "hsl(40,90%,35%)", background: "hsl(40,90%,90%)", padding: "0.2rem 0.6rem", borderRadius: "1rem", fontWeight: 600, marginTop: "0.2rem" },
 };
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
