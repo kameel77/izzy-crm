@@ -22,6 +22,7 @@ import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
 import { SendEmailModal } from "./SendEmailModal";
+import { LeadInsuranceOnboarding } from "./LeadInsuranceOnboarding";
 import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
 
 type UnlockHistoryEntry = {
@@ -1037,6 +1038,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           <InfoItem label="Województwo" value={customerAddress.voivodeship || "—"} />
         </div>
       </div>
+      <div style={styles.section}>
+        <LeadInsuranceOnboarding leadId={lead.id} />
+      </div>
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
@@ -1145,6 +1149,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </pre>
         </div>
       ) : null}
+
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>

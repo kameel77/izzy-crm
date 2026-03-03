@@ -79,6 +79,11 @@ const envSchema = z.object({
   APP_BASE_URL: z.string().default("http://localhost:5173"),
   CRM_WEBHOOK_URL: z.string().url().optional(),
   CRM_WEBHOOK_TOKEN: z.string().optional(),
+  // Insurance Onboarding
+  SMSAPI_TOKEN: z.string().optional(),
+  SMSAPI_SENDER_NAME: z.string().max(11).optional(),
+  ONBOARDING_LINK_TTL_HOURS: z.string().optional().transform((v) => (v ? Number(v) : 72)),
+  ONBOARDING_CONTACT_DAYS_AHEAD: z.string().optional().transform((v) => (v ? Number(v) : 14)),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -96,9 +101,9 @@ const normalizedCorsOrigins = corsOrigins.length > 0 ? corsOrigins : ["*"];
 
 const leadEmailUsesSmtpFallback = Boolean(
   !parsed.data.LEAD_EMAIL_HOST &&
-    !parsed.data.LEAD_EMAIL_USER &&
-    !parsed.data.LEAD_EMAIL_PASSWORD &&
-    (parsed.data.SMTP_HOST || parsed.data.SMTP_USER || parsed.data.SMTP_PASSWORD),
+  !parsed.data.LEAD_EMAIL_USER &&
+  !parsed.data.LEAD_EMAIL_PASSWORD &&
+  (parsed.data.SMTP_HOST || parsed.data.SMTP_USER || parsed.data.SMTP_PASSWORD),
 );
 
 export const env = {
@@ -112,41 +117,41 @@ export const env = {
   uploadMaxBytes: parsed.data.UPLOAD_MAX_BYTES,
   s3: parsed.data.UPLOAD_DRIVER === "s3"
     ? {
-        bucket: parsed.data.S3_BUCKET,
-        region: parsed.data.S3_REGION,
-        endpoint: parsed.data.S3_ENDPOINT,
-        accessKeyId: parsed.data.S3_ACCESS_KEY_ID,
-        secretAccessKey: parsed.data.S3_SECRET_ACCESS_KEY,
-        forcePathStyle: parsed.data.S3_FORCE_PATH_STYLE ?? false,
-        publicUrl: parsed.data.S3_PUBLIC_URL,
-      }
+      bucket: parsed.data.S3_BUCKET,
+      region: parsed.data.S3_REGION,
+      endpoint: parsed.data.S3_ENDPOINT,
+      accessKeyId: parsed.data.S3_ACCESS_KEY_ID,
+      secretAccessKey: parsed.data.S3_SECRET_ACCESS_KEY,
+      forcePathStyle: parsed.data.S3_FORCE_PATH_STYLE ?? false,
+      publicUrl: parsed.data.S3_PUBLIC_URL,
+    }
     : null,
   email:
     parsed.data.SMTP_HOST && parsed.data.EMAIL_FROM
       ? {
-          from: parsed.data.EMAIL_FROM,
-          host: parsed.data.SMTP_HOST,
-          port: parsed.data.SMTP_PORT ?? 587,
-          user: parsed.data.SMTP_USER,
-          password: parsed.data.SMTP_PASSWORD,
-          secure: parsed.data.SMTP_SECURE ?? false,
-        }
+        from: parsed.data.EMAIL_FROM,
+        host: parsed.data.SMTP_HOST,
+        port: parsed.data.SMTP_PORT ?? 587,
+        user: parsed.data.SMTP_USER,
+        password: parsed.data.SMTP_PASSWORD,
+        secure: parsed.data.SMTP_SECURE ?? false,
+      }
       : null,
   leadEmail:
     (parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST) &&
-    (parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER) &&
-    (parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD)
+      (parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER) &&
+      (parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD)
       ? {
-          from: parsed.data.LEAD_EMAIL_FROM ?? parsed.data.EMAIL_FROM ?? undefined,
-          host: parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
-          port: parsed.data.LEAD_EMAIL_PORT ?? parsed.data.SMTP_PORT ?? 587,
-          user: parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER ?? "",
-          password: parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD ?? "",
-          secure: parsed.data.LEAD_EMAIL_SECURE ?? parsed.data.SMTP_SECURE ?? false,
-          imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
-          imapPort: parsed.data.LEAD_IMAP_PORT ?? 993,
-          imapSecure: parsed.data.LEAD_IMAP_SECURE ?? true,
-        }
+        from: parsed.data.LEAD_EMAIL_FROM ?? parsed.data.EMAIL_FROM ?? undefined,
+        host: parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
+        port: parsed.data.LEAD_EMAIL_PORT ?? parsed.data.SMTP_PORT ?? 587,
+        user: parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER ?? "",
+        password: parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD ?? "",
+        secure: parsed.data.LEAD_EMAIL_SECURE ?? parsed.data.SMTP_SECURE ?? false,
+        imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
+        imapPort: parsed.data.LEAD_IMAP_PORT ?? 993,
+        imapSecure: parsed.data.LEAD_IMAP_SECURE ?? true,
+      }
       : null,
   leadInboxPartnerId: parsed.data.LEAD_INBOX_PARTNER_ID,
   app: {
@@ -155,10 +160,20 @@ export const env = {
   integrations: {
     crmWebhook: parsed.data.CRM_WEBHOOK_URL
       ? {
-          url: parsed.data.CRM_WEBHOOK_URL,
-          token: parsed.data.CRM_WEBHOOK_TOKEN,
-        }
+        url: parsed.data.CRM_WEBHOOK_URL,
+        token: parsed.data.CRM_WEBHOOK_TOKEN,
+      }
       : null,
+  },
+  smsapi: parsed.data.SMSAPI_TOKEN
+    ? {
+      token: parsed.data.SMSAPI_TOKEN,
+      senderName: parsed.data.SMSAPI_SENDER_NAME ?? "Test",
+    }
+    : null,
+  onboarding: {
+    linkTtlHours: parsed.data.ONBOARDING_LINK_TTL_HOURS as number,
+    contactDaysAhead: parsed.data.ONBOARDING_CONTACT_DAYS_AHEAD as number,
   },
 };
 
