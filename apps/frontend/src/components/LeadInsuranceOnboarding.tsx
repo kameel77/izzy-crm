@@ -99,7 +99,7 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
         setLoading(true);
         try {
             const res = await apiFetch<{ data: OnboardingSession | null }>(
-                `/leads/${leadId}/insurance-onboarding`,
+                `/api/leads/${leadId}/insurance-onboarding`,
             );
             setSession(res.data ?? null);
         } catch {
@@ -119,7 +119,7 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
         setError(null);
         setSuccess(null);
         try {
-            await apiFetch(`/leads/${leadId}/insurance-onboarding/start`, { method: "POST" });
+            await apiFetch(`/api/leads/${leadId}/insurance-onboarding/start`, { method: "POST" });
             setSuccess("Onboarding wysłany!");
             await fetchStatus();
         } catch (err) {
