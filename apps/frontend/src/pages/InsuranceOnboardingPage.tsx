@@ -393,6 +393,7 @@ const si: Record<string, React.CSSProperties> = {
 const s: Record<string, React.CSSProperties> = {
     shell: {
         minHeight: "100vh",
+        width: "100%",
         background: "linear-gradient(135deg, hsl(213,60%,97%) 0%, hsl(20,60%,97%) 100%)",
         display: "flex",
         alignItems: "center",
