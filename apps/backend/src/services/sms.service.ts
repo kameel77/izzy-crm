@@ -46,6 +46,7 @@ export const sendSms = async ({
                 to: cleanTo,
                 message,
                 format: "json",
+                normalize: "1",
             });
 
             if (senderName && senderName.trim().length > 0) {

@@ -193,11 +193,6 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                             icon="📅"
                             label="Termin wybrany"
                             date={session.slotSelectedAt}
-                            sub={
-                                session.contactSchedule
-                                    ? `${fmtSlotDate(session.contactSchedule.preferredDate)} ${session.contactSchedule.preferredSlot}`
-                                    : undefined
-                            }
                         />
                         <TimelineItem
                             icon="✅"
