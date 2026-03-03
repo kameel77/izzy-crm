@@ -96,7 +96,7 @@ export const startOnboarding = async ({
     const smsTpl = await getMessageTemplate("sms_welcome_insurance");
     const smsBody = smsTpl
         ? interpolate(smsTpl.body, { firstName, link: landingUrl })
-        : `Cześć${firstName ? ` ${firstName}` : ""}! Ponieważ jesteś w trakcie procesu likwidacji szkody Twojego samochodu, przesłano nam Twoje dane, abyśmy pomogli Ci znaleźć nowe auto. Kliknij: ${landingUrl}`;
+        : `Cześć${firstName ? ` ${firstName}` : ""}! Ponieważ jesteś w trakcie procesu likwidacji szkody Twojego samochodu, przesłano nam Twoje dane, abyśmy pomogli Ci znaleźć nowe auto. Sprawdź maila i potwierdź dogodny termin rozmowy z konsultantem.`;
 
     let smsSent = false;
     if (env.smsapi) {
