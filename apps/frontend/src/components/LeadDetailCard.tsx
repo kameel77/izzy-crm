@@ -1038,6 +1038,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           <InfoItem label="Województwo" value={customerAddress.voivodeship || "—"} />
         </div>
       </div>
+      <div style={styles.section}>
+        <LeadInsuranceOnboarding leadId={lead.id} />
+      </div>
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
@@ -1147,9 +1150,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </div>
       ) : null}
 
-      <div style={styles.section}>
-        <LeadInsuranceOnboarding leadId={lead.id} />
-      </div>
 
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
