@@ -81,6 +81,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
     const [consentTemplates, setConsentTemplates] = React.useState<ConsentTemplateDto[]>([]);
     const [consentState, setConsentState] = React.useState<Record<string, boolean>>({});
     const [submittingConsents, setSubmittingConsents] = React.useState(false);
+    const [expandedConsents, setExpandedConsents] = React.useState<Record<string, boolean>>({});
 
     // ── Token verification on mount ──────────────────────────────────────────
     React.useEffect(() => {
@@ -188,7 +189,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
             <div style={s.card}>
                 {/* Header */}
                 <div style={s.header}>
-                    <img src="/logo.svg" alt="Carsalon" style={s.logoImg} />
+                    <img src="https://krqwvegfxnlwdhgjuflh.supabase.co/storage/v1/object/public/izzy-img-public/car-salon-logo-white.png" alt="Carsalon" style={s.logoImg} />
                     <h1 style={s.heading}>Znajdziemy Ci nowe auto</h1>
                 </div>
 
@@ -281,24 +282,36 @@ export const InsuranceOnboardingPage: React.FC = () => {
 
                         <div style={s.consentList}>
                             {consentTemplates.map((t) => (
-                                <label key={t.id} style={s.consentItem}>
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(consentState[t.id])}
-                                        onChange={(e) =>
-                                            setConsentState((prev) => ({ ...prev, [t.id]: e.target.checked }))
-                                        }
-                                        style={s.checkbox}
-                                    />
+                                <div key={t.id} style={s.consentItem}>
+                                    <label style={s.checkboxWrap}>
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(consentState[t.id])}
+                                            onChange={(e) =>
+                                                setConsentState((prev) => ({ ...prev, [t.id]: e.target.checked }))
+                                            }
+                                            style={s.checkbox}
+                                        />
+                                    </label>
                                     <div style={s.consentBody}>
-                                        <strong style={s.consentTitle}>
-                                            {t.title}
-                                            {t.isRequired && <span style={s.required}> *wymagana</span>}
-                                        </strong>
-                                        <p style={s.consentContent}>{t.content}</p>
-                                        {t.helpText && <p style={s.consentHelp}>{t.helpText}</p>}
+                                        <div
+                                            style={s.consentHeaderWrap}
+                                            onClick={() => setExpandedConsents((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
+                                        >
+                                            <strong style={s.consentTitle}>
+                                                {t.title}
+                                                {t.isRequired && <span style={s.required}> *wymagana</span>}
+                                            </strong>
+                                            <span style={s.chevron}>{expandedConsents[t.id] ? "▲" : "▼"}</span>
+                                        </div>
+                                        {expandedConsents[t.id] && (
+                                            <div style={s.consentContentWrap}>
+                                                <div style={s.consentContent} dangerouslySetInnerHTML={{ __html: t.content }} />
+                                                {t.helpText && <p style={s.consentHelp}>{t.helpText}</p>}
+                                            </div>
+                                        )}
                                     </div>
-                                </label>
+                                </div>
                             ))}
                         </div>
 
@@ -357,7 +370,7 @@ const StepIndicator: React.FC<{ current: 1 | 2 }> = ({ current }) => (
 );
 
 const si: Record<string, React.CSSProperties> = {
-    wrap: { display: "flex", alignItems: "center", gap: "0", marginBottom: "2rem", position: "relative" },
+    wrap: { display: "flex", alignItems: "center", gap: "0", margin: "2.5rem 0 2rem", position: "relative" },
     item: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", flex: 1 },
     dot: {
         width: "2rem", height: "2rem", borderRadius: "50%",
@@ -418,6 +431,7 @@ const s: Record<string, React.CSSProperties> = {
     calGrid: {
         display: "flex", flexWrap: "wrap", gap: "0.5rem",
         padding: "0 2.5rem", marginBottom: "0.5rem",
+        justifyContent: "center",
     },
     dayBtn: {
         display: "flex", flexDirection: "column", alignItems: "center",
@@ -435,6 +449,7 @@ const s: Record<string, React.CSSProperties> = {
     slotGrid: {
         display: "flex", flexWrap: "wrap", gap: "0.5rem",
         padding: "0 2.5rem", marginBottom: "0.5rem",
+        justifyContent: "center",
     },
     slotBtn: {
         padding: "0.5rem 0.9rem",
@@ -462,11 +477,14 @@ const s: Record<string, React.CSSProperties> = {
         display: "flex", gap: "0.75rem", alignItems: "flex-start",
         background: "hsl(215,30%,98%)", borderRadius: "0.75rem",
         padding: "1rem", border: "1px solid hsl(215,20%,90%)",
-        cursor: "pointer",
     },
-    checkbox: { marginTop: "0.15rem", flexShrink: 0, width: "1.1rem", height: "1.1rem", accentColor: "hsl(24,95%,53%)" },
+    checkboxWrap: { display: "flex", alignItems: "flex-start", paddingTop: "0.15rem", cursor: "pointer" },
+    checkbox: { flexShrink: 0, width: "1.1rem", height: "1.1rem", accentColor: "hsl(24,95%,53%)", cursor: "pointer" },
     consentBody: { flex: 1 },
-    consentTitle: { display: "block", fontSize: "0.9rem", color: "hsl(213,45%,20%)", marginBottom: "0.35rem" },
+    consentHeaderWrap: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", width: "100%" },
+    chevron: { fontSize: "0.75rem", color: "hsl(215,20%,55%)", marginLeft: "0.5rem", marginTop: "0.2rem" },
+    consentContentWrap: { marginTop: "0.75rem" },
+    consentTitle: { display: "block", fontSize: "0.9rem", color: "hsl(213,45%,20%)", marginBottom: "0.15rem" },
     consentContent: { margin: 0, fontSize: "0.82rem", color: "hsl(215,20%,40%)", lineHeight: 1.5 },
     consentHelp: { margin: "0.35rem 0 0", fontSize: "0.78rem", color: "hsl(215,20%,55%)" },
     required: { color: "hsl(0,75%,55%)", fontWeight: 600, fontSize: "0.75rem" },
