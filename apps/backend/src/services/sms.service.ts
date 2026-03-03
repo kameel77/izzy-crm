@@ -41,12 +41,16 @@ export const sendSms = async ({
     let lastError: unknown;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
+            const cleanTo = to.replace(/\D/g, "");
             const params = new URLSearchParams({
-                to,
+                to: cleanTo,
                 message,
-                from: senderName,
                 format: "json",
             });
+
+            if (senderName && senderName.trim().length > 0) {
+                params.append("from", senderName.trim());
+            }
 
             const response = await fetch(`${SMSAPI_URL}?${params.toString()}`, {
                 method: "POST",
