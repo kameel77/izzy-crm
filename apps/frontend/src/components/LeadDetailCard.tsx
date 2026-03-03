@@ -1422,7 +1422,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                     View Content
                   </button>
                 </div>
-                <p style={styles.consentContent}>{record.consentText}</p>
+                <div
+                  style={styles.consentContent}
+                  dangerouslySetInnerHTML={{ __html: record.consentText }}
+                />
               </li>
             ))
           ) : (
@@ -1463,7 +1466,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         title="Consent Content"
       >
         <div style={styles.consentContentModal}>
-          <pre style={styles.consentContentPre}>{selectedConsentContent}</pre>
+          <div
+            style={styles.consentContentHtml}
+            dangerouslySetInnerHTML={{ __html: selectedConsentContent }}
+          />
         </div>
       </Modal>
 
@@ -2657,6 +2663,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.9rem",
     fontFamily: "monospace",
     margin: 0,
+  },
+  consentContentHtml: {
+    fontSize: "0.9rem",
+    lineHeight: 1.6,
+    color: "#334155",
   },
   adminActions: {
     display: "flex",

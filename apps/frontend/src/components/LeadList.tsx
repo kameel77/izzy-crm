@@ -102,7 +102,7 @@ export const LeadList: React.FC<LeadListProps> = ({
                   style={
                     lead.id === selectedLeadId ? styles.selectedRow : styles.clickableRow
                   }
-                  onClick={() => onSelect(lead.id)}
+                  onClick={() => onMore(lead.id)}
                 >
                   <td style={styles.tableCell}>
                     <strong>

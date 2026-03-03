@@ -6,6 +6,7 @@ COPY apps/frontend/package.json ./apps/frontend/package.json
 COPY apps/frontend/tsconfig.json ./apps/frontend/tsconfig.json
 COPY apps/frontend/vite.config.ts ./apps/frontend/vite.config.ts
 COPY apps/frontend/index.html ./apps/frontend/index.html
+COPY apps/frontend/public ./apps/frontend/public
 COPY apps/frontend/src ./apps/frontend/src
 
 WORKDIR /app/apps/frontend
