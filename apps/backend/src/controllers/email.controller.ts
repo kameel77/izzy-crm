@@ -25,7 +25,7 @@ const extractNameParts = (from: string) => {
 
 const extractPhone = (text?: string | null) => {
     if (!text) return null;
-    const match = text.match(/(\+?\d[\d\s\-]{6,}\d)/);
+    const match = text.match(/(\+?\d[\d\s-]{6,}\d)/);
     return match ? match[1].replace(/\s+/g, "") : null;
 };
 
@@ -81,7 +81,7 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
             try {
                 const url = new URL(urlStr);
                 // Pattern: .../samochod/Make/Model/...
-                const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
+                const match = url.pathname.match(/\/samochod\/([^/]+)\/([^/]+)/);
                 if (match) {
                     const make = match[1];
                     const model = match[2].replace(/-/g, " ");
