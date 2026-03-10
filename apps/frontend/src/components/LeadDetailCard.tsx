@@ -24,7 +24,6 @@ import { Modal } from "./Modal";
 import { SendEmailModal } from "./SendEmailModal";
 import { LeadInsuranceOnboarding } from "./LeadInsuranceOnboarding";
 import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
-import { generatePersonalOfferLink } from "../utils/offerGenerator";
 
 type UnlockHistoryEntry = {
   unlockedBy?: string | null;
@@ -298,12 +297,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   });
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
   const [isSavingClient, setIsSavingClient] = useState(false);
-
-  const [isOfferLinkModalOpen, setIsOfferLinkModalOpen] = useState(false);
-  const [offerFormDiscount, setOfferFormDiscount] = useState("");
-  const [offerFormInitialPayment, setOfferFormInitialPayment] = useState("");
-  const [offerFormSelectedIds, setOfferFormSelectedIds] = useState("");
-  const [generatedOfferLink, setGeneratedOfferLink] = useState("");
 
   const applicationForm = lead?.applicationForm;
 
@@ -593,35 +586,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       addToast("Skopiowano link do schowka", "success");
     } catch {
       addToast("Nie udało się skopiować linku", "error");
-    }
-  };
-
-  const handleGenerateOfferLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!lead) return;
-    const discount = Number(offerFormDiscount);
-    if (!offerFormDiscount || isNaN(discount)) {
-      addToast("Wartość rabatu jest wymagana i musi być liczbą.", "error");
-      return;
-    }
-    const initialPayment = offerFormInitialPayment ? Number(offerFormInitialPayment) : null;
-    const selectedIds = offerFormSelectedIds.trim() || null;
-
-    const link = generatePersonalOfferLink(lead.id, discount, initialPayment, selectedIds);
-    setGeneratedOfferLink(link);
-    addToast("Link oferty został wygenerowany.", "success");
-  };
-
-  const handleCopyOfferLink = async () => {
-    if (!generatedOfferLink) return;
-    try {
-      if (!navigator?.clipboard) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(generatedOfferLink);
-      addToast("Skopiowano link oferty do schowka", "success");
-    } catch {
-      addToast("Nie udało się skopiować linku oferty", "error");
     }
   };
 
@@ -1095,13 +1059,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                 ✉️ Wyślij wiadomość
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={() => setIsOfferLinkModalOpen(true)}
-              style={styles.secondaryButton}
-            >
-              🔗 Generuj link oferty
-            </button>
             <span style={styles.statusPill}>{LEAD_STATUS_LABELS[lead.status] || lead.status}</span>
           </div>
           <div style={styles.contactRow}>
@@ -2219,83 +2176,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isOfferLinkModalOpen}
-        onClose={() => {
-          setIsOfferLinkModalOpen(false);
-          setGeneratedOfferLink("");
-        }}
-        title="Generuj link oferty specjalnej"
-      >
-        <form onSubmit={handleGenerateOfferLink} style={styles.modalForm}>
-          <label style={styles.modalLabel}>
-            Wartość rabatu (PLN) *
-            <input
-              type="number"
-              value={offerFormDiscount}
-              onChange={(e) => setOfferFormDiscount(e.target.value)}
-              style={styles.modalInput}
-              min={0}
-              required
-            />
-          </label>
-          <label style={styles.modalLabel}>
-            Wpłata początkowa (PLN)
-            <input
-              type="number"
-              value={offerFormInitialPayment}
-              onChange={(e) => setOfferFormInitialPayment(e.target.value)}
-              style={styles.modalInput}
-              min={0}
-            />
-            <span style={styles.helperText}>Opcjonalnie.</span>
-          </label>
-          <label style={styles.modalLabel}>
-            Wybrane ID pojazdów (po przecinku)
-            <input
-              type="text"
-              value={offerFormSelectedIds}
-              onChange={(e) => setOfferFormSelectedIds(e.target.value)}
-              style={styles.modalInput}
-              placeholder="np. 123,456"
-            />
-            <span style={styles.helperText}>Opcjonalnie. Lista ID przefiltruje widoczne auta na liście.</span>
-          </label>
-
-          {generatedOfferLink ? (
-            <div style={{ ...styles.banner, marginTop: "1rem" }}>
-              <p style={{ margin: "0 0 0.5rem", fontWeight: 600 }}>Wygenerowany link:</p>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  type="text"
-                  readOnly
-                  value={generatedOfferLink}
-                  style={styles.modalInput}
-                />
-                <button type="button" style={styles.primaryButton} onClick={handleCopyOfferLink}>
-                  Kopiuj
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          <div style={styles.modalActions}>
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={() => {
-                setIsOfferLinkModalOpen(false);
-                setGeneratedOfferLink("");
-              }}
-            >
-              Zamknij
-            </button>
-            <button type="submit" style={styles.primaryButton}>
-              Generuj link
-            </button>
-          </div>
-        </form>
-      </Modal>
 
       <SendEmailModal
         isOpen={isSendEmailModalOpen}
