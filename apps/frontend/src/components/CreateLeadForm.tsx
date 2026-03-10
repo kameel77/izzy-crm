@@ -6,14 +6,31 @@ import { fetchPartners, PartnerSummary } from "../api/partners";
 interface CreateLeadFormProps {
   onCreate: (payload: {
     partnerId?: string;
-    customer: { firstName: string; lastName: string; email?: string; phone?: string };
+    customer: { firstName: string; lastName: string; email?: string; phone?: string; customerType?: string; city?: string; voivodeship?: string };
     currentVehicle?: {
       make?: string;
       model?: string;
       year?: number;
       mileage?: number;
     };
-    desiredVehicle?: { make?: string; model?: string; year?: number; budget?: number };
+    desiredVehicle?: {
+      make?: string;
+      model?: string;
+      year?: number;
+      budget?: number;
+      preferences?: {
+        notes?: string;
+        vehicles?: Array<{
+          make?: string;
+          model?: string;
+          yearFrom?: number;
+          yearTo?: number;
+          budgetFrom?: number;
+          budgetTo?: number;
+          comment?: string;
+        }>;
+      };
+    };
     financing: { downPayment: number };
     consents: Array<{
       templateId: string;
@@ -63,11 +80,29 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [currentModel, setCurrentModel] = useState("");
   const [currentYear, setCurrentYear] = useState("");
   const [currentMileage, setCurrentMileage] = useState("");
-  const [desiredMake, setDesiredMake] = useState("");
-  const [desiredModel, setDesiredModel] = useState("");
-  const [desiredYear, setDesiredYear] = useState("");
-  const [desiredNotes, setDesiredNotes] = useState("");
-  const [desiredBudget, setDesiredBudget] = useState("");
+  const [isVehicleDataExpanded, setIsVehicleDataExpanded] = useState(false);
+  const [desiredVehicles, setDesiredVehicles] = useState([{
+    make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: ""
+  }]);
+
+  const handleDesiredVehicleChange = (index: number, field: string, value: string) => {
+    const updated = [...desiredVehicles];
+    updated[index] = { ...updated[index], [field as keyof typeof updated[0]]: value };
+    setDesiredVehicles(updated);
+  };
+
+  const addDesiredVehicle = () => {
+    setDesiredVehicles([
+      ...desiredVehicles,
+      { make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: "" }
+    ]);
+  };
+
+  const removeDesiredVehicle = (index: number) => {
+    if (desiredVehicles.length > 1) {
+      setDesiredVehicles(desiredVehicles.filter((_, i) => i !== index));
+    }
+  };
   const [partnerId, setPartnerId] = useState(defaultPartnerId ?? "");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -184,14 +219,16 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       newErrors.consents = "Wymagane zgody muszą być zaznaczone.";
     }
     const parsedDownPayment = Number(downPayment);
-    if (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0) {
+    if (downPayment !== "" && (!Number.isFinite(parsedDownPayment) || parsedDownPayment < 0)) {
       newErrors.downPayment = "Dostępna kwota musi być liczbą nieujemną.";
     }
-    if (desiredBudget) {
-      const parsedBudget = Number(desiredBudget);
-      if (!Number.isFinite(parsedBudget) || parsedBudget < 0) {
-        newErrors.desiredBudget = "Budżet musi być liczbą nieujemną.";
-      }
+    let budgetError = false;
+    desiredVehicles.forEach((v) => {
+      if (v.budgetFrom && (Number.isNaN(Number(v.budgetFrom)) || Number(v.budgetFrom) < 0)) budgetError = true;
+      if (v.budgetTo && (Number.isNaN(Number(v.budgetTo)) || Number(v.budgetTo) < 0)) budgetError = true;
+    });
+    if (budgetError) {
+      newErrors.desiredBudget = "Budżety dla poszukiwanych pojazdów muszą być nieujemne.";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -206,7 +243,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     setLoading(true);
     try {
       const sanitizedPhone = phone.replace(/[\s-]+/g, "") || undefined;
-      const parsedBudget = desiredBudget === "" ? undefined : Number(desiredBudget);
+      const parsedDownPayment = downPayment === "" ? 0 : Number(downPayment);
       const payload: Parameters<typeof onCreate>[0] = {
         partnerId: partnerId || undefined,
         customer: {
@@ -219,7 +256,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           voivodeship: voivodeship || undefined,
         },
         financing: {
-          downPayment: Number(downPayment),
+          downPayment: parsedDownPayment,
         },
         consents: consentTemplates.map(t => ({
           templateId: t.id,
@@ -237,13 +274,29 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         };
       }
 
-      if (desiredMake || desiredModel || desiredYear || desiredNotes || parsedBudget !== undefined) {
+      const validDesiredVehicles = desiredVehicles.filter(
+        (v) => v.make || v.model || v.yearFrom || v.yearTo || v.budgetFrom || v.budgetTo || v.comment
+      );
+
+      if (validDesiredVehicles.length > 0) {
+        const firstVehicle = validDesiredVehicles[0];
         payload.desiredVehicle = {
-          make: desiredMake || undefined,
-          model: desiredModel || undefined,
-          year: desiredYear ? Number(desiredYear) : undefined,
-          budget: parsedBudget,
-          preferences: desiredNotes ? { notes: desiredNotes } : undefined,
+          make: firstVehicle.make || undefined,
+          model: firstVehicle.model || undefined,
+          year: firstVehicle.yearFrom ? Number(firstVehicle.yearFrom) : undefined,
+          budget: firstVehicle.budgetTo ? Number(firstVehicle.budgetTo) : undefined,
+          preferences: {
+            notes: firstVehicle.comment || undefined,
+            vehicles: validDesiredVehicles.map(v => ({
+              make: v.make || undefined,
+              model: v.model || undefined,
+              yearFrom: v.yearFrom ? Number(v.yearFrom) : undefined,
+              yearTo: v.yearTo ? Number(v.yearTo) : undefined,
+              budgetFrom: v.budgetFrom ? Number(v.budgetFrom) : undefined,
+              budgetTo: v.budgetTo ? Number(v.budgetTo) : undefined,
+              comment: v.comment || undefined,
+            }))
+          }
         };
       }
 
@@ -259,11 +312,8 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       setCurrentModel("");
       setCurrentYear("");
       setCurrentMileage("");
-      setDesiredMake("");
-      setDesiredModel("");
-      setDesiredYear("");
-      setDesiredNotes("");
-      setDesiredBudget("");
+      setDesiredVehicles([{ make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: "" }]);
+      setIsVehicleDataExpanded(false);
       setCustomerType("");
       setCity("");
       setVoivodeship("");
@@ -276,232 +326,300 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      <h3 style={styles.title}>Wprowadź dane klienta</h3>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Imię
-          <input
-            style={styles.input}
-            value={firstName}
-            onChange={(event) => setFirstName(event.target.value)}
-            required
-          />
-        </label>
-        <label style={styles.label}>
-          Nazwisko
-          <input
-            style={styles.input}
-            value={lastName}
-            onChange={(event) => setLastName(event.target.value)}
-            required
-          />
-        </label>
-        <label style={styles.label}>
-          Partner
-          {user?.role === "ADMIN" ? (
-            <>
-              <select
-                style={styles.input}
-                value={partnerId}
-                onChange={(event) => setPartnerId(event.target.value)}
-                disabled={partnersLoading}
-              >
-                <option value="">Wybierz partnera</option>
-                {partners.map((partner) => (
-                  <option key={partner.id} value={partner.id}>
-                    {partner.name}
-                  </option>
-                ))}
-              </select>
-              {partnersError ? <span style={styles.fieldError}>{partnersError}</span> : null}
-            </>
-          ) : (
+      <fieldset style={{ ...styles.fieldset, paddingBottom: "1.5rem" }}>
+        <legend style={styles.legend}>Wprowadź dane klienta</legend>
+        <div style={styles.row}>
+          <label style={styles.label}>
+            Imię
             <input
-              style={{ ...styles.input, background: "#f3f4f6" }}
-              value={resolvedPartnerName}
-              readOnly
-              placeholder="Nazwa partnera"
+              style={styles.input}
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              required
             />
-          )}
-        </label>
-      </div>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Email
-          <input
-            style={styles.input}
-            value={email}
-            type="email"
-            onChange={(event) => setEmail(event.target.value)}
-            onBlur={validate}
-          />
-          {errors.email && <span style={styles.fieldError}>{errors.email}</span>}
-        </label>
-        <label style={styles.label}>
-          Telefon
-          <input
-            style={styles.input}
-            value={phone}
-            type="tel"
-            onChange={(event) => setPhone(event.target.value)}
-            onBlur={validate}
-          />
-          {errors.phone && <span style={styles.fieldError}>{errors.phone}</span>}
-        </label>
-        <label style={styles.label}>
-          Rodzaj klienta
-          <select
-            style={styles.input}
-            value={customerType}
-            onChange={(event) => setCustomerType(event.target.value)}
-          >
-            <option value="">Wybierz</option>
-            {customerTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Miasto
-          <input
-            style={styles.input}
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-            placeholder="np. Warszawa"
-          />
-        </label>
-        <label style={styles.label}>
-          Województwo
-          <select
-            style={styles.input}
-            value={voivodeship}
-            onChange={(event) => setVoivodeship(event.target.value)}
-          >
-            <option value="">Wybierz</option>
-            {voivodeships.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={styles.label}>
-          Dostępna kwota (PLN)
-          <input
-            style={styles.input}
-            value={downPayment}
-            type="number"
-            min="0"
-            step="0.01"
-            onChange={(event) => setDownPayment(event.target.value)}
-            required
-          />
-          {errors.downPayment && <span style={styles.fieldError}>{errors.downPayment}</span>}
-        </label>
-      </div>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Marka (obecny pojazd)
-          <input
-            style={styles.input}
-            value={currentMake}
-            onChange={(event) => setCurrentMake(event.target.value)}
-            placeholder="np. Toyota"
-          />
-        </label>
-        <label style={styles.label}>
-          Model (obecny pojazd)
-          <input
-            style={styles.input}
-            value={currentModel}
-            onChange={(event) => setCurrentModel(event.target.value)}
-            placeholder="np. Corolla"
-          />
-        </label>
-      </div>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Rok produkcji (obecny pojazd)
-          <input
-            style={styles.input}
-            value={currentYear}
-            type="number"
-            min="1900"
-            max={new Date().getFullYear() + 1}
-            onChange={(event) => setCurrentYear(event.target.value)}
-          />
-        </label>
-        <label style={styles.label}>
-          Przebieg [km] (obecny pojazd)
-          <input
-            style={styles.input}
-            value={currentMileage}
-            type="number"
-            min="0"
-            step="1"
-            onChange={(event) => setCurrentMileage(event.target.value)}
-          />
-        </label>
-      </div>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Marka (nowy pojazd)
-          <input
-            style={styles.input}
-            value={desiredMake}
-            onChange={(event) => setDesiredMake(event.target.value)}
-            placeholder="np. Skoda"
-          />
-        </label>
-        <label style={styles.label}>
-          Model (nowy pojazd)
-          <input
-            style={styles.input}
-            value={desiredModel}
-            onChange={(event) => setDesiredModel(event.target.value)}
-            placeholder="np. Octavia"
-          />
-        </label>
-      </div>
-      <div style={styles.row}>
-        <label style={styles.label}>
-          Rok produkcji (nowy pojazd)
-          <input
-            style={styles.input}
-            value={desiredYear}
-            type="number"
-            min="1900"
-            max={new Date().getFullYear() + 1}
-            onChange={(event) => setDesiredYear(event.target.value)}
-          />
-        </label>
-        <label style={styles.label}>
-          Uwagi (nowy pojazd)
-          <input
-            style={styles.input}
-            value={desiredNotes}
-            onChange={(event) => setDesiredNotes(event.target.value)}
-            placeholder="np. rodzinne kombi"
-          />
-        </label>
-        <label style={styles.label}>
-          Budżet (PLN)
-          <input
-            style={styles.input}
-            value={desiredBudget}
-            type="number"
-            min="0"
-            step="0.01"
-            onChange={(event) => setDesiredBudget(event.target.value)}
-            onBlur={validate}
-          />
-          {errors.desiredBudget && <span style={styles.fieldError}>{errors.desiredBudget}</span>}
-        </label>
-      </div>
+          </label>
+          <label style={styles.label}>
+            Nazwisko
+            <input
+              style={styles.input}
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              required
+            />
+          </label>
+          <label style={styles.label}>
+            Partner
+            {user?.role === "ADMIN" ? (
+              <>
+                <select
+                  style={styles.input}
+                  value={partnerId}
+                  onChange={(event) => setPartnerId(event.target.value)}
+                  disabled={partnersLoading}
+                >
+                  <option value="">Wybierz partnera</option>
+                  {partners.map((partner) => (
+                    <option key={partner.id} value={partner.id}>
+                      {partner.name}
+                    </option>
+                  ))}
+                </select>
+                {partnersError ? <span style={styles.fieldError}>{partnersError}</span> : null}
+              </>
+            ) : (
+              <input
+                style={{ ...styles.input, background: "#f3f4f6" }}
+                value={resolvedPartnerName}
+                readOnly
+                placeholder="Nazwa partnera"
+              />
+            )}
+          </label>
+        </div>
+        <div style={styles.row}>
+          <label style={styles.label}>
+            Email
+            <input
+              style={styles.input}
+              value={email}
+              type="email"
+              onChange={(event) => setEmail(event.target.value)}
+              onBlur={validate}
+            />
+            {errors.email && <span style={styles.fieldError}>{errors.email}</span>}
+          </label>
+          <label style={styles.label}>
+            Telefon
+            <input
+              style={styles.input}
+              value={phone}
+              type="tel"
+              onChange={(event) => setPhone(event.target.value)}
+              onBlur={validate}
+            />
+            {errors.phone && <span style={styles.fieldError}>{errors.phone}</span>}
+          </label>
+          <label style={styles.label}>
+            Rodzaj klienta
+            <select
+              style={styles.input}
+              value={customerType}
+              onChange={(event) => setCustomerType(event.target.value)}
+            >
+              <option value="">Wybierz</option>
+              {customerTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div style={styles.row}>
+          <label style={styles.label}>
+            Miasto
+            <input
+              style={styles.input}
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="np. Warszawa"
+            />
+          </label>
+          <label style={styles.label}>
+            Województwo
+            <select
+              style={styles.input}
+              value={voivodeship}
+              onChange={(event) => setVoivodeship(event.target.value)}
+            >
+              <option value="">Wybierz</option>
+              {voivodeships.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={styles.label}>
+            Dostępna kwota (PLN)
+            <input
+              style={styles.input}
+              value={downPayment}
+              type="number"
+              min="0"
+              step="0.01"
+              onChange={(event) => setDownPayment(event.target.value)}
+            />
+            {errors.downPayment && <span style={styles.fieldError}>{errors.downPayment}</span>}
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset style={styles.fieldset}>
+        <legend
+          style={{ ...styles.legend, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
+          onClick={() => setIsVehicleDataExpanded(!isVehicleDataExpanded)}
+        >
+          Informacje o pojeździe
+          <span style={{ fontSize: "0.8em" }}>{isVehicleDataExpanded ? "▼" : "▶"}</span>
+        </legend>
+
+        {isVehicleDataExpanded && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
+            <div style={styles.row}>
+              <label style={styles.label}>
+                Marka (obecny pojazd)
+                <input
+                  style={styles.input}
+                  value={currentMake}
+                  onChange={(event) => setCurrentMake(event.target.value)}
+                  placeholder="np. Toyota"
+                />
+              </label>
+              <label style={styles.label}>
+                Model (obecny pojazd)
+                <input
+                  style={styles.input}
+                  value={currentModel}
+                  onChange={(event) => setCurrentModel(event.target.value)}
+                  placeholder="np. Corolla"
+                />
+              </label>
+            </div>
+            <div style={styles.row}>
+              <label style={styles.label}>
+                Rok produkcji (obecny pojazd)
+                <input
+                  style={styles.input}
+                  value={currentYear}
+                  type="number"
+                  min="1900"
+                  max={new Date().getFullYear() + 1}
+                  onChange={(event) => setCurrentYear(event.target.value)}
+                />
+              </label>
+              <label style={styles.label}>
+                Przebieg [km] (obecny pojazd)
+                <input
+                  style={styles.input}
+                  value={currentMileage}
+                  type="number"
+                  min="0"
+                  step="1"
+                  onChange={(event) => setCurrentMileage(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px dashed #e5e7eb" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <h4 style={{ margin: 0, fontSize: "1rem", color: "#374151" }}>Poszukiwane pojazdy</h4>
+                <button
+                  type="button"
+                  onClick={addDesiredVehicle}
+                  style={{ padding: "0.4rem 0.8rem", borderRadius: 6, background: "#f3f4f6", border: "1px solid #d1d5db", cursor: "pointer", fontSize: "0.85rem" }}
+                >
+                  + Dodaj pojazd
+                </button>
+              </div>
+
+              {desiredVehicles.map((vehicle, index) => (
+                <div key={index} style={{ background: "#f9fafb", padding: "1rem", borderRadius: 8, marginBottom: "1rem", border: "1px solid #e5e7eb", position: "relative" }}>
+                  {desiredVehicles.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeDesiredVehicle(index)}
+                      style={{ position: "absolute", top: "0.5rem", right: "0.5rem", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 4, padding: "0.2rem 0.5rem", cursor: "pointer", fontSize: "0.8rem" }}
+                    >
+                      Usuń
+                    </button>
+                  )}
+                  <div style={{ ...styles.row, marginBottom: "1rem" }}>
+                    <label style={styles.label}>
+                      Marka
+                      <input
+                        style={styles.input}
+                        value={vehicle.make}
+                        onChange={(e) => handleDesiredVehicleChange(index, "make", e.target.value)}
+                        placeholder="np. Skoda"
+                      />
+                    </label>
+                    <label style={styles.label}>
+                      Model
+                      <input
+                        style={styles.input}
+                        value={vehicle.model}
+                        onChange={(e) => handleDesiredVehicleChange(index, "model", e.target.value)}
+                        placeholder="np. Octavia"
+                      />
+                    </label>
+                  </div>
+                  <div style={{ ...styles.row, marginBottom: "1rem" }}>
+                    <label style={styles.label}>
+                      Rok od
+                      <input
+                        style={styles.input}
+                        value={vehicle.yearFrom}
+                        type="number"
+                        min="1900"
+                        max={new Date().getFullYear() + 1}
+                        onChange={(e) => handleDesiredVehicleChange(index, "yearFrom", e.target.value)}
+                      />
+                    </label>
+                    <label style={styles.label}>
+                      Rok do
+                      <input
+                        style={styles.input}
+                        value={vehicle.yearTo}
+                        type="number"
+                        min="1900"
+                        max={new Date().getFullYear() + 1}
+                        onChange={(e) => handleDesiredVehicleChange(index, "yearTo", e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div style={{ ...styles.row, marginBottom: "1rem" }}>
+                    <label style={styles.label}>
+                      Budżet od (PLN)
+                      <input
+                        style={styles.input}
+                        value={vehicle.budgetFrom}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        onChange={(e) => handleDesiredVehicleChange(index, "budgetFrom", e.target.value)}
+                      />
+                    </label>
+                    <label style={styles.label}>
+                      Budżet do (PLN)
+                      <input
+                        style={styles.input}
+                        value={vehicle.budgetTo}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        onChange={(e) => handleDesiredVehicleChange(index, "budgetTo", e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div style={styles.row}>
+                    <label style={styles.label}>
+                      Uwagi
+                      <input
+                        style={styles.input}
+                        value={vehicle.comment}
+                        onChange={(e) => handleDesiredVehicleChange(index, "comment", e.target.value)}
+                        placeholder="np. rodzinne kombi"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+              {errors.desiredBudget && <span style={styles.fieldError}>{errors.desiredBudget}</span>}
+            </div>
+          </div>
+        )}
+      </fieldset>
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Zgody</legend>
         {consentsLoading ? (

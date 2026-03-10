@@ -1,0 +1,8 @@
+
+/* Override inline styles for table row hover and dropdown items */
+tbody tr[style*="cursor: pointer"]:hover {
+  background-color: #f8fafc !important;
+}
+.action-menu-dropdown button:hover {
+  background-color: #f1f5f9;
+}
