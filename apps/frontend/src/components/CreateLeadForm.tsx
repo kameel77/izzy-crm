@@ -523,17 +523,30 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                 </button>
               </div>
 
+              {desiredVehicles.length > 1 && (
+                <div style={{ marginBottom: "1.5rem", padding: "1rem", background: "#f3f4f6", borderRadius: 8 }}>
+                  <h5 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", color: "#4b5563" }}>Dodane pojazdy:</h5>
+                  <ul style={{ margin: 0, paddingLeft: "1.5rem", fontSize: "0.85rem", color: "#374151" }}>
+                    {desiredVehicles.slice(0, -1).map((v, i) => (
+                      <li key={i} style={{ marginBottom: "0.25rem" }}>
+                        <strong>{v.make || "Dowolna"} {v.model || ""}</strong>
+                        {(v.yearFrom || v.yearTo) && ` • Rocznik: ${v.yearFrom || "od"} - ${v.yearTo || "do"}`}
+                        {(v.budgetFrom || v.budgetTo) && ` • Budżet: ${v.budgetFrom || "0"} - ${v.budgetTo || ""} PLN`}
+                        {v.comment && ` • Uwagi: ${v.comment}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <datalist id="year-options">
+                {Array.from({ length: 17 }, (_, i) => 2010 + i).map(year => (
+                  <option key={year} value={year} />
+                ))}
+              </datalist>
+
               {desiredVehicles.map((vehicle, index) => (
-                <div key={index} style={{ background: "#f9fafb", padding: "1rem", borderRadius: 8, marginBottom: "1rem", border: "1px solid #e5e7eb", position: "relative" }}>
-                  {desiredVehicles.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeDesiredVehicle(index)}
-                      style={{ position: "absolute", top: "0.5rem", right: "0.5rem", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 4, padding: "0.2rem 0.5rem", cursor: "pointer", fontSize: "0.8rem" }}
-                    >
-                      Usuń
-                    </button>
-                  )}
+                <div key={index} style={{ background: "#f9fafb", padding: "1rem", borderRadius: 8, marginBottom: "1rem", border: "1px solid #e5e7eb", position: "relative", display: index === desiredVehicles.length - 1 ? "block" : "none" }}>
                   <div style={{ ...styles.row, marginBottom: "1rem" }}>
                     <label style={styles.label}>
                       Marka
@@ -555,7 +568,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                     </label>
                   </div>
                   <div style={{ ...styles.row, marginBottom: "1rem" }}>
-                    <label style={styles.label}>
+                    <label style={{ ...styles.label, minWidth: 100 }}>
                       Rok od
                       <input
                         style={styles.input}
@@ -563,10 +576,11 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                         type="number"
                         min="1900"
                         max={new Date().getFullYear() + 1}
+                        list="year-options"
                         onChange={(e) => handleDesiredVehicleChange(index, "yearFrom", e.target.value)}
                       />
                     </label>
-                    <label style={styles.label}>
+                    <label style={{ ...styles.label, minWidth: 100 }}>
                       Rok do
                       <input
                         style={styles.input}
@@ -574,12 +588,11 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                         type="number"
                         min="1900"
                         max={new Date().getFullYear() + 1}
+                        list="year-options"
                         onChange={(e) => handleDesiredVehicleChange(index, "yearTo", e.target.value)}
                       />
                     </label>
-                  </div>
-                  <div style={{ ...styles.row, marginBottom: "1rem" }}>
-                    <label style={styles.label}>
+                    <label style={{ ...styles.label, minWidth: 120 }}>
                       Budżet od (PLN)
                       <input
                         style={styles.input}
@@ -590,7 +603,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                         onChange={(e) => handleDesiredVehicleChange(index, "budgetFrom", e.target.value)}
                       />
                     </label>
-                    <label style={styles.label}>
+                    <label style={{ ...styles.label, minWidth: 120 }}>
                       Budżet do (PLN)
                       <input
                         style={styles.input}
@@ -613,6 +626,15 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                       />
                     </label>
                   </div>
+                  {desiredVehicles.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeDesiredVehicle(index)}
+                      style={{ position: "absolute", bottom: "1rem", right: "1rem", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 4, padding: "0.4rem 0.8rem", cursor: "pointer", fontSize: "0.85rem" }}
+                    >
+                      Usuń {vehicle.make || vehicle.model ? `${vehicle.make} ${vehicle.model}` : "ten pojazd"}
+                    </button>
+                  )}
                 </div>
               ))}
               {errors.desiredBudget && <span style={styles.fieldError}>{errors.desiredBudget}</span>}

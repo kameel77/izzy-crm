@@ -281,17 +281,17 @@ export const createLead = async (input: CreateLeadInput) => {
             ? {
               create: {
                 bank: input.financing.bank ?? "TBD",
-                loanAmount: input.financing.loanAmount
+                loanAmount: typeof input.financing.loanAmount === "number"
                   ? new Prisma.Decimal(input.financing.loanAmount)
                   : undefined,
-                downPayment: input.financing.downPayment
+                downPayment: typeof input.financing.downPayment === "number"
                   ? new Prisma.Decimal(input.financing.downPayment)
                   : undefined,
                 termMonths: input.financing.termMonths ?? undefined,
-                income: input.financing.income
+                income: typeof input.financing.income === "number"
                   ? new Prisma.Decimal(input.financing.income)
                   : undefined,
-                expenses: input.financing.expenses
+                expenses: typeof input.financing.expenses === "number"
                   ? new Prisma.Decimal(input.financing.expenses)
                   : undefined,
               },
