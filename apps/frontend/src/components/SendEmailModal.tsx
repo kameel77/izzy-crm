@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ApiError } from "../api/client";
+import { generatePersonalOfferLink } from "../utils/offerGenerator";
 import { generateOfferLink, sendLeadEmail } from "../api/leads";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../providers/ToastProvider";
@@ -43,6 +44,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [offerDiscount, setOfferDiscount] = useState("");
   const [offerError, setOfferError] = useState<string | null>(null);
   const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
+  const [offerInitialPayment, setOfferInitialPayment] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -51,6 +53,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
     setLinks([""]);
     setOfferBaseUrl("");
     setOfferDiscount("");
+    setOfferInitialPayment("");
     setOfferError(null);
   }, [isOpen, replyContext]);
 
@@ -65,12 +68,15 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   }, [offerBudget, offerAmountAvailable]);
 
   useEffect(() => {
+    setOfferDiscount(String(Math.round(defaultOfferDiscount)));
+  }, [defaultOfferDiscount]);
+
+  useEffect(() => {
     if (!isOfferModalOpen) return;
     const firstLink = links.find((link) => link.trim().length > 0) ?? "";
     setOfferBaseUrl(firstLink);
-    setOfferDiscount(String(Math.round(defaultOfferDiscount)));
     setOfferError(null);
-  }, [defaultOfferDiscount, isOfferModalOpen, links]);
+  }, [isOfferModalOpen, links]);
 
   const handleLinkChange = (index: number, value: string) => {
     const newLinks = [...links];
@@ -164,6 +170,53 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
     }
   };
 
+  const handleGenerateShortlist = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const validLinks = links.filter((link) => link.trim() !== "");
+    if (validLinks.length === 0) {
+      addToast("Dodaj przynajmniej jeden link z bazy, by wygenerować shortlistę.", "error");
+      return;
+    }
+
+    let baseUrl = "";
+    const carIds: string[] = [];
+
+    for (const link of validLinks) {
+      try {
+        const url = new URL(link);
+        if (!baseUrl) {
+          baseUrl = url.origin;
+        }
+        const match = link.match(/\/listing\/([^/?#]+)/);
+        if (match && match[1]) {
+          carIds.push(match[1]);
+        }
+      } catch (e) {
+        // Skip badly formatted
+      }
+    }
+
+    if (carIds.length === 0) {
+      addToast("Brak prawidłowych linków aut (np. /listing/xyz).", "error");
+      return;
+    }
+
+    const discountValue = Number(offerDiscount) || 0;
+    const paymentValue = offerInitialPayment.trim() ? Number(offerInitialPayment) : null;
+
+    const generatedLink = generatePersonalOfferLink(
+      baseUrl,
+      leadId,
+      discountValue,
+      paymentValue,
+      carIds
+    );
+
+    setLinks([generatedLink]);
+    addToast("Shortlista została pomyślnie wygenerowana", "success");
+  };
+
   const canEditOfferDiscount = user?.role === "OPERATOR" || user?.role === "ADMIN";
 
   return (
@@ -199,13 +252,48 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
             />
           </label>
 
-          <button
-            type="button"
-            style={styles.offerButton}
-            onClick={() => setIsOfferModalOpen(true)}
-          >
-            Generuj ofertę specjalną
-          </button>
+          <div style={styles.inlineConfigRow}>
+            <label style={styles.inlineLabel}>
+              Wartość rabatu (PLN)
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={offerDiscount}
+                onChange={(event) => setOfferDiscount(event.target.value)}
+                style={styles.inlineInput}
+              />
+            </label>
+            <label style={styles.inlineLabel}>
+              Wpłata początkowa (PLN)
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={offerInitialPayment}
+                onChange={(event) => setOfferInitialPayment(event.target.value)}
+                style={styles.inlineInput}
+                placeholder="Opcjonalna"
+              />
+            </label>
+          </div>
+
+          <div style={styles.generationButtonsRow}>
+            <button
+              type="button"
+              style={styles.offerButton}
+              onClick={() => setIsOfferModalOpen(true)}
+            >
+              Generuj ofertę specjalną
+            </button>
+            <button
+              type="button"
+              style={styles.shortlistButton}
+              onClick={handleGenerateShortlist}
+            >
+              Generuj shortlistę
+            </button>
+          </div>
 
           <div style={styles.linksSection}>
             <label style={styles.label}>Linki do ofert</label>
@@ -275,21 +363,23 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
             />
           </label>
 
-          <label style={styles.label}>
-            Wartość budżetu (PLN)
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={offerDiscount}
-              onChange={(event) => setOfferDiscount(event.target.value)}
-              style={styles.input}
-              readOnly={!canEditOfferDiscount}
-            />
-            {!canEditOfferDiscount ? (
-              <span style={styles.helperText}>Tę wartość może zmienić tylko Operator lub Admin.</span>
-            ) : null}
-          </label>
+          <div style={styles.inlineConfigRow}>
+            <label style={styles.label}>
+              Wartość budżetu (PLN)
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={offerDiscount}
+                onChange={(event) => setOfferDiscount(event.target.value)}
+                style={styles.input}
+                readOnly={!canEditOfferDiscount}
+              />
+              {!canEditOfferDiscount ? (
+                <span style={styles.helperText}>Tę wartość może zmienić tylko Operator lub Admin.</span>
+              ) : null}
+            </label>
+          </div>
 
           {offerError ? <span style={styles.errorText}>{offerError}</span> : null}
 
@@ -377,6 +467,40 @@ const styles = {
     color: "#4338ca",
     fontWeight: 600,
     cursor: "pointer",
+  },
+  shortlistButton: {
+    alignSelf: "flex-start",
+    padding: "0.5rem 0.75rem",
+    borderRadius: "0.5rem",
+    border: "2px solid #ef4444",
+    backgroundColor: "transparent",
+    color: "#ef4444",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  generationButtonsRow: {
+    display: "flex",
+    gap: "0.75rem",
+    alignItems: "center",
+  },
+  inlineConfigRow: {
+    display: "flex",
+    gap: "1rem",
+  },
+  inlineLabel: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.25rem",
+    fontWeight: 500,
+    fontSize: "0.875rem",
+    color: "#374151",
+    flex: 1,
+  },
+  inlineInput: {
+    padding: "0.5rem 0.75rem",
+    borderRadius: "0.375rem",
+    border: "1px solid #d1d5db",
+    fontSize: "0.875rem",
   },
   actions: {
     display: "flex",
