@@ -140,13 +140,13 @@ const leadSummarySelect = {
 } satisfies Prisma.LeadSelect;
 
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
-  NEW: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED],
-  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW],
-  FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED],
-  VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED],
+  NEW: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   UNQUALIFIED: [],
   MERGED: [],
-  INBOUND: [LeadStatus.NEW, LeadStatus.UNQUALIFIED, LeadStatus.MERGED],
+  INBOUND: [LeadStatus.NEW, LeadStatus.UNQUALIFIED, LeadStatus.MERGED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   GATHERING_DOCUMENTS: [LeadStatus.CREDIT_ANALYSIS, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   CREDIT_ANALYSIS: [
     LeadStatus.OFFER_PRESENTED,
