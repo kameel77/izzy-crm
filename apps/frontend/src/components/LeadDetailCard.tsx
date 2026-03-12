@@ -702,7 +702,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
     const payload: Parameters<typeof updateLeadVehicles>[2] = {};
     payload.current = hasCurrentValues ? current : null;
-    payload.desired = hasDesiredValues ? desired as any : null;
+    payload.desired = hasDesiredValues ? (desired as Parameters<typeof updateLeadVehicles>[2]["desired"]) : null;
     if (typeof amountAvailable !== "undefined") {
       payload.amountAvailable = amountAvailable;
     }

@@ -217,7 +217,6 @@ export const DashboardPage: React.FC = () => {
           leads={leadList}
           isLoading={isLoadingLeads}
           selectedLeadId={selectedLeadId}
-          onSelect={handleSelectLead}
           onRefresh={() => loadLeads({ selectLeadId: selectedLeadId ?? undefined })}
           onCreateLeadClick={() => setIsCreateLeadOpen(true)}
           onMore={handleOpenLeadDetail}

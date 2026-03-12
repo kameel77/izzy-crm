@@ -7,7 +7,6 @@ interface LeadListProps {
   leads: LeadSummary[];
   isLoading: boolean;
   selectedLeadId?: string | null;
-  onSelect: (leadId: string) => void;
   onRefresh: () => void;
   onCreateLeadClick: () => void;
   onMore: (leadId: string) => void;
@@ -28,7 +27,6 @@ export const LeadList: React.FC<LeadListProps> = ({
   leads,
   isLoading,
   selectedLeadId,
-  onSelect,
   onRefresh,
   onCreateLeadClick,
   onMore,

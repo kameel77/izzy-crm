@@ -17,7 +17,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
   useEffect(() => {
     if (!user) return;
     setPartnerName(user.partner?.name ?? null);
-  }, [user?.partner?.name]);
+  }, [user]);
 
   useEffect(() => {
     if (!user || !token || partnerName || !user.partnerId) {
@@ -36,7 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, isSidebar
     return () => {
       cancelled = true;
     };
-  }, [token, partnerName, user.partnerId]);
+  }, [token, partnerName, user]);
 
   if (!user) {
     return null;
