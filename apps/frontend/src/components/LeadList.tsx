@@ -102,7 +102,7 @@ export const LeadList: React.FC<LeadListProps> = ({
                   style={
                     lead.id === selectedLeadId ? styles.selectedRow : styles.clickableRow
                   }
-                  onClick={() => onSelect(lead.id)}
+                  onClick={() => onMore(lead.id)}
                 >
                   <td style={styles.tableCell}>
                     <strong>
@@ -120,17 +120,34 @@ export const LeadList: React.FC<LeadListProps> = ({
                   </td>
                   <td style={styles.tableCell}>{lead.partner?.name || lead.partnerId}</td>
                   <td style={styles.tableCell}>{new Date(lead.leadCreatedAt).toLocaleString()}</td>
-                  <td style={{ ...styles.tableCell, ...styles.actionsCell }}>
-                    <button
-                      type="button"
-                      style={styles.moreButton}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onMore(lead.id);
-                      }}
-                    >
-                      Więcej
-                    </button>
+                  <td style={{ ...styles.tableCell, ...styles.actionsCell }} onClick={(e) => e.stopPropagation()}>
+                    <div className="dropdown" style={{ display: "inline-block", position: "relative" }}>
+                      <button
+                        type="button"
+                        style={styles.moreButton}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          // For simplicity in a pure inline-style setup without a ton of state,
+                          // we can either toggle a state variable via a wrapper component or just trigger the onMore action directly.
+                          // Let's implement a simple click to open the dropdown menu.
+                          const dropdownMenu = event.currentTarget.nextElementSibling as HTMLElement;
+                          if (dropdownMenu) {
+                            const isHidden = dropdownMenu.style.display === "none";
+                            document.querySelectorAll('.action-menu-dropdown').forEach((el) => {
+                              (el as HTMLElement).style.display = "none";
+                            });
+                            dropdownMenu.style.display = isHidden ? "block" : "none";
+                          }
+                        }}
+                      >
+                        •••
+                      </button>
+                      <div className="action-menu-dropdown" style={styles.dropdownMenu}>
+                        <button style={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onMore(lead.id); }}>
+                          Otwórz / Więcej
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -248,6 +265,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   clickableRow: {
     cursor: "pointer",
+    transition: "background-color 0.2s ease",
   },
   selectedRow: {
     cursor: "pointer",
@@ -299,12 +317,43 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
   },
   moreButton: {
-    padding: "0.35rem 0.75rem",
-    borderRadius: 999,
-    border: "1px solid #1d4ed8",
-    background: "#1d4ed8",
-    color: "#fff",
+    padding: "0.25rem 0.6rem",
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    color: "#64748b",
     cursor: "pointer",
+    fontSize: "1rem",
+    letterSpacing: "1px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+  },
+  dropdownMenu: {
+    display: "none",
+    position: "absolute",
+    right: 0,
+    top: "100%",
+    marginTop: "0.25rem",
+    background: "#fff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    zIndex: 10,
+    minWidth: 150,
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    display: "block",
+    width: "100%",
+    textAlign: "left",
+    padding: "0.5rem 1rem",
+    background: "transparent",
+    border: "none",
     fontSize: "0.85rem",
+    color: "#1e293b",
+    cursor: "pointer",
+    transition: "background-color 0.15s ease",
   },
 };

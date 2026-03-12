@@ -42,13 +42,36 @@ const fetchJson = async (url: string, options?: RequestInit) => {
 
 const SLOTS = ["9:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00"];
 
+const getAvailableSlots = (date: Date): string[] => {
+    const now = new Date();
+    const isToday =
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+
+    if (!isToday) {
+        return SLOTS;
+    }
+
+    const currentHour = now.getHours();
+    return SLOTS.filter((slot) => {
+        const startHour = parseInt(slot.split(":")[0], 10);
+        return startHour > currentHour;
+    });
+};
+
 const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
 const buildAvailableDays = (daysAhead: number): Date[] => {
     const days: Date[] = [];
     const cursor = new Date();
     cursor.setHours(0, 0, 0, 0);
-    cursor.setDate(cursor.getDate() + 1); // start tomorrow
+
+    // If there are no slots available today or today is a weekend, start from tomorrow
+    if (getAvailableSlots(new Date()).length === 0 || isWeekend(new Date())) {
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
     while (days.length < daysAhead) {
         if (!isWeekend(cursor)) {
             days.push(new Date(cursor));
@@ -245,7 +268,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
                                     Wybierz godzinę – {formatDatePL(selectedDay)}
                                 </h2>
                                 <div style={s.slotGrid}>
-                                    {SLOTS.map((slot) => (
+                                    {getAvailableSlots(selectedDay).map((slot) => (
                                         <button
                                             key={slot}
                                             style={{ ...s.slotBtn, ...(selectedSlot === slot ? s.slotBtnActive : {}) }}

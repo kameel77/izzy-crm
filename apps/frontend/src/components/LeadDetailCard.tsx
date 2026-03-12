@@ -55,10 +55,15 @@ type VehicleFormState = {
     ownershipStatus: string;
   };
   desired: {
-    make: string;
-    model: string;
-    year: string;
-    budget: string;
+    vehicles: Array<{
+      make: string;
+      model: string;
+      yearFrom: string;
+      yearTo: string;
+      budgetFrom: string;
+      budgetTo: string;
+      comment: string;
+    }>;
     amountAvailable: string;
     notes: string;
   };
@@ -157,12 +162,45 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [areNotesExpanded, setAreNotesExpanded] = useState(false);
   const [areActivitiesExpanded, setAreActivitiesExpanded] = useState(false);
   const buildVehicleFormState = useCallback((): VehicleFormState => {
-    const preferences = lead?.vehicleDesired?.preferences;
-    const desiredNotes =
-      typeof (preferences as { notes?: unknown } | null | undefined)?.notes === "string"
-        ? String((preferences as { notes?: unknown }).notes ?? "")
-        : "";
     const latestFinancingApp = lead?.financingApps?.[0];
+    const preferences = lead?.vehicleDesired?.preferences as {
+      notes?: string;
+      vehicles?: Array<{
+        make?: string;
+        model?: string;
+        yearFrom?: string;
+        yearTo?: string;
+        budgetFrom?: string;
+        budgetTo?: string;
+        comment?: string;
+      }>;
+    } | null | undefined;
+
+    let vehicles: VehicleFormState['desired']['vehicles'] = [{ make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: "" }];
+
+    if (preferences?.vehicles && preferences.vehicles.length > 0) {
+      vehicles = preferences.vehicles.map(v => ({
+        make: v.make || "",
+        model: v.model || "",
+        yearFrom: v.yearFrom || (lead?.vehicleDesired?.year ? String(lead.vehicleDesired.year) : ""),
+        yearTo: v.yearTo || "",
+        budgetFrom: v.budgetFrom || (lead?.vehicleDesired?.budget ? String(lead.vehicleDesired.budget) : ""),
+        budgetTo: v.budgetTo || "",
+        comment: v.comment || "",
+      }));
+    } else if (lead?.vehicleDesired?.make || lead?.vehicleDesired?.model || lead?.vehicleDesired?.year || lead?.vehicleDesired?.budget) {
+      vehicles = [{
+        make: lead.vehicleDesired.make || "",
+        model: lead.vehicleDesired.model || "",
+        yearFrom: lead.vehicleDesired.year ? String(lead.vehicleDesired.year) : "",
+        yearTo: "",
+        budgetFrom: lead.vehicleDesired.budget ? String(lead.vehicleDesired.budget) : "",
+        budgetTo: "",
+        comment: "",
+      }];
+    }
+
+    const desiredNotes = typeof preferences?.notes === "string" ? String(preferences.notes).trim() : "";
 
     return {
       current: {
@@ -173,10 +211,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         ownershipStatus: lead?.vehicleCurrent?.ownershipStatus ?? "",
       },
       desired: {
-        make: lead?.vehicleDesired?.make ?? "",
-        model: lead?.vehicleDesired?.model ?? "",
-        year: lead?.vehicleDesired?.year?.toString() ?? "",
-        budget: lead?.vehicleDesired?.budget ?? "",
+        vehicles,
         amountAvailable: latestFinancingApp?.downPayment
           ? String(latestFinancingApp.downPayment)
           : "",
@@ -188,6 +223,43 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(buildVehicleFormState);
   const [vehicleErrors, setVehicleErrors] = useState<Record<string, string>>({});
   const [isSavingVehicles, setIsSavingVehicles] = useState(false);
+
+  // New helpers for array handling
+  const handleEditDesiredVehicleChange = (index: number, field: keyof VehicleFormState['desired']['vehicles'][0], value: string) => {
+    setVehicleForm((prev) => {
+      const newVehicles = [...prev.desired.vehicles];
+      newVehicles[index] = { ...newVehicles[index], [field]: value };
+      return {
+        ...prev,
+        desired: {
+          ...prev.desired,
+          vehicles: newVehicles,
+        },
+      };
+    });
+  };
+
+  const addEditDesiredVehicle = () => {
+    setVehicleForm((prev) => ({
+      ...prev,
+      desired: {
+        ...prev.desired,
+        vehicles: [...prev.desired.vehicles, { make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: "" }],
+      },
+    }));
+  };
+
+  const removeEditDesiredVehicle = (index: number) => {
+    setVehicleForm((prev) => ({
+      ...prev,
+      desired: {
+        ...prev.desired,
+        vehicles: prev.desired.vehicles.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   const [isConfirmUnlockOpen, setIsConfirmUnlockOpen] = useState(false);
   const [unlockReason, setUnlockReason] = useState("");
@@ -297,13 +369,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
   const lastContactValue = useMemo(() => {
     const timestamps: number[] = [];
-    if (lead.lastContactAt) timestamps.push(new Date(lead.lastContactAt).getTime());
+    if (lead?.lastContactAt) timestamps.push(new Date(lead.lastContactAt).getTime());
     if (applicationForm?.lastClientActivity)
       timestamps.push(new Date(applicationForm.lastClientActivity).getTime());
     if (!timestamps.length) return "—";
     const latest = new Date(Math.max(...timestamps));
     return latest.toLocaleString();
-  }, [applicationForm?.lastClientActivity, lead.lastContactAt]);
+  }, [applicationForm?.lastClientActivity, lead?.lastContactAt]);
 
   const formStatusMeta = useMemo(() => {
     if (!applicationForm?.status) return null;
@@ -559,14 +631,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       ownershipStatus: trimOrUndefined(vehicleForm.current.ownershipStatus),
     };
 
-    const desiredBudgetRaw = vehicleForm.desired.budget.trim();
-    const desiredBudget =
-      desiredBudgetRaw.length === 0
-        ? null
-        : parseNumberField(desiredBudgetRaw, "desired.budget", {
-          allowFloat: true,
-          min: 0,
-        });
+
     const amountAvailableRaw = vehicleForm.desired.amountAvailable.trim();
     let amountAvailable: number | null | undefined;
     if (amountAvailableRaw.length === 0) {
@@ -577,36 +642,40 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         min: 0,
       });
     }
-    const existingDesiredPreferences = lead?.vehicleDesired?.preferences as
-      | { notes?: unknown }
-      | null
-      | undefined;
-    const previousNotes =
-      typeof existingDesiredPreferences?.notes === "string"
-        ? String(existingDesiredPreferences.notes).trim()
-        : "";
+
+    const notesValue = vehicleForm.desired.notes.trim();
+
+    // Take the first vehicle as primary for the base table row, put the rest (and first) in preferences
+    const firstVehicle = vehicleForm.desired.vehicles[0] || {};
+
+    // Convert year and budget to number for the primary vehicle
+    const primaryYear = parseNumberField(firstVehicle.yearFrom || firstVehicle.yearTo || "", "desired.year", { min: 1900, max: new Date().getFullYear() + 1 });
+    const primaryBudget = parseNumberField(firstVehicle.budgetTo || firstVehicle.budgetFrom || "", "desired.budget", { allowFloat: true, min: 0 });
 
     const desired: {
       make?: string;
       model?: string;
       year?: number;
       budget?: number | null;
-      notes?: string;
+      preferences?: Record<string, unknown>;
     } = {
-      make: trimOrUndefined(vehicleForm.desired.make),
-      model: trimOrUndefined(vehicleForm.desired.model),
-      year: parseNumberField(vehicleForm.desired.year, "desired.year", {
-        min: 1900,
-        max: new Date().getFullYear() + 1,
-      }),
-      budget: desiredBudget,
+      make: trimOrUndefined(firstVehicle.make || ""),
+      model: trimOrUndefined(firstVehicle.model || ""),
+      year: primaryYear,
+      budget: primaryBudget,
+      preferences: {
+        notes: notesValue || undefined,
+        vehicles: vehicleForm.desired.vehicles.map(v => ({
+          make: trimOrUndefined(v.make),
+          model: trimOrUndefined(v.model),
+          yearFrom: trimOrUndefined(v.yearFrom),
+          yearTo: trimOrUndefined(v.yearTo),
+          budgetFrom: trimOrUndefined(v.budgetFrom),
+          budgetTo: trimOrUndefined(v.budgetTo),
+          comment: trimOrUndefined(v.comment)
+        })).filter(v => v.make || v.model || v.yearFrom || v.yearTo || v.budgetFrom || v.budgetTo || v.comment)
+      }
     };
-    const notesValue = vehicleForm.desired.notes.trim();
-    if (notesValue.length) {
-      desired.notes = notesValue;
-    } else if (previousNotes) {
-      desired.notes = "";
-    }
 
     if (Object.keys(errors).length) {
       setVehicleErrors(errors);
@@ -623,16 +692,17 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         desired.make ||
         desired.model ||
         typeof desired.year !== "undefined" ||
-        (desiredBudgetRaw.length > 0 && desiredBudget !== undefined) ||
-        (amountAvailableRaw.length > 0 && typeof amountAvailable !== "undefined"),
+        desired.budget !== undefined ||
+        (amountAvailableRaw.length > 0 && typeof amountAvailable !== "undefined") ||
+        (desired.preferences?.vehicles && Array.isArray(desired.preferences.vehicles) && desired.preferences.vehicles.length > 0),
       ) ||
-      desiredBudget === null ||
+      desired.budget === null ||
       amountAvailable === null ||
-      typeof desired.notes !== "undefined";
+      typeof desired.preferences?.notes !== "undefined";
 
     const payload: Parameters<typeof updateLeadVehicles>[2] = {};
     payload.current = hasCurrentValues ? current : null;
-    payload.desired = hasDesiredValues ? desired : null;
+    payload.desired = hasDesiredValues ? desired as any : null;
     if (typeof amountAvailable !== "undefined") {
       payload.amountAvailable = amountAvailable;
     }
@@ -797,16 +867,26 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const formatDesiredVehicle = (): React.ReactNode => {
     const vehicle = lead.vehicleDesired;
     if (!vehicle) return "—";
-    const baseParts = [vehicle.make, vehicle.model].filter(Boolean);
-    const base = baseParts.length ? baseParts.join(" ").trim() : "—";
-    const meta: string[] = [];
-    if (vehicle.year) {
-      meta.push(`Rocznik: ${vehicle.year}`);
-    }
-    const preferences = vehicle.preferences as { notes?: unknown } | null | undefined;
-    const notes =
-      typeof preferences?.notes === "string" ? String(preferences.notes).trim() : "";
+
+    const preferences = vehicle.preferences as {
+      notes?: string;
+      vehicles?: Array<{
+        make?: string;
+        model?: string;
+        yearFrom?: string;
+        yearTo?: string;
+        budgetFrom?: string;
+        budgetTo?: string;
+        comment?: string;
+      }>;
+    } | null | undefined;
+
+    const vehiclesToDisplay = preferences?.vehicles?.length
+      ? preferences.vehicles
+      : [{ make: vehicle.make, model: vehicle.model, year: vehicle.year }];
+
     const downPaymentRaw = lead.financingApps?.[0]?.downPayment;
+    let odszkodowanieStr = "";
     if (downPaymentRaw !== null && typeof downPaymentRaw !== "undefined" && downPaymentRaw !== "") {
       const parsed = Number(downPaymentRaw);
       const formatted =
@@ -817,19 +897,45 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             minimumFractionDigits: 0,
           }).format(parsed)
           : `${downPaymentRaw} PLN`;
-      meta.push(`Amount Available: ${formatted}`);
-    }
-    const summary = meta.length ? `${base}${base === "—" ? "" : ", "}${meta.join(", ")}` : base;
-    if (notes) {
-      return (
-        <div style={styles.vehicleValue}>
-          <div>{summary}</div>
-          <div style={styles.additionalInfo}>Additional info: {notes}</div>
-        </div>
-      );
+      odszkodowanieStr = `Wysokość odszkodowania: ${formatted}`;
     }
 
-    return summary;
+    const notes = typeof preferences?.notes === "string" ? String(preferences.notes).trim() : "";
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {vehiclesToDisplay.map((v, i) => {
+          const baseParts = [v.make, v.model].filter(Boolean);
+          const base = baseParts.length ? baseParts.join(" ").trim() : "Dowolny pojazd";
+          const meta: string[] = [];
+
+          if ('yearFrom' in v || 'yearTo' in v) {
+            if (v.yearFrom || v.yearTo) {
+              meta.push(`Rocznik: ${v.yearFrom || "od"} - ${v.yearTo || "do"}`);
+            }
+          } else if ('year' in v && v.year) {
+            meta.push(`Rocznik: ${v.year}`);
+          }
+
+          if (('budgetFrom' in v || 'budgetTo' in v) && (v.budgetFrom || v.budgetTo)) {
+            meta.push(`Budżet: ${v.budgetFrom || "0"} - ${v.budgetTo || ""} PLN`);
+          }
+
+          if ('comment' in v && v.comment) {
+            meta.push(`Uwagi: ${v.comment}`);
+          }
+
+          const summary = meta.length ? `${base}, ${meta.join(", ")}` : base;
+          return <div key={i} style={styles.vehicleValue}>{summary}</div>;
+        })}
+        {odszkodowanieStr && (
+          <div style={{ marginTop: "0.25rem", fontWeight: 500 }}>{odszkodowanieStr}</div>
+        )}
+        {notes && (
+          <div style={styles.additionalInfo}>Dodatkowe informacje: {notes}</div>
+        )}
+      </div>
+    );
   };
 
   const formatPhoneNumber = (value?: string | null) => {
@@ -1422,7 +1528,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                     View Content
                   </button>
                 </div>
-                <p style={styles.consentContent}>{record.consentText}</p>
+                <div
+                  style={styles.consentContent}
+                  dangerouslySetInnerHTML={{ __html: record.consentText }}
+                />
               </li>
             ))
           ) : (
@@ -1463,7 +1572,10 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         title="Consent Content"
       >
         <div style={styles.consentContentModal}>
-          <pre style={styles.consentContentPre}>{selectedConsentContent}</pre>
+          <div
+            style={styles.consentContentHtml}
+            dangerouslySetInnerHTML={{ __html: selectedConsentContent }}
+          />
         </div>
       </Modal>
 
@@ -1686,65 +1798,119 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </div>
 
           <div style={styles.vehicleFormSection}>
-            <h4 style={styles.modalSubheading}>Desired vehicle</h4>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h4 style={{ ...styles.modalSubheading, margin: 0 }}>Żądane pojazdy</h4>
+              <button
+                type="button"
+                onClick={addEditDesiredVehicle}
+                style={{ padding: "0.2rem 0.6rem", borderRadius: 4, background: "#f3f4f6", border: "1px solid #d1d5db", cursor: "pointer", fontSize: "0.8rem" }}
+              >
+                + Dodaj pojazd
+              </button>
+            </div>
+
+            {vehicleForm.desired.vehicles.map((v, i) => (
+              <div key={i} style={{ ...styles.fieldGrid, padding: "1rem", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb", marginBottom: "1rem", position: "relative" }}>
+                {vehicleForm.desired.vehicles.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeEditDesiredVehicle(i)}
+                    style={{ position: "absolute", top: "0.5rem", right: "0.5rem", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 4, padding: "0.2rem 0.5rem", cursor: "pointer", fontSize: "0.8rem" }}
+                  >
+                    Usuń
+                  </button>
+                )}
+                <label style={styles.modalLabel}>
+                  Marka
+                  <input
+                    type="text"
+                    value={v.make}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "make", event.target.value)
+                    }
+                    style={styles.modalInput}
+                  />
+                </label>
+                <label style={styles.modalLabel}>
+                  Model
+                  <input
+                    type="text"
+                    value={v.model}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "model", event.target.value)
+                    }
+                    style={styles.modalInput}
+                  />
+                </label>
+                <label style={styles.modalLabel}>
+                  Rok od
+                  <input
+                    type="number"
+                    value={v.yearFrom}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "yearFrom", event.target.value)
+                    }
+                    style={styles.modalInput}
+                    min={1900}
+                    max={new Date().getFullYear() + 1}
+                  />
+                </label>
+                <label style={styles.modalLabel}>
+                  Rok do
+                  <input
+                    type="number"
+                    value={v.yearTo}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "yearTo", event.target.value)
+                    }
+                    style={styles.modalInput}
+                    min={1900}
+                    max={new Date().getFullYear() + 1}
+                  />
+                </label>
+                <label style={styles.modalLabel}>
+                  Budżet od (PLN)
+                  <input
+                    type="number"
+                    value={v.budgetFrom}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "budgetFrom", event.target.value)
+                    }
+                    style={styles.modalInput}
+                    min={0}
+                    step="0.01"
+                  />
+                </label>
+                <label style={styles.modalLabel}>
+                  Budżet do (PLN)
+                  <input
+                    type="number"
+                    value={v.budgetTo}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "budgetTo", event.target.value)
+                    }
+                    style={styles.modalInput}
+                    min={0}
+                    step="0.01"
+                  />
+                </label>
+                <label style={{ ...styles.modalLabel, gridColumn: "1 / -1" }}>
+                  Uwagi (pojazd)
+                  <input
+                    type="text"
+                    value={v.comment}
+                    onChange={(event) =>
+                      handleEditDesiredVehicleChange(i, "comment", event.target.value)
+                    }
+                    style={styles.modalInput}
+                  />
+                </label>
+              </div>
+            ))}
+
             <div style={styles.fieldGrid}>
               <label style={styles.modalLabel}>
-                Make
-                <input
-                  type="text"
-                  value={vehicleForm.desired.make}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("desired", "make", event.target.value)
-                  }
-                  style={styles.modalInput}
-                />
-              </label>
-              <label style={styles.modalLabel}>
-                Model
-                <input
-                  type="text"
-                  value={vehicleForm.desired.model}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("desired", "model", event.target.value)
-                  }
-                  style={styles.modalInput}
-                />
-              </label>
-              <label style={styles.modalLabel}>
-                Year
-                <input
-                  type="number"
-                  value={vehicleForm.desired.year}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("desired", "year", event.target.value)
-                  }
-                  style={styles.modalInput}
-                  min={1900}
-                  max={new Date().getFullYear() + 1}
-                />
-                {vehicleErrors["desired.year"] ? (
-                  <span style={styles.errorText}>{vehicleErrors["desired.year"]}</span>
-                ) : null}
-              </label>
-              <label style={styles.modalLabel}>
-                Budget
-                <input
-                  type="number"
-                  value={vehicleForm.desired.budget}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("desired", "budget", event.target.value)
-                  }
-                  style={styles.modalInput}
-                  min={0}
-                  step="100"
-                />
-                {vehicleErrors["desired.budget"] ? (
-                  <span style={styles.errorText}>{vehicleErrors["desired.budget"]}</span>
-                ) : null}
-                <span style={styles.helperText}>Leave blank to remove budget</span>
-              </label>
-              <label style={styles.modalLabel}>
-                Amount Available (PLN)
+                Wysokość odszkodowania (PLN)
                 <input
                   type="number"
                   value={vehicleForm.desired.amountAvailable}
@@ -1758,11 +1924,11 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                 {vehicleErrors["desired.amountAvailable"] ? (
                   <span style={styles.errorText}>{vehicleErrors["desired.amountAvailable"]}</span>
                 ) : null}
-                <span style={styles.helperText}>Leave blank to clear the amount.</span>
+                <span style={styles.helperText}>Zastąp puste by usunąć kwotę.</span>
               </label>
             </div>
             <label style={styles.modalLabel}>
-              Notes
+              Ogólne uwagi konwersacji
               <textarea
                 value={vehicleForm.desired.notes}
                 onChange={(event) =>
@@ -1771,7 +1937,6 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                 style={styles.modalTextarea}
                 maxLength={500}
               />
-              <span style={styles.helperText}>This maps to desired vehicle preferences.</span>
             </label>
           </div>
 
@@ -2657,6 +2822,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.9rem",
     fontFamily: "monospace",
     margin: 0,
+  },
+  consentContentHtml: {
+    fontSize: "0.9rem",
+    lineHeight: 1.6,
+    color: "#334155",
   },
   adminActions: {
     display: "flex",

@@ -269,6 +269,15 @@ export interface CreateLeadPayload {
     budget?: number;
     preferences?: {
       notes?: string;
+      vehicles?: Array<{
+        make?: string;
+        model?: string;
+        yearFrom?: number;
+        yearTo?: number;
+        budgetFrom?: number;
+        budgetTo?: number;
+        comment?: string;
+      }>;
     };
   };
   financing?: {
