@@ -45,17 +45,43 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [offerError, setOfferError] = useState<string | null>(null);
   const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
   const [offerInitialPayment, setOfferInitialPayment] = useState("");
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setSubject(replyContext?.subject ?? "Information from Izzy CRM");
-    setMessage(replyContext?.defaultMessage ?? "");
-    setLinks([""]);
+    if (!isOpen || !token) return;
+
+    const loadDraft = async () => {
+      setIsLoadingDraft(true);
+      try {
+        const { getMessageDraft } = await import("../api/leads");
+        const draft = await getMessageDraft(token, leadId);
+        
+        if (draft) {
+          setMessage(draft.body ?? replyContext?.defaultMessage ?? "");
+          setSubject(draft.subject ?? replyContext?.subject ?? "Information from Izzy CRM");
+          setLinks(draft.links.length > 0 ? draft.links : [""]);
+        } else {
+          setSubject(replyContext?.subject ?? "Information from Izzy CRM");
+          setMessage(replyContext?.defaultMessage ?? "");
+          setLinks([""]);
+        }
+      } catch (error) {
+        console.error("Failed to load draft:", error);
+        setSubject(replyContext?.subject ?? "Information from Izzy CRM");
+        setMessage(replyContext?.defaultMessage ?? "");
+        setLinks([""]);
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadDraft();
     setOfferBaseUrl("");
     setOfferDiscount("");
     setOfferInitialPayment("");
     setOfferError(null);
-  }, [isOpen, replyContext]);
+  }, [isOpen, replyContext, token, leadId]);
 
   const defaultOfferDiscount = React.useMemo(() => {
     const values = [offerBudget, offerAmountAvailable].filter(
@@ -109,6 +135,15 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         quotedHtml: replyContext?.quotedHtml,
         quotedText: replyContext?.quotedText,
       });
+
+      // Clear the draft after successful send
+      const { saveMessageDraft } = await import("../api/leads");
+      await saveMessageDraft(token, leadId, {
+        message: "",
+        subject: "Information from Izzy CRM",
+        links: [],
+      });
+
       addToast("Email sent successfully", "success");
       setMessage("");
       setLinks([""]);
@@ -122,6 +157,29 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       setIsSending(false);
     }
   };
+
+  useEffect(() => {
+    if (!token || !isOpen || isLoadingDraft) return;
+
+    const autoSaveDraft = async () => {
+      setIsSavingDraft(true);
+      try {
+        const { saveMessageDraft } = await import("../api/leads");
+        await saveMessageDraft(token, leadId, {
+          message,
+          subject,
+          links: links.filter(l => l.trim().length > 0),
+        });
+      } catch (error) {
+        console.error("Failed to auto-save draft", error);
+      } finally {
+        setIsSavingDraft(false);
+      }
+    };
+
+    const timeoutId = setTimeout(autoSaveDraft, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [message, subject, links, token, leadId, isOpen, isLoadingDraft]);
 
   const handleGenerateOffer = async (event: React.FormEvent) => {
     event.preventDefault();

@@ -889,12 +889,24 @@ router.post(
   }),
 );
 
-import { sendLeadEmail } from "../controllers/email.controller.js";
+import { sendLeadEmail, saveLeadMessageDraft, getLeadMessageDraft } from "../controllers/email.controller.js";
 
 router.post(
   "/:id/email",
   authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
   asyncHandler(sendLeadEmail),
+);
+
+router.post(
+  "/:id/email/draft",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(saveLeadMessageDraft),
+);
+
+router.get(
+  "/:id/email/draft",
+  authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
+  asyncHandler(getLeadMessageDraft),
 );
 
 export { router as leadRouter };
