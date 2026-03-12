@@ -59,15 +59,10 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
     mode: "onBlur",
   });
 
-  // Reset only when incoming formData truly differs from last applied snapshot
-  const lastResetSnapshotRef = useRef<string>(JSON.stringify(formData ?? {}));
-  useEffect(() => {
-    const incoming = JSON.stringify(formData ?? {});
-    if (incoming !== lastResetSnapshotRef.current) {
-      reset(formData);
-      lastResetSnapshotRef.current = incoming;
-    }
-  }, [formData, reset]);
+  // Initial data loading is handled by the `defaultValues` prop in useForm.
+  // We explicitly AVOID calling reset(formData) when incoming formData changes 
+  // because formData is updated on every field change in parent component logic,
+  // which would trigger an endless loop and cursor reset issues.
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
@@ -94,8 +89,8 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
     if (peselValue && peselValue.length === 11) {
       const validationResult = validatePESEL(peselValue);
       if (validationResult.valid && validationResult.birthDate && validationResult.gender) {
-        setValue("birthDate", validationResult.birthDate.toISOString().split("T")[0]);
-        setValue("gender", validationResult.gender);
+        setValue("birthDate", validationResult.birthDate.toISOString().split("T")[0], { shouldValidate: true, shouldDirty: true });
+        setValue("gender", validationResult.gender, { shouldValidate: true, shouldDirty: true });
       }
     }
   }, [peselValue, setValue]);
