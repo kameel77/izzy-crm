@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,14 +36,15 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
     mode: "onBlur",
   });
 
-  useEffect(() => {
-    reset(formData);
-  }, [formData, reset]);
-
   const watchedData = watch();
 
+  const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));
   useEffect(() => {
-    onFormChange(watchedData);
+    const current = JSON.stringify(watchedData ?? {});
+    if (current !== lastEmittedSnapshotRef.current) {
+      lastEmittedSnapshotRef.current = current;
+      onFormChange(watchedData);
+    }
   }, [watchedData, onFormChange]);
 
   useImperativeHandle(ref, () => ({

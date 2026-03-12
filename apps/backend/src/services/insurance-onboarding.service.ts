@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { sendMail } from "./mail.service.js";
-import { sendSms } from "./sms.service.js";
+import { sendSms, shortenUrlWithSmsApi } from "./sms.service.js";
 import { recordConsentBatch, type RecordConsentInput } from "./consent.service.js";
 import { createHttpError } from "../utils/httpError.js";
 
@@ -93,10 +93,15 @@ export const startOnboarding = async ({
     const firstName = profile.firstName ?? "";
 
     // ── Send SMS ──────────────────────────────────────────────────────────────
+    let finalSmsUrl = landingUrl;
+    if (env.smsapi?.token) {
+        finalSmsUrl = await shortenUrlWithSmsApi(landingUrl, env.smsapi.token);
+    }
+
     const smsTpl = await getMessageTemplate("sms_welcome_insurance");
     const smsBody = smsTpl
-        ? interpolate(smsTpl.body, { firstName, link: landingUrl })
-        : `Cześć${firstName ? ` ${firstName}` : ""}! Ponieważ jesteś w trakcie procesu likwidacji szkody Twojego samochodu, przesłano nam Twoje dane, abyśmy pomogli Ci znaleźć nowe auto. Sprawdź maila i potwierdź dogodny termin rozmowy z konsultantem.`;
+        ? interpolate(smsTpl.body, { firstName, link: finalSmsUrl })
+        : `Witaj${firstName ? ` ${firstName}` : ""}, cieszymy sie, ze mozemy Ci pomoc w znalezieniu nowego auta! Sprawdz maila i ustal termin rozmowy z nami. Twoje dane otrzymalismy od Link4. ${finalSmsUrl}`;
 
     let smsSent = false;
     if (env.smsapi) {

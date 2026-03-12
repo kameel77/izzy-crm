@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,10 +46,6 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
     mode: "onBlur",
   });
 
-  useEffect(() => {
-    reset(formData);
-  }, [formData, reset]);
-
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
       return await trigger();
@@ -57,8 +53,14 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
   }));
 
   const watchedData = watch();
+  
+  const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));
   useEffect(() => {
-    onFormChange(watchedData);
+    const current = JSON.stringify(watchedData ?? {});
+    if (current !== lastEmittedSnapshotRef.current) {
+      lastEmittedSnapshotRef.current = current;
+      onFormChange(watchedData);
+    }
   }, [watchedData, onFormChange]);
 
   return (

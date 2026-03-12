@@ -45,10 +45,6 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
     mode: "onBlur",
   });
 
-  useEffect(() => {
-    reset(formData);
-  }, [formData, reset]);
-
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
       return await trigger();
@@ -62,8 +58,13 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
   const regCity = watch("registeredCity");
   const regPostOffice = watch("registeredPostOffice");
 
+  const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));
   useEffect(() => {
-    onFormChange(watchedData);
+    const current = JSON.stringify(watchedData ?? {});
+    if (current !== lastEmittedSnapshotRef.current) {
+      lastEmittedSnapshotRef.current = current;
+      onFormChange(watchedData);
+    }
   }, [watchedData, onFormChange]);
 
   // Copy on toggle only: when checked -> copy; when unchecked -> clear residential fields

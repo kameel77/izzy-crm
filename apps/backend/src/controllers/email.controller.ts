@@ -96,7 +96,7 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
         const linkList = trackedLinks.map((l: string) => `- ${l}`).join("\n");
         const subjectLine = typeof subject === "string" && subject.trim().length
             ? subject.trim()
-            : "Information from Izzy CRM";
+            : "Wiadomość z Carsalon.pl";
 
         const linkBlockText = trackedLinks.length ? `\n\nLinks:\n${linkList}` : "";
         const fullMessage = `${message}${linkBlockText}${quotedText ? `\n\n${quotedText}` : ""}`;
