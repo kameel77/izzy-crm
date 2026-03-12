@@ -305,3 +305,75 @@ export const handleIncomingEmailWebhook = async (req: Request, res: Response) =>
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const saveLeadMessageDraft = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { message, links = [], subject } = req.body ?? {};
+    const userId = req.user?.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+        const normalizedLinks = Array.isArray(links) ? links : [];
+        const sanitizedLinks = normalizedLinks
+            .map((link) => (typeof link === "string" ? link.trim() : ""))
+            .filter((link) => link.length > 0);
+
+        const draft = await prisma.messageDraft.upsert({
+            where: {
+                leadId_userId: {
+                    leadId: id,
+                    userId,
+                },
+            },
+            update: {
+                body: message ?? null,
+                subject: subject ?? null,
+                links: sanitizedLinks,
+            },
+            create: {
+                leadId: id,
+                userId,
+                body: message ?? null,
+                subject: subject ?? null,
+                links: sanitizedLinks,
+            },
+        });
+
+        res.json(draft);
+    } catch (error) {
+        console.error("Failed to save message draft", error);
+        res.status(500).json({ message: "Failed to save message draft" });
+    }
+};
+
+export const getLeadMessageDraft = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+        const draft = await prisma.messageDraft.findUnique({
+            where: {
+                leadId_userId: {
+                    leadId: id,
+                    userId,
+                },
+            },
+        });
+
+        if (!draft) {
+            return res.status(200).json(null); // Return null explicitly if no draft exists
+        }
+
+        res.json(draft);
+    } catch (error) {
+        console.error("Failed to fetch message draft", error);
+        res.status(500).json({ message: "Failed to fetch message draft" });
+    }
+};

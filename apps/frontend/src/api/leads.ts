@@ -210,6 +210,35 @@ export const generateOfferLink = (
     body: JSON.stringify(payload),
   });
 
+export interface MessageDraft {
+  id: string;
+  leadId: string;
+  userId: string;
+  subject?: string | null;
+  body?: string | null;
+  links: string[];
+}
+
+export const getMessageDraft = (token: string, leadId: string) =>
+  apiFetch<MessageDraft | null>(`/api/leads/${leadId}/email/draft`, {
+    token,
+  });
+
+export const saveMessageDraft = (
+  token: string,
+  leadId: string,
+  payload: {
+    message?: string;
+    links?: string[];
+    subject?: string;
+  },
+) =>
+  apiFetch<MessageDraft>(`/api/leads/${leadId}/email/draft`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
 export interface LeadListFilters {
   page?: number;
   perPage?: number;
