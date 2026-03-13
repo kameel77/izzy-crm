@@ -9,11 +9,8 @@ export const ThankYouPage: React.FC = () => {
         <p style={styles.message}>
           Twój wniosek został pomyślnie wysłany. Nasz konsultant skontaktuje się z Tobą wkrótce, aby omówić kolejne kroki.
         </p>
-        <Link to="/" style={styles.button}>
-          Wróć na stronę główną
-        </Link>
-        <a href="https://salon.izzylease.pl" target="_blank" rel="noopener noreferrer" style={styles.externalLink}>
-          Odwiedź nasz salon
+        <a href="https://carsalon.pl" style={styles.button}>
+          Odwiedź carsalon.pl
         </a>
       </div>
     </div>

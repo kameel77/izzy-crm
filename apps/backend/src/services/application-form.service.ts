@@ -1,9 +1,10 @@
-import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus, ConsentMethod } from "@prisma/client";
+import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus, ConsentMethod, CommStatus } from "@prisma/client";
 import { randomBytes, createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
 import { sendMail } from "./mail.service.js";
+import { sendSms, shortenUrlWithSmsApi } from "./sms.service.js";
 
 export const ensureOperatorCanMutateLead = async (params: {
   leadId: string;
@@ -160,6 +161,7 @@ export const generateApplicationFormLink = async ({
         select: {
           email: true,
           firstName: true,
+          phone: true,
         },
       },
     },
@@ -259,6 +261,25 @@ export const generateApplicationFormLink = async ({
         `Kod: ${accessCode}`,
         `Link wygasa: ${expiresAt.toLocaleString()}`,
       ].join("\n"),
+    });
+  }
+
+  if (lead.customerProfile?.phone && env.smsapi?.token) {
+    const finalSmsUrl = await shortenUrlWithSmsApi(linkUrl, env.smsapi.token);
+    const smsBody = [
+      `Cześć ${lead.customerProfile.firstName ?? ""}`.trim() + ",",
+      "zapraszamy do uzupełnienia wniosku o finansowanie.",
+      `Link: ${finalSmsUrl}`,
+      `Twój kod dostępu: ${accessCode}`,
+    ].join(" ").replace(/\s+/g, " ");
+
+    await sendSms({
+      to: lead.customerProfile.phone,
+      message: smsBody,
+      senderName: env.smsapi.senderName,
+      smsapiToken: env.smsapi.token,
+      sessionId: `auto-${randomBytes(4).toString("hex")}`,
+      templateKey: "sms_application_form",
     });
   }
 
