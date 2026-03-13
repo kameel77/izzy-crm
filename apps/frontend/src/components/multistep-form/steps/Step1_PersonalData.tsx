@@ -9,7 +9,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
 
-const phoneRegex = /^\+?[0-9\s\-]{9,15}$/;
+const phoneRegex = /^\+?[0-9\s-]{9,15}$/;
 
 const schema = z.object({
   pesel: z.string().length(11, "PESEL musi mieć 11 cyfr"),
@@ -57,7 +57,6 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
     watch,
     setValue,
     trigger,
-    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -78,7 +77,7 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 
   const watchedData = watch();
   const peselValue = watch("pesel");
-  const watchedPhone = watch("mobilePhone");
+
 
   // Emit changes to parent only when values actually changed compared to last emission
   const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));

@@ -46,7 +46,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
   const [offerInitialPayment, setOfferInitialPayment] = useState("");
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
 
   useEffect(() => {
     if (!isOpen || !token) return;
@@ -162,7 +162,6 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
     if (!token || !isOpen || isLoadingDraft) return;
 
     const autoSaveDraft = async () => {
-      setIsSavingDraft(true);
       try {
         const { saveMessageDraft } = await import("../api/leads");
         await saveMessageDraft(token, leadId, {
@@ -172,8 +171,6 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         });
       } catch (error) {
         console.error("Failed to auto-save draft", error);
-      } finally {
-        setIsSavingDraft(false);
       }
     };
 

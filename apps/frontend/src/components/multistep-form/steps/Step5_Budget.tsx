@@ -30,7 +30,6 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
     register,
     watch,
     trigger,
-    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),

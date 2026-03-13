@@ -7,6 +7,7 @@ import { pl } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
+import { DateMaskInput } from "../../ui/DateMaskInput";
 
 const schema = z.object({
   documentType: z.string().min(1, "Rodzaj dokumentu jest wymagany"),
@@ -34,7 +35,6 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
     control,
     watch,
     trigger,
-    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -92,6 +92,12 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
                 selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
                 onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                 disabled={isReadOnly}
+                showYearDropdown
+                dropdownMode="select"
+                showMonthDropdown
+                yearDropdownItemNumber={100}
+                scrollableYearDropdown
+                customInput={<DateMaskInput />}
                 className="date-picker-input native-input"
                 wrapperClassName="date-picker-wrapper"
               />
@@ -113,6 +119,12 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
                 selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
                 onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                 disabled={isReadOnly}
+                showYearDropdown
+                dropdownMode="select"
+                showMonthDropdown
+                yearDropdownItemNumber={100}
+                scrollableYearDropdown
+                customInput={<DateMaskInput />}
                 className="date-picker-input native-input"
                 wrapperClassName="date-picker-wrapper"
               />

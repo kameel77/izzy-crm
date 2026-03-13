@@ -7,6 +7,7 @@ import { pl } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
+import { DateMaskInput } from "../../ui/DateMaskInput";
 
 const schema = z.object({
   registeredStreet: z.string().min(1, "Ulica jest wymagana"),
@@ -42,7 +43,6 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
     control,
     watch,
     trigger,
-    reset,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
@@ -183,6 +183,11 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
                   selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
                   onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
                   disabled={isReadOnly}
+                  showYearDropdown
+                  dropdownMode="select"
+                  yearDropdownItemNumber={100}
+                  scrollableYearDropdown
+                  customInput={<DateMaskInput maskFormat="YYYY-MM" />}
                   className="date-picker-input native-input"
                   wrapperClassName="date-picker-wrapper"
                 />
