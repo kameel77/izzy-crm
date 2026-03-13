@@ -110,30 +110,3 @@ export const sendSms = async ({
     return { status: CommStatus.FAILED };
 };
 
-export const shortenUrlWithSmsApi = async (longUrl: string, smsapiToken: string): Promise<string> => {
-    try {
-        const params = new URLSearchParams({
-            url: longUrl,
-        });
-
-        const response = await fetch("https://api.smsapi.pl/short_url", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${smsapiToken}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: params.toString(),
-        });
-
-        if (!response.ok) {
-            console.warn(`[sms] Failed to shorten URL via SMSAPI: ${response.status}`);
-            return longUrl; // fallback
-        }
-
-        const data = await response.json() as { short_url?: string };
-        return data.short_url || longUrl;
-    } catch (error) {
-        console.error("[sms] Error shortening URL via SMSAPI:", error);
-        return longUrl; // fallback
-    }
-};

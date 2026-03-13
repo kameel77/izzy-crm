@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { sendMail } from "./mail.service.js";
-import { sendSms, shortenUrlWithSmsApi } from "./sms.service.js";
+import { sendSms } from "./sms.service.js";
 import { recordConsentBatch, type RecordConsentInput } from "./consent.service.js";
 import { createHttpError } from "../utils/httpError.js";
 
@@ -95,7 +95,7 @@ export const startOnboarding = async ({
     // ── Send SMS ──────────────────────────────────────────────────────────────
     let finalSmsUrl = landingUrl;
     if (env.smsapi?.token) {
-        finalSmsUrl = await shortenUrlWithSmsApi(landingUrl, env.smsapi.token);
+        finalSmsUrl = `[%idzdo:${landingUrl}%]`;
     }
 
     const smsTpl = await getMessageTemplate("sms_welcome_insurance");

@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
 import { sendMail } from "./mail.service.js";
-import { sendSms, shortenUrlWithSmsApi } from "./sms.service.js";
+import { sendSms } from "./sms.service.js";
 
 export const ensureOperatorCanMutateLead = async (params: {
   leadId: string;
@@ -265,7 +265,7 @@ export const generateApplicationFormLink = async ({
   }
 
   if (lead.customerProfile?.phone && env.smsapi?.token) {
-    const finalSmsUrl = await shortenUrlWithSmsApi(linkUrl, env.smsapi.token);
+    const finalSmsUrl = `[%idzdo:${linkUrl}%]`;
     const smsBody = [
       `Cześć ${lead.customerProfile.firstName ?? ""}`.trim() + ",",
       "zapraszamy do uzupełnienia wniosku o finansowanie.",
