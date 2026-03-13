@@ -1,10 +1,10 @@
-import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus, ConsentMethod, CommStatus } from "@prisma/client";
+import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus, ConsentMethod } from "@prisma/client";
 import { randomBytes, createHash } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
 import { sendMail } from "./mail.service.js";
-import { sendSms } from "./sms.service.js";
+
 
 export const ensureOperatorCanMutateLead = async (params: {
   leadId: string;
@@ -273,14 +273,23 @@ export const generateApplicationFormLink = async ({
       `Twój kod dostępu: ${accessCode}`,
     ].join(" ").replace(/\s+/g, " ");
 
-    await sendSms({
-      to: lead.customerProfile.phone,
-      message: smsBody,
-      senderName: env.smsapi.senderName,
-      smsapiToken: env.smsapi.token,
-      sessionId: `auto-${randomBytes(4).toString("hex")}`,
-      templateKey: "sms_application_form",
-    });
+    try {
+      const cleanTo = lead.customerProfile.phone.replace(/\D/g, "");
+      const params = new URLSearchParams({ to: cleanTo, message: smsBody, format: "json", encoding: "utf-8" });
+      if (env.smsapi.senderName?.trim()) params.append("from", env.smsapi.senderName.trim());
+      const smsRes = await fetch(`https://api.smsapi.pl/sms.do?${params.toString()}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.smsapi.token}` },
+      });
+      const smsBody2 = (await smsRes.json()) as { error?: number; message?: string };
+      if (!smsRes.ok || smsBody2.error) {
+        console.warn(`[app-form sms] Failed: ${smsBody2.error ?? smsRes.status} ${smsBody2.message ?? ""}`);
+      } else {
+        console.info(`[app-form sms] Sent to ${lead.customerProfile.phone}`);
+      }
+    } catch (err) {
+      console.error("[app-form sms] Error sending SMS:", err);
+    }
   }
 
   return {
