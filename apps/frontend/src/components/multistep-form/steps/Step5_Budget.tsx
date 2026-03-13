@@ -74,7 +74,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
       
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Dochody (PLN)</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="mainIncome">Główne dochody (netto)</label>
             <input id="mainIncome" type="number" {...register("mainIncome")} />
@@ -89,7 +89,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Wydatki (PLN)</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="housingFees">Opłaty za mieszkanie</label>
             <input id="housingFees" type="number" {...register("housingFees")} />
@@ -131,11 +131,6 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 Step5_Budget.displayName = "Step5_Budget";
 
 const styles: Record<string, React.CSSProperties> = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-  },
   field: {
     display: "flex",
     flexDirection: "column",

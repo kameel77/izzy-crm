@@ -1,7 +1,12 @@
 import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import DatePicker from "react-datepicker";
+import { pl } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+import { Controller } from "react-hook-form";
+import { parse, format } from "date-fns";
 
 const schema = z.object({
   registeredStreet: z.string().min(1, "Ulica jest wymagana"),
@@ -34,6 +39,7 @@ export interface Step3Ref {
 export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
+    control,
     watch,
     trigger,
     reset,
@@ -100,7 +106,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
       
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Adres zameldowania</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="registeredStreet">Ulica, nr budynku/mieszkania</label>
             <input id="registeredStreet" {...register("registeredStreet")} />
@@ -133,7 +139,7 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
           </label>
         </div>
 
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="residentialCountry">Kraj zamieszkania</label>
             <input id="residentialCountry" {...register("residentialCountry")} />
@@ -164,7 +170,24 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
           </div>
           <div style={styles.field}>
             <label htmlFor="addressFrom">Adres od (RRRR-MM)</label>
-            <input id="addressFrom" type="month" {...register("addressFrom")} />
+            <Controller
+              control={control}
+              name="addressFrom"
+              render={({ field }) => (
+                <DatePicker
+                  id="addressFrom"
+                  locale={pl}
+                  dateFormat="yyyy-MM"
+                  showMonthYearPicker
+                  placeholderText="RRRR-MM"
+                  selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
+                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
+                  disabled={isReadOnly}
+                  className="date-picker-input native-input"
+                  wrapperClassName="date-picker-wrapper"
+                />
+              )}
+            />
           </div>
         </div>
       </fieldset>
@@ -176,11 +199,6 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 Step3_Addresses.displayName = "Step3_Addresses";
 
 const styles: Record<string, React.CSSProperties> = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-  },
   field: {
     display: "flex",
     flexDirection: "column",
@@ -207,5 +225,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     padding: 0,
     margin: 0,
+    width: "100%",
   },
 };

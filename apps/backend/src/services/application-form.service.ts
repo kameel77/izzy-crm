@@ -661,6 +661,7 @@ export const submitApplicationForm = async (id: string, formData: Prisma.JsonObj
 
       await tx.consentRecord.createMany({
         data: consentRecordsData,
+        skipDuplicates: true,
       });
     }
 
