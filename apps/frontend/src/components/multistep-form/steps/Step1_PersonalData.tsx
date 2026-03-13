@@ -3,8 +3,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validatePESEL } from "../../../utils/pesel";
+import DatePicker from "react-datepicker";
+import { pl } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+import { Controller } from "react-hook-form";
+import { parse, format } from "date-fns";
 
-const phoneRegex = /^(?:\+?48)?(?:[ -]?)?(?:\d[ -]?){9}$/;
+const phoneRegex = /^\+?[0-9\s\-]{9,15}$/;
 
 const schema = z.object({
   pesel: z.string().length(11, "PESEL musi mieć 11 cyfr"),
@@ -13,7 +18,7 @@ const schema = z.object({
   mobilePhone: z
     .string()
     .min(1, "Numer telefonu jest wymagany")
-    .regex(phoneRegex, "Nieprawidłowy format numeru telefonu")
+    .regex(phoneRegex, "Wpisz poprawny numer telefonu (np. +48 123 456 789 lub 123456789)")
     .transform(val => val.replace(/[\s-]+/g, "")),
   email: z.string().email("Nieprawidłowy format email"),
   birthDate: z.string().min(1, "Data urodzenia jest wymagana"),
@@ -48,6 +53,7 @@ export interface Step1Ref {
 export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
+    control,
     watch,
     setValue,
     trigger,
@@ -95,22 +101,12 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
     }
   }, [peselValue, setValue]);
 
-  useEffect(() => {
-    const phone = watchedPhone?.replace(/[\s-]+/g, "");
-    if (phone && phone.length >= 9) {
-      const digitsOnly = phone.replace(/\D/g, "").slice(-9);
-      const formatted = `+48 ${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6, 9)}`;
-      if (formatted !== watchedPhone) {
-        setValue("mobilePhone", formatted, { shouldValidate: true });
-      }
-    }
-  }, [watchedPhone, setValue]);
 
   return (
     <form>
       <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 1: Dane osobowe</h2>
-      <div style={styles.grid}>
+      <div className="form-grid">
         {/* Row 1 */}
         <div style={styles.field}>
           <label htmlFor="pesel">PESEL</label>
@@ -150,7 +146,23 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
         {/* Row 4 */}
         <div style={styles.field}>
           <label htmlFor="birthDate">Data urodzenia</label>
-          <input id="birthDate" {...register("birthDate")} disabled />
+          <Controller
+            control={control}
+            name="birthDate"
+            render={({ field }) => (
+              <DatePicker
+                id="birthDate"
+                locale={pl}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="RRRR-MM-DD"
+                selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
+                onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                disabled={true}
+                className="date-picker-input-readonly"
+                wrapperClassName="date-picker-wrapper"
+              />
+            )}
+          />
           {errors.birthDate && <span style={styles.error}>{errors.birthDate.message}</span>}
         </div>
         <div style={styles.field}>
@@ -228,11 +240,6 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 Step1_PersonalData.displayName = "Step1_PersonalData";
 
 const styles: Record<string, React.CSSProperties> = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-  },
   field: {
     display: "flex",
     flexDirection: "column",
@@ -246,5 +253,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     padding: 0,
     margin: 0,
+    width: "100%",
   },
 };

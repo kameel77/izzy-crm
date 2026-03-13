@@ -28,7 +28,11 @@ const AutoSaveStatus: React.FC<{ status: string }> = ({ status }) => (
   </div>
 );
 
-export const MultiStepForm: React.FC = () => {
+export interface MultiStepFormProps {
+  onStepChange?: (step: number) => void;
+}
+
+export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) => {
   const { applicationFormId } = useParams<{ applicationFormId: string }>();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -41,6 +45,10 @@ export const MultiStepForm: React.FC = () => {
   const isSavingRef = useRef(false);
 
   const [debouncedFormData] = useDebounce(formData, 3000);
+
+  useEffect(() => {
+    onStepChange?.(currentStep);
+  }, [currentStep, onStepChange]);
 
   const stepRefs = useRef<Array<React.RefObject<StepRef>>>(
     Array.from({ length: TOTAL_STEPS }, () => React.createRef<StepRef>())

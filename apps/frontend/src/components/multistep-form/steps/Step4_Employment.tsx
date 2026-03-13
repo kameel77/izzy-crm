@@ -2,6 +2,11 @@ import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DatePicker from "react-datepicker";
+import { pl } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+import { Controller } from "react-hook-form";
+import { parse, format } from "date-fns";
 
 const schema = z.object({
   incomeSource: z.string().min(1, "Źródło dochodów jest wymagane"),
@@ -36,6 +41,7 @@ export interface Step4Ref {
 export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
+    control,
     watch,
     trigger,
     reset,
@@ -70,7 +76,7 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
       
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Informacje o zatrudnieniu</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="incomeSource">Źródło dochodów</label>
             <input id="incomeSource" {...register("incomeSource")} />
@@ -78,7 +84,24 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
           </div>
           <div style={styles.field}>
             <label htmlFor="employmentSince">Zatrudnienie od (RRRR-MM)</label>
-            <input id="employmentSince" type="month" {...register("employmentSince")} />
+            <Controller
+              control={control}
+              name="employmentSince"
+              render={({ field }) => (
+                <DatePicker
+                  id="employmentSince"
+                  locale={pl}
+                  dateFormat="yyyy-MM"
+                  showMonthYearPicker
+                  placeholderText="RRRR-MM"
+                  selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
+                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
+                  disabled={isReadOnly}
+                  className="date-picker-input native-input"
+                  wrapperClassName="date-picker-wrapper"
+                />
+              )}
+            />
             {errors.employmentSince && <span style={styles.error}>{errors.employmentSince.message}</span>}
           </div>
           <div style={styles.field}>
@@ -111,7 +134,7 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
 
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Dane pracodawcy</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="employerName">Nazwa</label>
             <input id="employerName" {...register("employerName")} />
@@ -160,11 +183,6 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
 Step4_Employment.displayName = "Step4_Employment";
 
 const styles: Record<string, React.CSSProperties> = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-  },
   field: {
     display: "flex",
     flexDirection: "column",
@@ -191,5 +209,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     padding: 0,
     margin: 0,
+    width: "100%",
   },
 };
