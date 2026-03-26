@@ -8,6 +8,7 @@ type OnboardingStatus =
     | "ONBOARDING_SENT"
     | "LINK_OPENED"
     | "SLOT_SELECTED"
+    | "ONBOARDING_CONFIRMED"
     | "CONSENTS_CAPTURED"
     | "COMPLETED";
 
@@ -38,6 +39,7 @@ const STATUS_LABELS: Record<OnboardingStatus, string> = {
     ONBOARDING_SENT: "Link wysłany",
     LINK_OPENED: "Link otwarty",
     SLOT_SELECTED: "Termin wybrany",
+    ONBOARDING_CONFIRMED: "Onboarding confirmed",
     CONSENTS_CAPTURED: "Zgody zebrane",
     COMPLETED: "Zakończony",
 };
@@ -47,6 +49,7 @@ const STATUS_COLORS: Record<OnboardingStatus, React.CSSProperties> = {
     ONBOARDING_SENT: { background: "hsl(200,80%,93%)", color: "hsl(200,80%,30%)" },
     LINK_OPENED: { background: "hsl(240,70%,93%)", color: "hsl(240,60%,40%)" },
     SLOT_SELECTED: { background: "hsl(40,90%,92%)", color: "hsl(40,90%,30%)" },
+    ONBOARDING_CONFIRMED: { background: "hsl(24,95%,55%)", color: "#fff", fontWeight: 700 },
     CONSENTS_CAPTURED: { background: "hsl(142,65%,90%)", color: "hsl(142,60%,25%)" },
     COMPLETED: { background: "hsl(142,65%,90%)", color: "hsl(142,60%,25%)" },
 };
@@ -191,10 +194,10 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                         />
                         <TimelineItem
                             icon="📅"
-                            label="Termin wybrany"
+                            label="Termin potwierdzony"
                             date={session.slotSelectedAt}
                             sub={session.slotSelectedAt ? <span>Termin ✓</span> : undefined}
-                            badge={session.slotSelectedAt ? "Termin wybrany" : undefined}
+                            badge={session.slotSelectedAt ? "Onboarding confirmed" : undefined}
                         />
                         <TimelineItem
                             icon="✅"

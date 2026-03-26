@@ -302,7 +302,13 @@ export const saveContactSlot = async ({
 }) => {
     const session = await prisma.insuranceOnboardingSession.findUnique({
         where: { token },
-        select: { id: true, leadId: true, tokenExpiresAt: true, status: true },
+        select: {
+            id: true,
+            leadId: true,
+            tokenExpiresAt: true,
+            status: true,
+            lead: { select: { customerProfile: { select: { firstName: true, lastName: true } } } },
+        },
     });
 
     if (!session) {
@@ -332,10 +338,22 @@ export const saveContactSlot = async ({
     await prisma.insuranceOnboardingSession.update({
         where: { id: session.id },
         data: {
-            status: InsuranceOnboardingStatus.SLOT_SELECTED,
+            status: InsuranceOnboardingStatus.ONBOARDING_CONFIRMED,
             slotSelectedAt: new Date(),
         },
     });
+
+    const firstName = session.lead.customerProfile?.firstName ?? "";
+    const lastName = session.lead.customerProfile?.lastName ?? "";
+    const clientName = [firstName, lastName].filter(Boolean).join(" ") || "Klient";
+    const dateFmt = preferredDate.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
+
+    sendMail({
+        to: "link4@izzylease.pl, marcin.grodowski@izzylease.pl",
+        subject: "Klient potwierdził termin onboardingu",
+        text: `${clientName} potwierdził termin kontaktu: ${preferredSlot}, ${dateFmt}.`,
+        html: `<p><strong>${clientName}</strong> potwierdził termin kontaktu:</p><p><strong>${preferredSlot}</strong>, ${dateFmt}</p>`,
+    }).catch((err) => console.error("[mail] Failed to send onboarding confirmed notification", err));
 
     return { scheduleId: schedule.id, preferredDate, preferredSlot };
 };
