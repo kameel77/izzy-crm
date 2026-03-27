@@ -112,7 +112,7 @@ export const LeadList: React.FC<LeadListProps> = ({
                   </td>
                   <td style={styles.tableCell}>
                     <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
-                    {lead.insuranceOnboarding?.status === "ONBOARDING_CONFIRMED" && (
+                    {(["ONBOARDING_CONFIRMED", "CONSENTS_CAPTURED", "COMPLETED"] as const).includes(lead.insuranceOnboarding?.status as never) && (
                       <span style={styles.onboardingConfirmedBadge}>Onboarding confirmed</span>
                     )}
                   </td>
