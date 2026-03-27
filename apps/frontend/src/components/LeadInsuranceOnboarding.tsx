@@ -197,7 +197,6 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                             label="Termin potwierdzony"
                             date={session.slotSelectedAt}
                             sub={session.slotSelectedAt ? <span>Termin ✓</span> : undefined}
-                            badge={session.slotSelectedAt ? "Onboarding confirmed" : undefined}
                         />
                         <TimelineItem
                             icon="✅"

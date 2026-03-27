@@ -362,6 +362,7 @@ enum PartnerStatus {
 
 enum LeadStatus {
   NEW
+  ONBOARDING_CONFIRMED
   FIRST_CONTACT
   FOLLOW_UP
   VERIFICATION

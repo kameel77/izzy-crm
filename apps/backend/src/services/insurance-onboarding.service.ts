@@ -1,4 +1,4 @@
-import { CommChannel, CommStatus, ConsentMethod, InsuranceOnboardingStatus } from "@prisma/client";
+import { CommChannel, CommStatus, ConsentMethod, InsuranceOnboardingStatus, LeadStatus } from "@prisma/client";
 import { randomBytes } from "crypto";
 
 import { env } from "../config/env.js";
@@ -335,18 +335,24 @@ export const saveContactSlot = async ({
         },
     });
 
-    await prisma.insuranceOnboardingSession.update({
-        where: { id: session.id },
-        data: {
-            status: InsuranceOnboardingStatus.ONBOARDING_CONFIRMED,
-            slotSelectedAt: new Date(),
-        },
-    });
+    await prisma.$transaction([
+        prisma.insuranceOnboardingSession.update({
+            where: { id: session.id },
+            data: {
+                status: InsuranceOnboardingStatus.ONBOARDING_CONFIRMED,
+                slotSelectedAt: new Date(),
+            },
+        }),
+        prisma.lead.update({
+            where: { id: session.leadId },
+            data: { status: LeadStatus.ONBOARDING_CONFIRMED },
+        }),
+    ]);
 
     const firstName = session.lead.customerProfile?.firstName ?? "";
     const lastName = session.lead.customerProfile?.lastName ?? "";
     const clientName = [firstName, lastName].filter(Boolean).join(" ") || "Klient";
-    const dateFmt = preferredDate.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
+    const dateFmt = preferredDate.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Warsaw" });
 
     sendMail({
         to: "link4@izzylease.pl, marcin.grodowski@izzylease.pl",

@@ -145,8 +145,9 @@ const leadSummarySelect = {
 } satisfies Prisma.LeadSelect;
 
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
-  NEW: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
-  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  NEW: [LeadStatus.ONBOARDING_CONFIRMED, LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  ONBOARDING_CONFIRMED: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW, LeadStatus.ONBOARDING_CONFIRMED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   UNQUALIFIED: [],

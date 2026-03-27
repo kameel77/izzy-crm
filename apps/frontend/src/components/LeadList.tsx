@@ -111,10 +111,9 @@ export const LeadList: React.FC<LeadListProps> = ({
                     <div style={styles.subtleText}>{lead.customerProfile?.email}</div>
                   </td>
                   <td style={styles.tableCell}>
-                    <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
-                    {(["ONBOARDING_CONFIRMED", "CONSENTS_CAPTURED", "COMPLETED"] as const).includes(lead.insuranceOnboarding?.status as never) && (
-                      <span style={styles.onboardingConfirmedBadge}>Onboarding confirmed</span>
-                    )}
+                    <span style={lead.status === "ONBOARDING_CONFIRMED" ? styles.onboardingConfirmedBadge : styles.badge}>
+                      {LEAD_STATUS_LABELS[lead.status]}
+                    </span>
                   </td>
                   <td style={styles.tableCell}>
                     {lead.assignedUser?.fullName || <span style={styles.subtleText}>Nieprzypisany</span>}

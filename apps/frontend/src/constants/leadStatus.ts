@@ -1,5 +1,6 @@
 export const LEAD_STATUSES = [
   "NEW",
+  "ONBOARDING_CONFIRMED",
   "FIRST_CONTACT",
   "FOLLOW_UP",
   "VERIFICATION",
@@ -21,6 +22,7 @@ export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   NEW: "New",
+  ONBOARDING_CONFIRMED: "Onboarding confirmed",
   FIRST_CONTACT: "First Contact",
   FOLLOW_UP: "Follow-up",
   VERIFICATION: "Verification",
