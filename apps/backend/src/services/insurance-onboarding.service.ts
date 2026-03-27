@@ -101,7 +101,7 @@ export const startOnboarding = async ({
     const smsTpl = await getMessageTemplate("sms_welcome_insurance");
     const smsBody = smsTpl
         ? interpolate(smsTpl.body, { firstName, link: finalSmsUrl })
-        : `Witaj${firstName ? ` ${firstName}` : ""}, cieszymy sie, ze mozemy Ci pomoc w znalezieniu nowego auta! Sprawdz maila i ustal termin rozmowy z nami. Twoje dane otrzymalismy od Link4. ${finalSmsUrl}`;
+        : `Witaj${firstName ? ` ${firstName}` : ""}, cieszymy sie, ze mozemy Ci pomoc w znalezieniu nowego auta! Sprawdz maila i ustal termin rozmowy z nami. Twoje dane otrzymalismy od Link4. Zadzwonimy z nr 22 688 77 57. ${finalSmsUrl}`;
 
     let smsSent = false;
     if (env.smsapi) {
