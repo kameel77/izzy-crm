@@ -1,4 +1,4 @@
-import { CommChannel, CommStatus, ConsentMethod, InsuranceOnboardingStatus } from "@prisma/client";
+import { CommChannel, CommStatus, ConsentMethod, InsuranceOnboardingStatus, LeadStatus } from "@prisma/client";
 import { randomBytes } from "crypto";
 
 import { env } from "../config/env.js";
@@ -93,10 +93,15 @@ export const startOnboarding = async ({
     const firstName = profile.firstName ?? "";
 
     // ── Send SMS ──────────────────────────────────────────────────────────────
+    let finalSmsUrl = landingUrl;
+    if (env.smsapi?.token) {
+        finalSmsUrl = `[%idzdo:${landingUrl}%]`;
+    }
+
     const smsTpl = await getMessageTemplate("sms_welcome_insurance");
     const smsBody = smsTpl
-        ? interpolate(smsTpl.body, { firstName, link: landingUrl })
-        : `Cześć${firstName ? ` ${firstName}` : ""}! Ponieważ jesteś w trakcie procesu likwidacji szkody Twojego samochodu, przesłano nam Twoje dane, abyśmy pomogli Ci znaleźć nowe auto. Sprawdź maila i potwierdź dogodny termin rozmowy z konsultantem.`;
+        ? interpolate(smsTpl.body, { firstName, link: finalSmsUrl })
+        : `Witaj${firstName ? ` ${firstName}` : ""}, cieszymy sie, ze mozemy Ci pomoc w znalezieniu nowego auta! Sprawdz maila i ustal termin rozmowy z nami. Twoje dane otrzymalismy od Link4. Zadzwonimy z nr 22 688 77 57. ${finalSmsUrl}`;
 
     let smsSent = false;
     if (env.smsapi) {
@@ -297,7 +302,13 @@ export const saveContactSlot = async ({
 }) => {
     const session = await prisma.insuranceOnboardingSession.findUnique({
         where: { token },
-        select: { id: true, leadId: true, tokenExpiresAt: true, status: true },
+        select: {
+            id: true,
+            leadId: true,
+            tokenExpiresAt: true,
+            status: true,
+            lead: { select: { customerProfile: { select: { firstName: true, lastName: true } } } },
+        },
     });
 
     if (!session) {
@@ -324,13 +335,31 @@ export const saveContactSlot = async ({
         },
     });
 
-    await prisma.insuranceOnboardingSession.update({
-        where: { id: session.id },
-        data: {
-            status: InsuranceOnboardingStatus.SLOT_SELECTED,
-            slotSelectedAt: new Date(),
-        },
-    });
+    await prisma.$transaction([
+        prisma.insuranceOnboardingSession.update({
+            where: { id: session.id },
+            data: {
+                status: InsuranceOnboardingStatus.ONBOARDING_CONFIRMED,
+                slotSelectedAt: new Date(),
+            },
+        }),
+        prisma.lead.update({
+            where: { id: session.leadId },
+            data: { status: LeadStatus.ONBOARDING_CONFIRMED },
+        }),
+    ]);
+
+    const firstName = session.lead.customerProfile?.firstName ?? "";
+    const lastName = session.lead.customerProfile?.lastName ?? "";
+    const clientName = [firstName, lastName].filter(Boolean).join(" ") || "Klient";
+    const dateFmt = preferredDate.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Warsaw" });
+
+    sendMail({
+        to: "link4@izzylease.pl, marcin.grodowski@izzylease.pl",
+        subject: "Klient potwierdził termin onboardingu",
+        text: `${clientName} potwierdził termin kontaktu: ${preferredSlot}, ${dateFmt}.`,
+        html: `<p><strong>${clientName}</strong> potwierdził termin kontaktu:</p><p><strong>${preferredSlot}</strong>, ${dateFmt}</p>`,
+    }).catch((err) => console.error("[mail] Failed to send onboarding confirmed notification", err));
 
     return { scheduleId: schedule.id, preferredDate, preferredSlot };
 };

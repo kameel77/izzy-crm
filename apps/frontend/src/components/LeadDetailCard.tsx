@@ -53,6 +53,7 @@ type VehicleFormState = {
     year: string;
     mileage: string;
     ownershipStatus: string;
+    vin: string;
   };
   desired: {
     vehicles: Array<{
@@ -77,6 +78,7 @@ type ClientFormState = {
   customerType: string;
   city: string;
   voivodeship: string;
+  postalCode: string;
 };
 
 const resolveDocumentUrl = (path: string) => {
@@ -209,6 +211,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         year: lead?.vehicleCurrent?.year?.toString() ?? "",
         mileage: lead?.vehicleCurrent?.mileage?.toString() ?? "",
         ownershipStatus: lead?.vehicleCurrent?.ownershipStatus ?? "",
+        vin: lead?.vehicleCurrent?.vin ?? "",
       },
       desired: {
         vehicles,
@@ -349,7 +352,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const customerAddress = useMemo(
     () =>
       (lead?.customerProfile?.address as
-        | { city?: string | null; voivodeship?: string | null; customerType?: string | null }
+        | { city?: string | null; voivodeship?: string | null; customerType?: string | null; postalCode?: string | null }
         | null
         | undefined) || {},
     [lead?.customerProfile?.address],
@@ -364,8 +367,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       customerType: customerAddress.customerType ?? "",
       city: customerAddress.city ?? "",
       voivodeship: customerAddress.voivodeship ?? "",
+      postalCode: customerAddress.postalCode ?? "",
     };
-  }, [customerAddress.city, customerAddress.customerType, customerAddress.voivodeship, lead?.customerProfile?.email, lead?.customerProfile?.firstName, lead?.customerProfile?.lastName, lead?.customerProfile?.phone]);
+  }, [customerAddress.city, customerAddress.customerType, customerAddress.postalCode, customerAddress.voivodeship, lead?.customerProfile?.email, lead?.customerProfile?.firstName, lead?.customerProfile?.lastName, lead?.customerProfile?.phone]);
 
   const lastContactValue = useMemo(() => {
     const timestamps: number[] = [];
@@ -475,6 +479,19 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   };
 
   const handleClientFieldChange = (field: keyof ClientFormState, value: string) => {
+    if (field === "postalCode") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 5);
+      let formatted = digitsOnly;
+      if (digitsOnly.length > 2) {
+        formatted = `${digitsOnly.slice(0, 2)}-${digitsOnly.slice(2)}`;
+      } else if (digitsOnly.length === 2 && clientForm.postalCode.length < 3) {
+        formatted = `${digitsOnly}-`;
+      } else if (digitsOnly.length === 2 && value.endsWith('-')) {
+        formatted = `${digitsOnly}-`;
+      }
+      setClientForm((prev) => ({ ...prev, [field]: formatted }));
+      return;
+    }
     setClientForm((prev) => ({
       ...prev,
       [field]: value,
@@ -489,6 +506,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     if (!clientForm.lastName.trim()) errors.lastName = "Nazwisko jest wymagane";
     if (clientForm.email && !/^\S+@\S+\.\S+$/.test(clientForm.email.trim())) {
       errors.email = "Nieprawidłowy email";
+    }
+    if (clientForm.postalCode && !/^\d{2}-\d{3}$/.test(clientForm.postalCode.trim())) {
+      errors.postalCode = "Nieprawidłowy kod pocztowy (wymagany format 00-000)";
     }
     if (Object.keys(errors).length) {
       setClientErrors(errors);
@@ -506,6 +526,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         customerType: clientForm.customerType || null,
         city: clientForm.city || null,
         voivodeship: clientForm.voivodeship || null,
+        postalCode: clientForm.postalCode || null,
       });
       addToast("Zaktualizowano dane klienta", "success");
       setIsClientModalOpen(false);
@@ -534,6 +555,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     field: string,
     value: string,
   ) => {
+    if (section === "current" && field === "vin") {
+      value = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17);
+    }
     setVehicleForm((prev) => ({
       ...prev,
       [section]: {
@@ -629,7 +653,12 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         min: 0,
       }),
       ownershipStatus: trimOrUndefined(vehicleForm.current.ownershipStatus),
+      vin: trimOrUndefined(vehicleForm.current.vin),
     };
+
+    if (current.vin && !/^[a-zA-Z0-9]{17}$/i.test(current.vin)) {
+      errors["current.vin"] = "Numer VIN musi składać się z dokładnie 17 znaków alfanumerycznych.";
+    }
 
 
     const amountAvailableRaw = vehicleForm.desired.amountAvailable.trim();
@@ -1652,6 +1681,18 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               />
             </label>
             <label style={styles.modalLabel}>
+              Kod pocztowy
+              <input
+                type="text"
+                value={clientForm.postalCode}
+                onChange={(event) => handleClientFieldChange("postalCode", event.target.value)}
+                style={styles.modalInput}
+                placeholder="00-000"
+                maxLength={6}
+              />
+              {clientErrors.postalCode ? <span style={styles.errorText}>{clientErrors.postalCode}</span> : null}
+            </label>
+            <label style={styles.modalLabel}>
               Województwo
               <select
                 value={clientForm.voivodeship}
@@ -1793,6 +1834,22 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                   }
                   style={styles.modalInput}
                 />
+              </label>
+              <label style={styles.modalLabel}>
+                Nr VIN pojazdu
+                <input
+                  type="text"
+                  value={vehicleForm.current.vin}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("current", "vin", event.target.value)
+                  }
+                  style={styles.modalInput}
+                  placeholder="17 znaków alfanumerycznych"
+                  maxLength={17}
+                />
+                {vehicleErrors["current.vin"] ? (
+                  <span style={styles.errorText}>{vehicleErrors["current.vin"]}</span>
+                ) : null}
               </label>
             </div>
           </div>

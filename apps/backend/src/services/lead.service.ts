@@ -137,11 +137,17 @@ const leadSummarySelect = {
       status: true,
     },
   },
+  insuranceOnboarding: {
+    select: {
+      status: true,
+    },
+  },
 } satisfies Prisma.LeadSelect;
 
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
-  NEW: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
-  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  NEW: [LeadStatus.ONBOARDING_CONFIRMED, LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  ONBOARDING_CONFIRMED: [LeadStatus.FIRST_CONTACT, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
+  FIRST_CONTACT: [LeadStatus.FOLLOW_UP, LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.NEW, LeadStatus.ONBOARDING_CONFIRMED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   FOLLOW_UP: [LeadStatus.VERIFICATION, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   VERIFICATION: [LeadStatus.GATHERING_DOCUMENTS, LeadStatus.UNQUALIFIED, LeadStatus.CLOSED_LOST, LeadStatus.CANCELLED],
   UNQUALIFIED: [],
@@ -186,6 +192,7 @@ export interface CreateLeadInput {
     customerType?: string;
     city?: string;
     voivodeship?: string;
+    postalCode?: string;
   };
   currentVehicle?: {
     make?: string;
@@ -193,6 +200,7 @@ export interface CreateLeadInput {
     year?: number;
     mileage?: number;
     ownershipStatus?: string;
+    vin?: string;
   };
   desiredVehicle?: {
     make?: string;
@@ -220,6 +228,7 @@ const buildCustomerAddress = (customer: CreateLeadInput["customer"]) => {
   const address = {
     city: customer.city?.trim(),
     voivodeship: customer.voivodeship,
+    postalCode: customer.postalCode,
     customerType: customer.customerType,
   };
 
@@ -261,6 +270,7 @@ export const createLead = async (input: CreateLeadInput) => {
                 year: input.currentVehicle.year ?? undefined,
                 mileage: input.currentVehicle.mileage ?? undefined,
                 ownershipStatus: input.currentVehicle.ownershipStatus,
+                vin: input.currentVehicle.vin,
               },
             }
             : undefined,
@@ -549,6 +559,7 @@ export interface UpdateLeadVehiclesInput {
     year?: number;
     mileage?: number;
     ownershipStatus?: string;
+    vin?: string;
   } | null;
   desired?: {
     make?: string;
@@ -571,6 +582,7 @@ export interface UpdateLeadCustomerInput {
     customerType?: string | null;
     city?: string | null;
     voivodeship?: string | null;
+    postalCode?: string | null;
   };
 }
 
@@ -598,6 +610,7 @@ export const updateLeadVehicles = async (input: UpdateLeadVehiclesInput) => {
             year: input.current.year ?? undefined,
             mileage: input.current.mileage ?? undefined,
             ownershipStatus: input.current.ownershipStatus,
+            vin: input.current.vin,
           },
           update: {
             make: input.current.make,
@@ -605,6 +618,7 @@ export const updateLeadVehicles = async (input: UpdateLeadVehiclesInput) => {
             year: input.current.year ?? undefined,
             mileage: input.current.mileage ?? undefined,
             ownershipStatus: input.current.ownershipStatus,
+            vin: input.current.vin,
           },
         });
       } else {
@@ -735,7 +749,7 @@ export const updateLeadCustomerProfile = async (input: UpdateLeadCustomerInput) 
 
     const existingAddress =
       (existingLead.customerProfile?.address as
-        | { city?: string | null; voivodeship?: string | null; customerType?: string | null }
+        | { city?: string | null; voivodeship?: string | null; postalCode?: string | null; customerType?: string | null }
         | null
         | undefined) || {};
 
@@ -743,11 +757,15 @@ export const updateLeadCustomerProfile = async (input: UpdateLeadCustomerInput) 
     if (typeof existingAddress.city !== "undefined") nextAddress.city = existingAddress.city ?? null;
     if (typeof existingAddress.voivodeship !== "undefined")
       nextAddress.voivodeship = existingAddress.voivodeship ?? null;
+    if (typeof existingAddress.postalCode !== "undefined")
+      nextAddress.postalCode = existingAddress.postalCode ?? null;
     if (typeof existingAddress.customerType !== "undefined")
       nextAddress.customerType = existingAddress.customerType ?? null;
     if (typeof input.payload.city !== "undefined") nextAddress.city = input.payload.city;
     if (typeof input.payload.voivodeship !== "undefined")
       nextAddress.voivodeship = input.payload.voivodeship;
+    if (typeof input.payload.postalCode !== "undefined")
+      nextAddress.postalCode = input.payload.postalCode;
     if (typeof input.payload.customerType !== "undefined")
       nextAddress.customerType = input.payload.customerType;
 

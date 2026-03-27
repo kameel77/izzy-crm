@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,17 +30,12 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
     register,
     watch,
     trigger,
-    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: formData,
     mode: "onBlur",
   });
-
-  useEffect(() => {
-    reset(formData);
-  }, [formData, reset]);
 
   useImperativeHandle(ref, () => ({
     triggerValidation: async () => {
@@ -49,8 +44,14 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
   }));
 
   const watchedData = watch();
+  
+  const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));
   useEffect(() => {
-    onFormChange(watchedData);
+    const current = JSON.stringify(watchedData ?? {});
+    if (current !== lastEmittedSnapshotRef.current) {
+      lastEmittedSnapshotRef.current = current;
+      onFormChange(watchedData);
+    }
   }, [watchedData, onFormChange]);
 
   const safeParse = (value: unknown) => parseFloat(String(value)) || 0;
@@ -72,7 +73,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
       
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Dochody (PLN)</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="mainIncome">Główne dochody (netto)</label>
             <input id="mainIncome" type="number" {...register("mainIncome")} />
@@ -87,7 +88,7 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>Wydatki (PLN)</legend>
-        <div style={styles.grid}>
+        <div className="form-grid">
           <div style={styles.field}>
             <label htmlFor="housingFees">Opłaty za mieszkanie</label>
             <input id="housingFees" type="number" {...register("housingFees")} />
@@ -129,11 +130,6 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 Step5_Budget.displayName = "Step5_Budget";
 
 const styles: Record<string, React.CSSProperties> = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-  },
   field: {
     display: "flex",
     flexDirection: "column",

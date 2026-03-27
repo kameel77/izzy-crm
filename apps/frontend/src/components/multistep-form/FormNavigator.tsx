@@ -18,7 +18,7 @@ export const FormNavigator: React.FC<FormNavigatorProps> = ({
   isSubmittable = true,
 }) => {
   return (
-    <div style={styles.navigator}>
+    <div className="form-navigator" style={styles.navigator}>
       <button
         style={{ ...styles.button, background: '#64748b' }}
         onClick={onBack}

@@ -20,6 +20,7 @@ export interface LeadCustomerProfile {
   address?: {
     city?: string | null;
     voivodeship?: string | null;
+    postalCode?: string | null;
     customerType?: string | null;
     [key: string]: unknown;
   } | null;
@@ -37,6 +38,7 @@ export interface LeadSummary {
   partner?: LeadPartner | null;
   customerProfile?: LeadCustomerProfile | null;
   consentStatus: "complete" | "incomplete" | "missing_required" | "no_templates";
+  insuranceOnboarding?: { status: string } | null;
 }
 
 export interface LeadDetail extends LeadSummary {
@@ -59,6 +61,7 @@ export interface LeadDetail extends LeadSummary {
     year?: number | null;
     mileage?: number | null;
     ownershipStatus?: string | null;
+    vin?: string | null;
   } | null;
   vehicleDesired?: {
     make?: string | null;
@@ -210,6 +213,35 @@ export const generateOfferLink = (
     body: JSON.stringify(payload),
   });
 
+export interface MessageDraft {
+  id: string;
+  leadId: string;
+  userId: string;
+  subject?: string | null;
+  body?: string | null;
+  links: string[];
+}
+
+export const getMessageDraft = (token: string, leadId: string) =>
+  apiFetch<MessageDraft | null>(`/api/leads/${leadId}/email/draft`, {
+    token,
+  });
+
+export const saveMessageDraft = (
+  token: string,
+  leadId: string,
+  payload: {
+    message?: string;
+    links?: string[];
+    subject?: string;
+  },
+) =>
+  apiFetch<MessageDraft>(`/api/leads/${leadId}/email/draft`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+
 export interface LeadListFilters {
   page?: number;
   perPage?: number;
@@ -255,12 +287,14 @@ export interface CreateLeadPayload {
     customerType?: string;
     city?: string;
     voivodeship?: string;
+    postalCode?: string;
   };
   currentVehicle?: {
     make?: string;
     model?: string;
     year?: number;
     mileage?: number;
+    vin?: string;
   };
   desiredVehicle?: {
     make?: string;
@@ -348,6 +382,7 @@ export interface UpdateLeadCustomerPayload {
   customerType?: string | null;
   city?: string | null;
   voivodeship?: string | null;
+  postalCode?: string | null;
 }
 
 export const updateLeadCustomer = (
@@ -459,6 +494,7 @@ export interface UpdateLeadVehiclesPayload {
     year?: number;
     mileage?: number;
     ownershipStatus?: string;
+    vin?: string;
   } | null;
   desired?: {
     make?: string;

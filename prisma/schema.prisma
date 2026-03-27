@@ -9,27 +9,28 @@ datasource db {
 }
 
 model User {
-  id                      String            @id @default(cuid())
-  email                   String            @unique
+  id                      String                       @id @default(cuid())
+  email                   String                       @unique
   hashedPassword          String
   role                    UserRole
   fullName                String
   phone                   String?
-  status                  UserStatus        @default(ACTIVE)
-  partner                 Partner?          @relation(fields: [partnerId], references: [id])
+  status                  UserStatus                   @default(ACTIVE)
+  partner                 Partner?                     @relation(fields: [partnerId], references: [id])
   partnerId               String?
-  leads                   Lead[]            @relation("LeadAssignedUser")
-  createdLeads            Lead[]            @relation("LeadCreatedBy")
+  leads                   Lead[]                       @relation("LeadAssignedUser")
+  createdLeads            Lead[]                       @relation("LeadCreatedBy")
   auditLogs               AuditLog[]
-  reminders               Reminder[]        @relation("ReminderAssignedUser")
+  reminders               Reminder[]                   @relation("ReminderAssignedUser")
   leadNotes               LeadNote[]
-  consentTemplates        ConsentTemplate[] @relation("ConsentTemplateCreatedBy")
-  recordedConsents        ConsentRecord[]   @relation("ConsentRecordRecordedBy")
-  createdApplicationForms        ApplicationForm[]              @relation("ApplicationFormCreatedBy")
-  leadStatusChanges              LeadStatusHistory[]
-  sentOnboardingSessions         InsuranceOnboardingSession[]
-  createdAt                      DateTime                       @default(now())
-  updatedAt                      DateTime                       @updatedAt
+  consentTemplates        ConsentTemplate[]            @relation("ConsentTemplateCreatedBy")
+  recordedConsents        ConsentRecord[]              @relation("ConsentRecordRecordedBy")
+  createdApplicationForms ApplicationForm[]            @relation("ApplicationFormCreatedBy")
+  leadStatusChanges       LeadStatusHistory[]
+  sentOnboardingSessions  InsuranceOnboardingSession[]
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  MessageDraft            MessageDraft[]
 }
 
 model Partner {
@@ -47,38 +48,39 @@ model Partner {
 }
 
 model Lead {
-  id              String                 @id @default(cuid())
-  partner         Partner                @relation(fields: [partnerId], references: [id])
-  partnerId       String
-  assignedUser    User?                  @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
-  assignedUserId  String?
-  createdBy       User?                  @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
-  createdByUserId String?
-  status          LeadStatus             @default(NEW)
-  sourceMetadata  Json?
-  notes           String?
-  leadCreatedAt   DateTime               @default(now())
-  claimedAt       DateTime?
-  lastContactAt   DateTime?
-  nextActionAt    DateTime?
-  customerProfile CustomerProfile?
-  vehicleCurrent  VehicleCurrent?
-  vehicleDesired  VehicleDesired?
-  financingApps         FinancingApplication[]
-  documents             Document[]
-  offers                Offer[]
-  agreement             Agreement?
-  reminders             Reminder[]
-  auditLogs             AuditLog[]
-  leadNotes             LeadNote[]
-  consentRecords        ConsentRecord[]
-  applicationForm       ApplicationForm?
-  emailLogs             EmailLog[]
-  leadStatusHistory     LeadStatusHistory[]
-  insuranceOnboarding   InsuranceOnboardingSession?
-  contactSchedules      ContactSchedule[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  id                  String                      @id @default(cuid())
+  partner             Partner                     @relation(fields: [partnerId], references: [id])
+  partnerId           String
+  assignedUser        User?                       @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
+  assignedUserId      String?
+  createdBy           User?                       @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUserId     String?
+  status              LeadStatus                  @default(NEW)
+  sourceMetadata      Json?
+  notes               String?
+  leadCreatedAt       DateTime                    @default(now())
+  claimedAt           DateTime?
+  lastContactAt       DateTime?
+  nextActionAt        DateTime?
+  customerProfile     CustomerProfile?
+  vehicleCurrent      VehicleCurrent?
+  vehicleDesired      VehicleDesired?
+  financingApps       FinancingApplication[]
+  documents           Document[]
+  offers              Offer[]
+  agreement           Agreement?
+  reminders           Reminder[]
+  auditLogs           AuditLog[]
+  leadNotes           LeadNote[]
+  consentRecords      ConsentRecord[]
+  applicationForm     ApplicationForm?
+  emailLogs           EmailLog[]
+  leadStatusHistory   LeadStatusHistory[]
+  insuranceOnboarding InsuranceOnboardingSession?
+  contactSchedules    ContactSchedule[]
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  MessageDraft        MessageDraft[]
 }
 
 model LeadNote {
@@ -126,6 +128,7 @@ model VehicleCurrent {
   year            Int?
   mileage         Int?
   ownershipStatus String?
+  vin             String?
 }
 
 model VehicleDesired {
@@ -233,8 +236,6 @@ model Reminder {
   updatedAt      DateTime       @updatedAt
 }
 
-
-
 model ApplicationForm {
   id                 String                @id @default(cuid())
   lead               Lead                  @relation(fields: [leadId], references: [id])
@@ -264,19 +265,19 @@ model ApplicationForm {
 }
 
 model EmailLog {
-  id                String         @id @default(cuid())
+  id                String          @id @default(cuid())
   applicationForm   ApplicationForm @relation(fields: [applicationFormId], references: [id])
   applicationFormId String
-  lead              Lead           @relation(fields: [leadId], references: [id])
+  lead              Lead            @relation(fields: [leadId], references: [id])
   leadId            String
   type              EmailLogType
-  status            EmailLogStatus @default(SENT)
-  sentAt            DateTime       @default(now())
+  status            EmailLogStatus  @default(SENT)
+  sentAt            DateTime        @default(now())
   sentTo            String?
   payload           Json?
-  noteCreated       Boolean        @default(false)
+  noteCreated       Boolean         @default(false)
   noteId            String?
-  createdAt         DateTime       @default(now())
+  createdAt         DateTime        @default(now())
 
   @@index([applicationFormId, type])
   @@index([leadId])
@@ -361,6 +362,7 @@ enum PartnerStatus {
 
 enum LeadStatus {
   NEW
+  ONBOARDING_CONFIRMED
   FIRST_CONTACT
   FOLLOW_UP
   VERIFICATION
@@ -466,6 +468,7 @@ enum InsuranceOnboardingStatus {
   ONBOARDING_SENT
   LINK_OPENED
   SLOT_SELECTED
+  ONBOARDING_CONFIRMED
   CONSENTS_CAPTURED
   COMPLETED
 }
@@ -483,13 +486,13 @@ enum CommStatus {
 }
 
 model InsuranceOnboardingSession {
-  id                String                     @id @default(cuid())
-  lead              Lead                       @relation(fields: [leadId], references: [id])
-  leadId            String                     @unique
-  status            InsuranceOnboardingStatus  @default(CREATED)
-  token             String                     @unique
+  id                String                    @id @default(cuid())
+  lead              Lead                      @relation(fields: [leadId], references: [id])
+  leadId            String                    @unique
+  status            InsuranceOnboardingStatus @default(CREATED)
+  token             String                    @unique
   tokenExpiresAt    DateTime
-  sentByUser        User?                      @relation(fields: [sentByUserId], references: [id])
+  sentByUser        User?                     @relation(fields: [sentByUserId], references: [id])
   sentByUserId      String?
   smsSentAt         DateTime?
   emailSentAt       DateTime?
@@ -498,8 +501,8 @@ model InsuranceOnboardingSession {
   consentsCapAt     DateTime?
   ipAddress         String?
   userAgent         String?
-  createdAt         DateTime                   @default(now())
-  updatedAt         DateTime                   @updatedAt
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
   contactSchedule   ContactSchedule?
   communicationLogs CommunicationLog[]
 
@@ -552,4 +555,19 @@ model MessageTemplate {
   updatedBy String?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+}
+
+model MessageDraft {
+  id        String   @id @default(cuid())
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  leadId    String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  subject   String?
+  body      String?
+  links     String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leadId, userId])
 }

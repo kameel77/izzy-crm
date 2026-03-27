@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
 import { sendMail } from "./mail.service.js";
 
+
 export const ensureOperatorCanMutateLead = async (params: {
   leadId: string;
   actorUserId: string;
@@ -160,6 +161,7 @@ export const generateApplicationFormLink = async ({
         select: {
           email: true,
           firstName: true,
+          phone: true,
         },
       },
     },
@@ -260,6 +262,34 @@ export const generateApplicationFormLink = async ({
         `Link wygasa: ${expiresAt.toLocaleString()}`,
       ].join("\n"),
     });
+  }
+
+  if (lead.customerProfile?.phone && env.smsapi?.token) {
+    const finalSmsUrl = `[%idzdo:${linkUrl}%]`;
+    const smsBody = [
+      `Cześć ${lead.customerProfile.firstName ?? ""}`.trim() + ",",
+      "zapraszamy do uzupełnienia wniosku o finansowanie.",
+      `Link: ${finalSmsUrl}`,
+      `Twój kod dostępu: ${accessCode}`,
+    ].join(" ").replace(/\s+/g, " ");
+
+    try {
+      const cleanTo = lead.customerProfile.phone.replace(/\D/g, "");
+      const params = new URLSearchParams({ to: cleanTo, message: smsBody, format: "json", encoding: "utf-8" });
+      if (env.smsapi.senderName?.trim()) params.append("from", env.smsapi.senderName.trim());
+      const smsRes = await fetch(`https://api.smsapi.pl/sms.do?${params.toString()}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.smsapi.token}` },
+      });
+      const smsBody2 = (await smsRes.json()) as { error?: number; message?: string };
+      if (!smsRes.ok || smsBody2.error) {
+        console.warn(`[app-form sms] Failed: ${smsBody2.error ?? smsRes.status} ${smsBody2.message ?? ""}`);
+      } else {
+        console.info(`[app-form sms] Sent to ${lead.customerProfile.phone}`);
+      }
+    } catch (err) {
+      console.error("[app-form sms] Error sending SMS:", err);
+    }
   }
 
   return {
@@ -661,6 +691,7 @@ export const submitApplicationForm = async (id: string, formData: Prisma.JsonObj
 
       await tx.consentRecord.createMany({
         data: consentRecordsData,
+        skipDuplicates: true,
       });
     }
 

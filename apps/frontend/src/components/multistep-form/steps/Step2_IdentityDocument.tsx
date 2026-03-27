@@ -1,7 +1,13 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DatePicker from "react-datepicker";
+import { pl } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+import { Controller } from "react-hook-form";
+import { parse, format } from "date-fns";
+import { DateMaskInput } from "../../ui/DateMaskInput";
 
 const schema = z.object({
   documentType: z.string().min(1, "Rodzaj dokumentu jest wymagany"),
@@ -26,9 +32,9 @@ export interface Step2Ref {
 export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onFormChange, formData, isReadOnly = false }, ref) => {
   const {
     register,
+    control,
     watch,
     trigger,
-    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -36,14 +42,15 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
     mode: "onBlur",
   });
 
-  useEffect(() => {
-    reset(formData);
-  }, [formData, reset]);
-
   const watchedData = watch();
 
+  const lastEmittedSnapshotRef = useRef<string>(JSON.stringify(watchedData ?? {}));
   useEffect(() => {
-    onFormChange(watchedData);
+    const current = JSON.stringify(watchedData ?? {});
+    if (current !== lastEmittedSnapshotRef.current) {
+      lastEmittedSnapshotRef.current = current;
+      onFormChange(watchedData);
+    }
   }, [watchedData, onFormChange]);
 
   useImperativeHandle(ref, () => ({
@@ -56,7 +63,7 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
     <form>
       <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
       <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 2: Dokument tożsamości</h2>
-      <div style={styles.grid}>
+      <div className="form-grid">
         <div style={styles.field}>
           <label htmlFor="documentType">Rodzaj dokumentu</label>
           <select id="documentType" {...register("documentType")}>
@@ -73,12 +80,56 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
         </div>
         <div style={styles.field}>
           <label htmlFor="issueDate">Data wydania</label>
-          <input id="issueDate" type="date" {...register("issueDate")} />
+          <Controller
+            control={control}
+            name="issueDate"
+            render={({ field }) => (
+              <DatePicker
+                id="issueDate"
+                locale={pl}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="RRRR-MM-DD"
+                selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
+                onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                disabled={isReadOnly}
+                showYearDropdown
+                dropdownMode="select"
+                showMonthDropdown
+                yearDropdownItemNumber={100}
+                scrollableYearDropdown
+                customInput={<DateMaskInput />}
+                className="date-picker-input native-input"
+                wrapperClassName="date-picker-wrapper"
+              />
+            )}
+          />
           {errors.issueDate && <span style={styles.error}>{errors.issueDate.message}</span>}
         </div>
         <div style={styles.field}>
           <label htmlFor="expiryDate">Data ważności</label>
-          <input id="expiryDate" type="date" {...register("expiryDate")} />
+          <Controller
+            control={control}
+            name="expiryDate"
+            render={({ field }) => (
+              <DatePicker
+                id="expiryDate"
+                locale={pl}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="RRRR-MM-DD"
+                selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
+                onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                disabled={isReadOnly}
+                showYearDropdown
+                dropdownMode="select"
+                showMonthDropdown
+                yearDropdownItemNumber={100}
+                scrollableYearDropdown
+                customInput={<DateMaskInput />}
+                className="date-picker-input native-input"
+                wrapperClassName="date-picker-wrapper"
+              />
+            )}
+          />
           {errors.expiryDate && <span style={styles.error}>{errors.expiryDate.message}</span>}
         </div>
         <div style={styles.field}>
@@ -101,11 +152,6 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
 Step2_IdentityDocument.displayName = "Step2_IdentityDocument";
 
 const styles: Record<string, React.CSSProperties> = {
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-  },
   field: {
     display: "flex",
     flexDirection: "column",
@@ -119,5 +165,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     padding: 0,
     margin: 0,
+    width: "100%",
   },
 };
