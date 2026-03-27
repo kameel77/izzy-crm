@@ -112,6 +112,9 @@ export const LeadList: React.FC<LeadListProps> = ({
                   </td>
                   <td style={styles.tableCell}>
                     <span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>
+                    {lead.insuranceOnboardingSession?.status === "ONBOARDING_CONFIRMED" && (
+                      <span style={styles.onboardingConfirmedBadge}>Onboarding confirmed</span>
+                    )}
                   </td>
                   <td style={styles.tableCell}>
                     {lead.assignedUser?.fullName || <span style={styles.subtleText}>Nieprzypisany</span>}
@@ -282,6 +285,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#4338ca",
     fontSize: "0.85rem",
     fontWeight: 600,
+  },
+  onboardingConfirmedBadge: {
+    display: "inline-block",
+    marginLeft: "0.4rem",
+    padding: "0.25rem 0.6rem",
+    borderRadius: 999,
+    background: "hsl(24,95%,55%)",
+    color: "#fff",
+    fontSize: "0.78rem",
+    fontWeight: 700,
   },
   count: {
     fontSize: "0.9rem",

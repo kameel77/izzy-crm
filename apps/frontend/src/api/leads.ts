@@ -38,6 +38,7 @@ export interface LeadSummary {
   partner?: LeadPartner | null;
   customerProfile?: LeadCustomerProfile | null;
   consentStatus: "complete" | "incomplete" | "missing_required" | "no_templates";
+  insuranceOnboardingSession?: { status: string } | null;
 }
 
 export interface LeadDetail extends LeadSummary {

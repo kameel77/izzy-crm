@@ -137,6 +137,11 @@ const leadSummarySelect = {
       status: true,
     },
   },
+  insuranceOnboardingSession: {
+    select: {
+      status: true,
+    },
+  },
 } satisfies Prisma.LeadSelect;
 
 const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {
