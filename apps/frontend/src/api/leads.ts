@@ -20,6 +20,7 @@ export interface LeadCustomerProfile {
   address?: {
     city?: string | null;
     voivodeship?: string | null;
+    postalCode?: string | null;
     customerType?: string | null;
     [key: string]: unknown;
   } | null;
@@ -59,6 +60,7 @@ export interface LeadDetail extends LeadSummary {
     year?: number | null;
     mileage?: number | null;
     ownershipStatus?: string | null;
+    vin?: string | null;
   } | null;
   vehicleDesired?: {
     make?: string | null;
@@ -284,12 +286,14 @@ export interface CreateLeadPayload {
     customerType?: string;
     city?: string;
     voivodeship?: string;
+    postalCode?: string;
   };
   currentVehicle?: {
     make?: string;
     model?: string;
     year?: number;
     mileage?: number;
+    vin?: string;
   };
   desiredVehicle?: {
     make?: string;
@@ -377,6 +381,7 @@ export interface UpdateLeadCustomerPayload {
   customerType?: string | null;
   city?: string | null;
   voivodeship?: string | null;
+  postalCode?: string | null;
 }
 
 export const updateLeadCustomer = (
@@ -488,6 +493,7 @@ export interface UpdateLeadVehiclesPayload {
     year?: number;
     mileage?: number;
     ownershipStatus?: string;
+    vin?: string;
   } | null;
   desired?: {
     make?: string;

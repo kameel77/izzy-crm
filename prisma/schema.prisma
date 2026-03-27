@@ -128,6 +128,7 @@ model VehicleCurrent {
   year            Int?
   mileage         Int?
   ownershipStatus String?
+  vin             String?
 }
 
 model VehicleDesired {

@@ -6,12 +6,13 @@ import { fetchPartners, PartnerSummary } from "../api/partners";
 interface CreateLeadFormProps {
   onCreate: (payload: {
     partnerId?: string;
-    customer: { firstName: string; lastName: string; email?: string; phone?: string; customerType?: string; city?: string; voivodeship?: string };
+    customer: { firstName: string; lastName: string; email?: string; phone?: string; customerType?: string; city?: string; voivodeship?: string; postalCode?: string };
     currentVehicle?: {
       make?: string;
       model?: string;
       year?: number;
       mileage?: number;
+      vin?: string;
     };
     desiredVehicle?: {
       make?: string;
@@ -75,12 +76,21 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [customerType, setCustomerType] = useState("");
   const [city, setCity] = useState("");
   const [voivodeship, setVoivodeship] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [downPayment, setDownPayment] = useState("");
   const [currentMake, setCurrentMake] = useState("");
   const [currentModel, setCurrentModel] = useState("");
   const [currentYear, setCurrentYear] = useState("");
   const [currentMileage, setCurrentMileage] = useState("");
+  const [currentVin, setCurrentVin] = useState("");
   const [isVehicleDataExpanded, setIsVehicleDataExpanded] = useState(false);
+
+  const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 5) value = value.slice(0, 5);
+    if (value.length > 2) value = value.slice(0, 2) + "-" + value.slice(2);
+    setPostalCode(value);
+  };
   const [desiredVehicles, setDesiredVehicles] = useState([{
     make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: ""
   }]);
@@ -212,6 +222,12 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     if (phone && !phoneRegex.test(phone.replace(/[\s-]+/g, ""))) {
       newErrors.phone = "Nieprawidłowy numer telefonu (np. +48 123 456 789).";
     }
+    if (postalCode && !/^\d{2}-\d{3}$/.test(postalCode)) {
+      newErrors.postalCode = "Nieprawidłowy kod pocztowy (wymagany format 00-000).";
+    }
+    if (currentVin && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(currentVin)) {
+      newErrors.vin = "Numer VIN musi składać się z dokładnie 17 znaków alfanumerycznych.";
+    }
     const allRequiredConsentsGiven = consentTemplates
       .filter(t => t.isRequired)
       .every(t => consentState[t.id]);
@@ -254,6 +270,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
           customerType: customerType || undefined,
           city: city || undefined,
           voivodeship: voivodeship || undefined,
+          postalCode: postalCode || undefined,
         },
         financing: {
           downPayment: parsedDownPayment,
@@ -265,12 +282,13 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
         })),
       };
 
-      if (currentMake || currentModel || currentYear || currentMileage) {
+      if (currentMake || currentModel || currentYear || currentMileage || currentVin) {
         payload.currentVehicle = {
           make: currentMake || undefined,
           model: currentModel || undefined,
           year: currentYear ? Number(currentYear) : undefined,
           mileage: currentMileage ? Number(currentMileage) : undefined,
+          vin: currentVin || undefined,
         };
       }
 
@@ -317,6 +335,8 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
       setCustomerType("");
       setCity("");
       setVoivodeship("");
+      setPostalCode("");
+      setCurrentVin("");
     } catch (err) {
       setErrors({ form: err instanceof Error ? err.message : "Nie udało się utworzyć leada" });
     } finally {
@@ -426,6 +446,17 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
             />
           </label>
           <label style={styles.label}>
+            Kod pocztowy
+            <input
+              style={styles.input}
+              value={postalCode}
+              onChange={handlePostalCodeChange}
+              placeholder="np. 00-000"
+              maxLength={6}
+            />
+            {errors.postalCode && <span style={styles.fieldError}>{errors.postalCode}</span>}
+          </label>
+          <label style={styles.label}>
             Województwo
             <select
               style={styles.input}
@@ -508,6 +539,17 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                   step="1"
                   onChange={(event) => setCurrentMileage(event.target.value)}
                 />
+              </label>
+              <label style={styles.label}>
+                Nr VIN pojazdu
+                <input
+                  style={styles.input}
+                  value={currentVin}
+                  onChange={(event) => setCurrentVin(event.target.value.toUpperCase())}
+                  placeholder="17 znaków alfanumerycznych"
+                  maxLength={17}
+                />
+                {errors.vin && <span style={styles.fieldError}>{errors.vin}</span>}
               </label>
             </div>
 
