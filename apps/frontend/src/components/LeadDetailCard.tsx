@@ -285,7 +285,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const [clientForm, setClientForm] = useState<ClientFormState>(() => {
     const address =
       (lead?.customerProfile?.address as
-        | { city?: string | null; voivodeship?: string | null; customerType?: string | null }
+        | { city?: string | null; voivodeship?: string | null; customerType?: string | null; postalCode?: string | null }
         | null
         | undefined) || {};
     return {
@@ -296,6 +296,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       customerType: address.customerType ?? "",
       city: address.city ?? "",
       voivodeship: address.voivodeship ?? "",
+      postalCode: address.postalCode ?? "",
     };
   });
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
