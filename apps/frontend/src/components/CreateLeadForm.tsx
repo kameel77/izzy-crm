@@ -86,10 +86,24 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   const [isVehicleDataExpanded, setIsVehicleDataExpanded] = useState(false);
 
   const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 5) value = value.slice(0, 5);
-    if (value.length > 2) value = value.slice(0, 2) + "-" + value.slice(2);
-    setPostalCode(value);
+    const value = e.target.value;
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 5);
+    
+    let formatted = digitsOnly;
+    if (digitsOnly.length > 2) {
+      formatted = `${digitsOnly.slice(0, 2)}-${digitsOnly.slice(2)}`;
+    } else if (digitsOnly.length === 2 && postalCode.length < 3) {
+      formatted = `${digitsOnly}-`;
+    } else if (digitsOnly.length === 2 && value.endsWith('-')) {
+      formatted = `${digitsOnly}-`;
+    }
+    
+    setPostalCode(formatted);
+  };
+
+  const handleVinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    setCurrentVin(val);
   };
   const [desiredVehicles, setDesiredVehicles] = useState([{
     make: "", model: "", yearFrom: "", yearTo: "", budgetFrom: "", budgetTo: "", comment: ""
@@ -225,7 +239,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
     if (postalCode && !/^\d{2}-\d{3}$/.test(postalCode)) {
       newErrors.postalCode = "Nieprawidłowy kod pocztowy (wymagany format 00-000).";
     }
-    if (currentVin && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(currentVin)) {
+    if (currentVin && !/^[a-zA-Z0-9]{17}$/i.test(currentVin)) {
       newErrors.vin = "Numer VIN musi składać się z dokładnie 17 znaków alfanumerycznych.";
     }
     const allRequiredConsentsGiven = consentTemplates
@@ -545,7 +559,7 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
                 <input
                   style={styles.input}
                   value={currentVin}
-                  onChange={(event) => setCurrentVin(event.target.value.toUpperCase())}
+                  onChange={handleVinChange}
                   placeholder="17 znaków alfanumerycznych"
                   maxLength={17}
                 />

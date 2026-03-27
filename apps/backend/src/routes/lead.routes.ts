@@ -118,7 +118,7 @@ const createLeadSchema = z.object({
       year: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
       mileage: z.number().int().min(0).optional(),
       ownershipStatus: z.string().optional(),
-      vin: z.string().length(17).regex(/^[A-HJ-NPR-Z0-9]{17}$/i, "Nieprawidłowy nr VIN").optional(),
+      vin: z.string().length(17).regex(/^[a-zA-Z0-9]{17}$/i, "Nieprawidłowy nr VIN").optional(),
     })
     .optional(),
   desiredVehicle: z
@@ -271,7 +271,7 @@ const vehicleCurrentUpdateSchema = z
     year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
     mileage: z.number().int().min(0).optional(),
     ownershipStatus: z.string().max(100).optional(),
-    vin: z.string().length(17).regex(/^[A-HJ-NPR-Z0-9]{17}$/i, "Nieprawidłowy nr VIN").optional(),
+    vin: z.string().length(17).regex(/^[a-zA-Z0-9]{17}$/i, "Nieprawidłowy nr VIN").optional(),
   })
   .partial();
 
