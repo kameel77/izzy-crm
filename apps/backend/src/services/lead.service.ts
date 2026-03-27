@@ -137,7 +137,7 @@ const leadSummarySelect = {
       status: true,
     },
   },
-  insuranceOnboardingSession: {
+  insuranceOnboarding: {
     select: {
       status: true,
     },
