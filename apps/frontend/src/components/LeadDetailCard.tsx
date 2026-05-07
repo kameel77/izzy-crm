@@ -65,6 +65,8 @@ type VehicleFormState = {
       budgetTo: string;
       comment: string;
     }>;
+    financingType: string;
+    financingAmount: string;
     amountAvailable: string;
     notes: string;
   };
@@ -167,6 +169,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     const latestFinancingApp = lead?.financingApps?.[0];
     const preferences = lead?.vehicleDesired?.preferences as {
       notes?: string;
+      financingType?: string;
+      financingAmount?: string;
       vehicles?: Array<{
         make?: string;
         model?: string;
@@ -203,6 +207,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     }
 
     const desiredNotes = typeof preferences?.notes === "string" ? String(preferences.notes).trim() : "";
+    const financingType = typeof preferences?.financingType === "string" ? preferences.financingType : "";
+    const financingAmount = typeof preferences?.financingAmount === "string" ? preferences.financingAmount : "";
 
     return {
       current: {
@@ -215,6 +221,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       },
       desired: {
         vehicles,
+        financingType,
+        financingAmount,
         amountAvailable: latestFinancingApp?.downPayment
           ? String(latestFinancingApp.downPayment)
           : "",
@@ -695,6 +703,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       budget: primaryBudget,
       preferences: {
         notes: notesValue || undefined,
+        financingType: trimOrUndefined(vehicleForm.desired.financingType),
+        financingAmount: trimOrUndefined(vehicleForm.desired.financingAmount),
         vehicles: vehicleForm.desired.vehicles.map(v => ({
           make: trimOrUndefined(v.make),
           model: trimOrUndefined(v.model),
@@ -892,6 +902,36 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       meta.push(`Przebieg: ${mileageValue} km`);
     }
     return meta.length ? `${base}${base === "—" ? "" : ", "}${meta.join(", ")}` : base;
+  };
+
+  const formatFinancing = (): string => {
+    const vehicle = lead.vehicleDesired;
+    if (!vehicle) return "—";
+
+    const preferences = vehicle.preferences as {
+      financingType?: string;
+      financingAmount?: string;
+    } | null | undefined;
+
+    const type = preferences?.financingType;
+    const amount = preferences?.financingAmount;
+
+    if (!type) return "—";
+
+    if ((type === "Kredyt" || type === "Leasing") && amount) {
+      const parsedAmount = Number(amount);
+      if (Number.isFinite(parsedAmount) && parsedAmount >= 0) {
+        const formattedAmount = new Intl.NumberFormat("pl-PL", {
+          style: "currency",
+          currency: "PLN",
+          minimumFractionDigits: 0,
+        }).format(parsedAmount);
+        return `${type} (${formattedAmount})`;
+      }
+      return `${type} (${amount} PLN)`;
+    }
+
+    return type;
   };
 
   const formatDesiredVehicle = (): React.ReactNode => {
@@ -1189,6 +1229,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         </div>
         <InfoItem label="Aktualny pojazd" value={formatCurrentVehicle()} />
         <InfoItem label="Żądany pojazd" value={formatDesiredVehicle()} />
+        <InfoItem label="Forma finansowania" value={formatFinancing()} />
       </div>
 
       <div style={styles.section}>
@@ -1967,6 +2008,36 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             ))}
 
             <div style={styles.fieldGrid}>
+              <label style={styles.modalLabel}>
+                Rodzaj finansowania
+                <select
+                  value={vehicleForm.desired.financingType}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "financingType", event.target.value)
+                  }
+                  style={styles.modalInput}
+                >
+                  <option value="">Wybierz...</option>
+                  <option value="Gotówka">Gotówka</option>
+                  <option value="Kredyt">Kredyt</option>
+                  <option value="Leasing">Leasing</option>
+                </select>
+              </label>
+              {(vehicleForm.desired.financingType === "Kredyt" || vehicleForm.desired.financingType === "Leasing") && (
+                <label style={styles.modalLabel}>
+                  Kwota finansowania (PLN)
+                  <input
+                    type="number"
+                    value={vehicleForm.desired.financingAmount}
+                    onChange={(event) =>
+                      handleVehicleFieldChange("desired", "financingAmount", event.target.value)
+                    }
+                    style={styles.modalInput}
+                    min={0}
+                    step="0.01"
+                  />
+                </label>
+              )}
               <label style={styles.modalLabel}>
                 Wysokość odszkodowania (PLN)
                 <input
