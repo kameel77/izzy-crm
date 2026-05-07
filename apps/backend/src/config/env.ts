@@ -95,7 +95,7 @@ if (!parsed.success) {
 }
 
 const corsOrigins = parsed.data.CORS_ORIGIN.split(",")
-  .map((origin) => origin.trim().replace(/\/$/, "").toLowerCase())
+  .map((origin) => origin.trim().replace(/^["']+|["']+$/g, "").replace(/\/$/, "").toLowerCase())
   .filter(Boolean);
 const normalizedCorsOrigins = corsOrigins.length > 0 ? corsOrigins : ["*"];
 
