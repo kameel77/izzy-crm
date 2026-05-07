@@ -250,6 +250,7 @@ export const createLead = async (input: CreateLeadInput) => {
           sourceMetadata: toJson(input.sourceMetadata),
           notes: input.notes,
           createdByUserId: input.createdByUserId ?? null,
+          assignedUserId: input.createdByUserId ?? null,
           customerProfile: {
             create: {
               firstName: input.customer.firstName,
