@@ -282,6 +282,7 @@ const desiredVehicleUpdateSchema = z
     year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
     budget: z.number().min(0).nullable().optional(),
     notes: z.string().max(500).optional(),
+    preferences: z.record(z.unknown()).nullable().optional(),
   })
   .partial();
 
@@ -583,11 +584,13 @@ router.patch(
               ? body.desired.budget
               : undefined,
           preferences:
-            typeof body.desired.notes === "string"
-              ? body.desired.notes.trim().length
-                ? { notes: body.desired.notes.trim() }
-                : null
-              : undefined,
+            body.desired.preferences !== undefined
+              ? body.desired.preferences
+              : typeof body.desired.notes === "string"
+                ? body.desired.notes.trim().length
+                  ? { notes: body.desired.notes.trim() }
+                  : null
+                : undefined,
         }
         : body.desired;
     const amountAvailableInput =
@@ -687,6 +690,7 @@ router.post(
       leadId: id,
       targetStatus: body.status,
       userId: req.user!.id,
+      userRole: req.user!.role,
       notes: body.notes,
       assignToUserId,
       lastContactAt: body.lastContactAt,

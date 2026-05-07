@@ -502,6 +502,7 @@ export interface UpdateLeadVehiclesPayload {
     year?: number;
     budget?: number | null;
     notes?: string;
+    preferences?: Record<string, unknown>;
   } | null;
   amountAvailable?: number | null;
 }

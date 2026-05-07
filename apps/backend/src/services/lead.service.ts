@@ -878,6 +878,7 @@ export interface TransitionLeadInput {
   leadId: string;
   targetStatus: LeadStatus;
   userId: string;
+  userRole?: UserRole;
   notes?: string;
   assignToUserId?: string | null;
   lastContactAt?: Date;
@@ -908,7 +909,9 @@ export const transitionLeadStatus = async (input: TransitionLeadInput) => {
     }
 
     const transitions = allowedTransitions[current.status] || [];
-    if (!transitions.includes(input.targetStatus)) {
+    const canBypass = input.userRole === UserRole.OPERATOR || input.userRole === UserRole.SUPERVISOR || input.userRole === UserRole.ADMIN;
+    
+    if (!canBypass && !transitions.includes(input.targetStatus)) {
       const error = new Error("Status transition not allowed");
       (error as Error & { status: number }).status = 400;
       throw error;
