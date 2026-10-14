@@ -14,25 +14,36 @@ interface LeadConversionRateChartProps {
   data: { name: string; value: number }[];
 }
 
+const axisTick = { fill: "var(--ink-tertiary)", fontSize: 12, fontFamily: "var(--font-sans)" };
+const tooltipStyle = {
+  background: "var(--surface-raised)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  boxShadow: "var(--shadow-md)",
+  fontSize: 12,
+};
+
 export const LeadConversionRateChart: React.FC<LeadConversionRateChartProps> = ({ data }) => {
   const formatPercent = (value: number) => `${Math.round(value * 1000) / 10}%`;
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 12 }} />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+        <XAxis dataKey="name" tick={axisTick} stroke="var(--border)" />
         <YAxis
           tickFormatter={formatPercent}
-          tick={{ fill: "#475569", fontSize: 12 }}
+          tick={axisTick}
           domain={[0, 1]}
+          stroke="var(--border)"
         />
         <Tooltip
           formatter={(value: number) => formatPercent(value)}
-          cursor={{ fill: "rgba(14, 165, 233, 0.08)" }}
+          contentStyle={tooltipStyle}
+          cursor={{ fill: "var(--surface-subtle)" }}
         />
         <Legend />
-        <Bar dataKey="value" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+        <Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

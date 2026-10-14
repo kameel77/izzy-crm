@@ -6,6 +6,7 @@ import { AuthProvider } from "./providers/AuthProvider";
 import { TelemetryProvider } from "./hooks/useTelemetry";
 import { ToastProvider } from "./providers/ToastProvider";
 import "./styles/global.css";
+import "./styles/layout.css";
 
 const rootElement = document.getElementById("root");
 

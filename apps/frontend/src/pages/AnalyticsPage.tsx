@@ -8,14 +8,16 @@ import {
   DashboardMonitoringDataResponse,
 } from "../api/analytics";
 import { Dashboard } from "../components/dashboard/Dashboard";
+import { Icon, SegmentedControl, StatCard } from "../components/ui";
+import type { IconName } from "../components/ui";
 import { LEAD_STATUS_LABELS } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../providers/ToastProvider";
 
 const RANGE_OPTIONS = [
-  { label: "Last 7 days", value: 7 },
-  { label: "Last 30 days", value: 30 },
-  { label: "Last 90 days", value: 90 },
+  { label: "7 days", value: "7" },
+  { label: "30 days", value: "30" },
+  { label: "90 days", value: "90" },
 ];
 
 const formatNumber = (value: number) => value.toLocaleString();
@@ -46,20 +48,6 @@ const formatRange = (startIso: string, endIso: string) => {
     return "";
   }
 };
-
-interface SummaryCardProps {
-  label: string;
-  value: string;
-  description?: string;
-}
-
-const SummaryCard: React.FC<SummaryCardProps> = ({ label, value, description }) => (
-  <div style={styles.summaryCard}>
-    <div style={styles.summaryLabel}>{label}</div>
-    <div style={styles.summaryValue}>{value}</div>
-    {description ? <div style={styles.summaryDescription}>{description}</div> : null}
-  </div>
-);
 
 export const AnalyticsPage: React.FC = () => {
   const { token } = useAuth();
@@ -120,29 +108,35 @@ export const AnalyticsPage: React.FC = () => {
     };
   }, [token, rangeDays]);
 
-  const summaryCards = useMemo(() => {
+  const summaryCards = useMemo<
+    Array<{ label: string; value: string; description: string; icon: IconName }>
+  >(() => {
     if (!analytics) return [];
     const summary = analytics.summary;
     return [
       {
-        label: "Total Leads",
+        label: "Total leads",
         value: formatNumber(summary.totalLeads),
         description: "All-time captured",
+        icon: "users",
       },
       {
-        label: "New Leads",
+        label: "New leads",
         value: formatNumber(summary.leadsInRange),
         description: `Created in the last ${rangeDays} days`,
+        icon: "plus",
       },
       {
-        label: "Conversion Rate",
+        label: "Conversion rate",
         value: formatPercent(summary.overallConversionRate),
         description: "Signed agreements vs. created leads",
+        icon: "chart",
       },
       {
-        label: "Avg. Time to Close",
+        label: "Avg. time to close",
         value: formatDays(summary.averageTimeToCloseDays),
         description: "Signed agreements in this window",
+        icon: "clock",
       },
     ];
   }, [analytics, rangeDays]);
@@ -175,43 +169,40 @@ export const AnalyticsPage: React.FC = () => {
     analytics && analytics.range ? formatRange(analytics.range.start, analytics.range.end) : "";
 
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
+    <div className="app-page">
+      <div className="app-title-row">
         <div>
-          <h1 style={styles.heading}>Analytics Dashboard</h1>
-          <p style={styles.subheading}>
+          <h1 className="app-page-title">Analytics</h1>
+          <p className="app-page-desc">
             Monitor pipeline health, identify bottlenecks, and surface partner performance trends.
+            {rangeLabel ? ` · Window: ${rangeLabel}` : ""}
           </p>
-          {rangeLabel ? <p style={styles.rangeHint}>Window: {rangeLabel}</p> : null}
         </div>
-        <div style={styles.controls}>
-          <label htmlFor="analytics-range" style={styles.controlLabel}>
-            Time range
-          </label>
-          <select
-            id="analytics-range"
-            value={rangeDays}
-            onChange={(event) => setRangeDays(Number(event.target.value))}
-            style={styles.select}
-          >
-            {RANGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="app-title-row__acts">
+          <SegmentedControl
+            aria-label="Time range"
+            value={String(rangeDays)}
+            onChange={(value) => setRangeDays(Number(value))}
+            options={RANGE_OPTIONS}
+          />
         </div>
-      </header>
+      </div>
 
-      {error ? <div style={styles.errorBanner}>{error}</div> : null}
+      {error ? (
+        <div className="app-alert app-alert--danger" role="alert">
+          <Icon name="alert" />
+          {error}
+        </div>
+      ) : null}
 
-      <section style={styles.summaryRow}>
+      <section className="app-kpis">
         {summaryCards.map((card) => (
-          <SummaryCard
+          <StatCard
             key={card.label}
             label={card.label}
             value={card.value}
-            description={card.description}
+            compareLabel={card.description}
+            icon={card.icon}
           />
         ))}
       </section>
@@ -225,94 +216,4 @@ export const AnalyticsPage: React.FC = () => {
       />
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "2rem",
-  },
-  header: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: "1.5rem",
-  },
-  heading: {
-    margin: 0,
-    fontSize: "2rem",
-    fontWeight: 700,
-    color: "#0f172a",
-  },
-  subheading: {
-    marginTop: "0.5rem",
-    marginBottom: "0.75rem",
-    fontSize: "1rem",
-    color: "#475569",
-    maxWidth: "620px",
-    lineHeight: 1.5,
-  },
-  rangeHint: {
-    margin: 0,
-    fontSize: "0.85rem",
-    color: "#64748b",
-  },
-  controls: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    minWidth: "180px",
-  },
-  controlLabel: {
-    fontSize: "0.8rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    color: "#64748b",
-  },
-  select: {
-    padding: "0.6rem 0.75rem",
-    borderRadius: "0.75rem",
-    border: "1px solid rgba(100, 116, 139, 0.35)",
-    background: "#f8fafc",
-    fontSize: "0.95rem",
-    color: "#0f172a",
-    cursor: "pointer",
-  },
-  summaryRow: {
-    display: "grid",
-    gap: "1.5rem",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  },
-  summaryCard: {
-    background: "#fff",
-    borderRadius: "1rem",
-    padding: "1.5rem",
-    boxShadow: "0 18px 35px rgba(15, 23, 42, 0.08)",
-    border: "1px solid rgba(15, 23, 42, 0.05)",
-  },
-  summaryLabel: {
-    fontSize: "0.8rem",
-    letterSpacing: "0.1em",
-    textTransform: "uppercase",
-    color: "#64748b",
-    marginBottom: "0.5rem",
-  },
-  summaryValue: {
-    fontSize: "1.9rem",
-    fontWeight: 700,
-    color: "#0f172a",
-    marginBottom: "0.35rem",
-  },
-  summaryDescription: {
-    fontSize: "0.85rem",
-    color: "#475569",
-  },
-  errorBanner: {
-    padding: "0.85rem 1rem",
-    borderRadius: "0.75rem",
-    background: "rgba(239, 68, 68, 0.12)",
-    color: "#b91c1c",
-    border: "1px solid rgba(239, 68, 68, 0.25)",
-  },
 };

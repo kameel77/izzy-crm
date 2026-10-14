@@ -1,6 +1,7 @@
 import React from "react";
 import { DashboardMonitoringDataResponse } from "../../api/analytics";
 
+import { Card } from "../ui";
 import { FailedPinAttemptsWidget } from "./FailedPinAttemptsWidget";
 import { LeadConversionRateChart } from "./LeadConversionRateChart";
 import { LeadFunnelChart } from "./LeadFunnelChart";
@@ -25,123 +26,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isLoading = false,
 }) => {
   return (
-    <div style={styles.wrapper}>
-      <section style={styles.section}>
-        <header style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>System Monitoring</h3>
-          <p style={styles.sectionSubtitle}>
-            Surface operational issues and potential client friction points.
-          </p>
-        </header>
-        <div style={styles.monitoringGrid}>
-          <FailedPinAttemptsWidget
-            count={monitoringData?.failedPinAttempts.count ?? 0}
-            rangeDays={monitoringData?.failedPinAttempts.rangeDays ?? 7}
-            loading={isLoading}
-          />
-          <StuckFormsWidget
-            forms={monitoringData?.stuckForms ?? []}
-            loading={isLoading}
-          />
-        </div>
-      </section>
+    <div className="app-stack">
+      <div className="app-grid-2">
+        <FailedPinAttemptsWidget
+          count={monitoringData?.failedPinAttempts.count ?? 0}
+          rangeDays={monitoringData?.failedPinAttempts.rangeDays ?? 7}
+          loading={isLoading}
+        />
+        <StuckFormsWidget
+          forms={monitoringData?.stuckForms ?? []}
+          loading={isLoading}
+        />
+      </div>
 
-      <section style={styles.section}>
-        <header style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Lead Volume Over Time</h3>
-          <p style={styles.sectionSubtitle}>New leads created during the selected window</p>
-        </header>
-        <div style={styles.chartSurface}>
-          {isLoading ? (
-            <div style={styles.emptyState}>Loading chart…</div>
-          ) : hasData(leadVolume) ? (
-            <LeadVolumeChart data={leadVolume} />
-          ) : (
-            <div style={styles.emptyState}>No lead activity recorded for this range.</div>
-          )}
-        </div>
-      </section>
+      <Card
+        title="Lead volume over time"
+        subtitle="New leads created during the selected window"
+        icon="chart"
+      >
+        {isLoading ? (
+          <div className="app-chart-empty">Loading chart…</div>
+        ) : hasData(leadVolume) ? (
+          <LeadVolumeChart data={leadVolume} />
+        ) : (
+          <div className="app-chart-empty">No lead activity recorded for this range.</div>
+        )}
+      </Card>
 
-      <section style={styles.section}>
-        <header style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Lead Conversion Rate</h3>
-          <p style={styles.sectionSubtitle}>
-            Ratio of signed agreements versus created leads per partner
-          </p>
-        </header>
-        <div style={styles.chartSurface}>
-          {isLoading ? (
-            <div style={styles.emptyState}>Loading chart…</div>
-          ) : hasData(conversionRate) ? (
-            <LeadConversionRateChart data={conversionRate} />
-          ) : (
-            <div style={styles.emptyState}>No partner conversion data available.</div>
-          )}
-        </div>
-      </section>
+      <Card
+        title="Lead conversion rate"
+        subtitle="Ratio of signed agreements versus created leads per partner"
+        icon="chart"
+      >
+        {isLoading ? (
+          <div className="app-chart-empty">Loading chart…</div>
+        ) : hasData(conversionRate) ? (
+          <LeadConversionRateChart data={conversionRate} />
+        ) : (
+          <div className="app-chart-empty">No partner conversion data available.</div>
+        )}
+      </Card>
 
-      <section style={styles.section}>
-        <header style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Lead Funnel</h3>
-          <p style={styles.sectionSubtitle}>Current distribution of leads by status</p>
-        </header>
-        <div style={styles.chartSurface}>
-          {isLoading ? (
-            <div style={styles.emptyState}>Loading chart…</div>
-          ) : hasData(funnel) ? (
-            <LeadFunnelChart data={funnel} />
-          ) : (
-            <div style={styles.emptyState}>No leads yet in the funnel.</div>
-          )}
-        </div>
-      </section>
+      <Card title="Lead funnel" subtitle="Current distribution of leads by status" icon="filter">
+        {isLoading ? (
+          <div className="app-chart-empty">Loading chart…</div>
+        ) : hasData(funnel) ? (
+          <LeadFunnelChart data={funnel} />
+        ) : (
+          <div className="app-chart-empty">No leads yet in the funnel.</div>
+        )}
+      </Card>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
-    display: "grid",
-    gap: "2rem",
-  },
-  section: {
-    background: "#fff",
-    borderRadius: "1rem",
-    padding: "1.75rem",
-    boxShadow: "0 18px 35px rgba(15, 23, 42, 0.08)",
-    border: "1px solid rgba(15, 23, 42, 0.05)",
-  },
-  monitoringGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "1.5rem",
-  },
-  sectionHeader: {
-    marginBottom: "1.5rem",
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: "1.15rem",
-    fontWeight: 700,
-    color: "#0f172a",
-  },
-  sectionSubtitle: {
-    marginTop: "0.4rem",
-    marginBottom: 0,
-    fontSize: "0.85rem",
-    color: "#64748b",
-  },
-  chartSurface: {
-    position: "relative",
-    minHeight: "280px",
-  },
-  emptyState: {
-    display: "grid",
-    placeItems: "center",
-    height: "100%",
-    color: "#94a3b8",
-    fontSize: "0.9rem",
-    background: "repeating-linear-gradient(135deg, #f8fafc, #f8fafc 12px, #f1f5f9 12px, #f1f5f9 24px)",
-    borderRadius: "0.75rem",
-  },
 };
