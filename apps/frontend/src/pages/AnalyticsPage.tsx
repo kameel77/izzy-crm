@@ -93,7 +93,7 @@ export const AnalyticsPage: React.FC = () => {
         const message =
           err instanceof ApiError ? err.message : "Failed to load analytics dashboard";
         setError(message);
-        toastsRef.current.error(message);
+        toastsRef.current.addToast(message, "error");
       } finally {
         if (!isCancelled) {
           setIsLoading(false);
