@@ -5,8 +5,40 @@ import multer from "multer";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import { env } from "../config/env.js";
+import { createHttpError } from "./httpError.js";
 
 const rootUploadDir = env.uploadDir;
+
+const ALLOWED_EXTENSIONS = new Set([
+  ".pdf",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".csv",
+  ".txt",
+  ".odt",
+  ".ods",
+]);
+
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "text/plain",
+  "application/vnd.oasis.opendocument.text",
+  "application/vnd.oasis.opendocument.spreadsheet",
+]);
 
 const ensureDir = (dir: string) => {
   if (!fs.existsSync(dir)) {
@@ -33,6 +65,23 @@ if (env.uploadDriver === "s3" && env.s3) {
 export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: env.uploadMaxBytes },
+  fileFilter: (_req, file, callback) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+
+    if (!ALLOWED_EXTENSIONS.has(ext) || !ALLOWED_MIME_TYPES.has(mime)) {
+      callback(
+        createHttpError({
+          status: 400,
+          code: "UNSUPPORTED_FILE_TYPE",
+          message: "Unsupported file type",
+        }),
+      );
+      return;
+    }
+
+    callback(null, true);
+  },
 });
 
 interface SaveFileArgs {
@@ -50,15 +99,21 @@ export interface SaveFileResult {
 }
 
 const generateFileName = (originalName: string) => {
-  const ext = path.extname(originalName);
+  const rawExt = path.extname(originalName).toLowerCase();
+  const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : ".bin";
   const base = randomBytes(6).toString("hex");
   return `${Date.now()}-${base}${ext}`;
 };
 
 export const saveUploadedFile = async ({ leadId, file }: SaveFileArgs): Promise<SaveFileResult> => {
+  const safeLeadId = path.basename(leadId);
+  if (!safeLeadId || safeLeadId === "." || safeLeadId === "..") {
+    throw createHttpError({ status: 400, message: "Invalid leadId" });
+  }
+
   const filename = generateFileName(file.originalname);
   if (env.uploadDriver === "s3" && s3Client && env.s3) {
-    const key = `leads/${leadId}/${filename}`;
+    const key = `leads/${safeLeadId}/${filename}`;
     await s3Client.send(
       new PutObjectCommand({
         Bucket: env.s3.bucket,
@@ -86,11 +141,11 @@ export const saveUploadedFile = async ({ leadId, file }: SaveFileArgs): Promise<
 
   // disk fallback
   ensureDir(rootUploadDir);
-  const leadDir = path.join(rootUploadDir, leadId);
+  const leadDir = path.join(rootUploadDir, safeLeadId);
   ensureDir(leadDir);
   const diskPath = path.join(leadDir, filename);
   fs.writeFileSync(diskPath, file.buffer);
-  const publicPath = path.posix.join("/uploads", leadId, filename);
+  const publicPath = path.posix.join("/uploads", safeLeadId, filename);
 
   return {
     filePath: publicPath,

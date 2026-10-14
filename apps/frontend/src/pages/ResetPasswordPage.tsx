@@ -1,16 +1,20 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { ApiError } from "../api/client";
-import { requestPasswordReset } from "../api/auth";
+import { confirmPasswordReset, requestPasswordReset } from "../api/auth";
 
 export const ResetPasswordPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const resetToken = searchParams.get("token")?.trim() ?? "";
+
   const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleRequestSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSuccess(false);
@@ -30,33 +34,86 @@ export const ResetPasswordPage: React.FC = () => {
     }
   };
 
+  const handleConfirmSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setSuccess(false);
+    setIsSubmitting(true);
+
+    try {
+      await confirmPasswordReset(resetToken, newPassword.trim());
+      setSuccess(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Link resetujący wygasł lub jest nieprawidłowy.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div style={styles.overlay}>
       <div style={styles.container}>
         <div style={styles.card}>
           <h1 style={styles.title}>Zresetuj hasło</h1>
-          <p style={styles.subtitle}>Podaj adres e-mail konta, a wyślemy nowe hasło.</p>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <label style={styles.label}>
-              Email
-              <input
-                style={styles.input}
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </label>
-            {error ? <div style={styles.error}>{error}</div> : null}
-            {success ? (
-              <div style={styles.success}>
-                Jeśli konto istnieje, wysłaliśmy nowe hasło na podany adres e-mail.
-              </div>
-            ) : null}
-            <button type="submit" style={styles.button} disabled={isSubmitting}>
-              {isSubmitting ? "Wysyłanie..." : "Wyślij"}
-            </button>
-          </form>
+          {resetToken ? (
+            <>
+              <p style={styles.subtitle}>
+                Wprowadź nowe hasło (min. 8 znaków), aby zakończyć proces resetowania.
+              </p>
+              <form onSubmit={handleConfirmSubmit} style={styles.form}>
+                <label style={styles.label}>
+                  Nowe hasło
+                  <input
+                    style={styles.input}
+                    type="password"
+                    minLength={8}
+                    required
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="Wpisz nowe hasło..."
+                  />
+                </label>
+                {error ? <div style={styles.error}>{error}</div> : null}
+                {success ? (
+                  <div style={styles.success}>
+                    Hasło zostało zaktualizowane. Możesz się teraz zalogować.
+                  </div>
+                ) : null}
+                <button type="submit" style={styles.button} disabled={isSubmitting || success}>
+                  {isSubmitting ? "Zapisywanie..." : "Potwierdź zmianę hasła"}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p style={styles.subtitle}>Podaj adres e-mail konta, a wyślemy link do resetu hasła.</p>
+              <form onSubmit={handleRequestSubmit} style={styles.form}>
+                <label style={styles.label}>
+                  Email
+                  <input
+                    style={styles.input}
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                  />
+                </label>
+                {error ? <div style={styles.error}>{error}</div> : null}
+                {success ? (
+                  <div style={styles.success}>
+                    Jeśli konto jest aktywne, wysłaliśmy link do resetu hasła na podany adres e-mail.
+                  </div>
+                ) : null}
+                <button type="submit" style={styles.button} disabled={isSubmitting}>
+                  {isSubmitting ? "Wysyłanie..." : "Wyślij"}
+                </button>
+              </form>
+            </>
+          )}
           <Link to="/login" style={styles.link}>
             Powrót do logowania
           </Link>

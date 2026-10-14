@@ -5,6 +5,7 @@ import { generateOfferLink, sendLeadEmail } from "../api/leads";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../providers/ToastProvider";
 import { Modal } from "./Modal";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 interface ReplyContext {
   noteId?: string;
@@ -390,7 +391,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
               <div style={styles.previewLabel}>Podgląd cytowanej historii</div>
               <div
                 style={styles.previewContent}
-                dangerouslySetInnerHTML={{ __html: replyContext.quotedHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(replyContext.quotedHtml) }}
               />
             </div>
           ) : null}

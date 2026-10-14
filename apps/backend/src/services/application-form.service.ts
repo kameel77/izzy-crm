@@ -1,5 +1,5 @@
 import { Prisma, UserRole, ApplicationFormStatus, EmailLogStatus, EmailLogType, UserStatus, ConsentMethod } from "@prisma/client";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, timingSafeEqual } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
@@ -209,7 +209,7 @@ export const generateApplicationFormLink = async ({
     },
   });
 
-  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}&hash=${accessCodeHash}`;
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${form.id}&leadId=${leadId}`;
 
   await prisma.leadNote.create({
     data: {
@@ -352,8 +352,8 @@ export const unlockApplicationForm = async (params: {
     },
   });
 
-  // Build link to send to the client (reuse existing accessCodeHash)
-  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}&hash=${form.accessCodeHash}`;
+  // Build link to send to the client (do not leak accessCodeHash in query string)
+  const linkUrl = `${env.app.baseUrl}/client-form/consents?applicationFormId=${updatedForm.id}&leadId=${updatedForm.leadId}`;
 
   // Enrich unlock history with actor user display data (best-effort)
   const actor = await prisma.user.findUnique({
@@ -489,7 +489,12 @@ export const verifyApplicationFormAccess = async (params: {
   }
 
   const providedCodeHash = hashAccessCode(params.code.trim());
-  if (providedCodeHash !== form.accessCodeHash) {
+  const providedBuf = Buffer.from(providedCodeHash, "utf8");
+  const expectedBuf = Buffer.from(form.accessCodeHash, "utf8");
+  if (
+    providedBuf.length !== expectedBuf.length ||
+    !timingSafeEqual(providedBuf, expectedBuf)
+  ) {
     registerFailedAttempt(params.applicationFormId, nowMs);
     throw createHttpError({ status: 401, code: "INVALID_CODE", message: "Nieprawidłowy kod dostępu" });
   }
@@ -504,7 +509,7 @@ export const verifyApplicationFormAccess = async (params: {
     },
   });
 
-  return { ok: true as const };
+  return { ok: true as const, accessCodeHash: form.accessCodeHash };
 };
 
 export const heartbeatApplicationForm = async (applicationFormId: string) => {

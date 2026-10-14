@@ -27,9 +27,13 @@ const mockPrisma = {
 };
 
 vi.mock("../../lib/prisma.js", () => ({ prisma: mockPrisma }));
-vi.mock("crypto", () => ({
-  randomBytes: () => Buffer.from("0123456789abcdef0123456789abcdef"),
-}));
+vi.mock("crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("crypto")>();
+  return {
+    ...actual,
+    randomBytes: () => Buffer.from("0123456789abcdef0123456789abcdef"),
+  };
+});
 const sendMailMock = vi.fn();
 vi.mock("../mail.service.js", () => ({
   sendMail: sendMailMock,

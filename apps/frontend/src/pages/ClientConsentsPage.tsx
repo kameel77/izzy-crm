@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ApiError } from "../api/client";
+import { verifyApplicationFormAccess } from "../api/application-forms";
 import {
   ConsentTemplateDto,
   fetchConsentTemplates,
@@ -56,26 +57,19 @@ export const ClientConsentsPage: React.FC = () => {
   const applicationFormId = searchParams.get("applicationFormId") ?? "";
   const leadId = searchParams.get("leadId") ?? "";
   const isClientActive = searchParams.get("clientActive") === "true";
-  const queryHash = searchParams.get("hash") ?? null;
 
   const persistedSnapshot = React.useMemo(() => {
     if (!applicationFormId || !leadId) return null;
     return clientFormStore.load(applicationFormId, leadId);
   }, [applicationFormId, leadId]);
 
-  const storedAccessCodeHash = persistedSnapshot?.accessCodeHash ?? null;
-  const expectedHash = queryHash ?? storedAccessCodeHash ?? null;
-
-  const [resolvedAccessCodeHash, setResolvedAccessCodeHash] = React.useState<string | null>(() => {
-    if (expectedHash && persistedSnapshot?.accessCodeHash === expectedHash) {
-      return expectedHash;
-    }
-    return null;
-  });
+  const [resolvedAccessCodeHash, setResolvedAccessCodeHash] = React.useState<string | null>(
+    () => persistedSnapshot?.accessCodeHash ?? null,
+  );
 
   const [pinInput, setPinInput] = React.useState("");
   const [pinError, setPinError] = React.useState<string | null>(null);
-  const requiresAccessCode = Boolean(expectedHash) && resolvedAccessCodeHash !== expectedHash;
+  const requiresAccessCode = Boolean(applicationFormId && leadId) && !resolvedAccessCodeHash;
 
   const handlePinSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -85,18 +79,19 @@ export const ClientConsentsPage: React.FC = () => {
       return;
     }
     try {
-      const hash = await hashAccessCode(sanitized);
-      if (!expectedHash || hash !== expectedHash) {
-        setPinError("Nieprawidłowy kod dostępu");
-        logUnlockAttempt(applicationFormId, false);
-        return;
-      }
+      const response = await verifyApplicationFormAccess({
+        applicationFormId,
+        leadId,
+        code: sanitized,
+      });
+      const verifiedHash = response.accessCodeHash ?? (await hashAccessCode(sanitized));
       logUnlockAttempt(applicationFormId, true);
-      setResolvedAccessCodeHash(hash);
+      setResolvedAccessCodeHash(verifiedHash);
       setPinInput("");
       setPinError(null);
-    } catch (error) {
-      setPinError("Nie udało się przetworzyć kodu. Spróbuj ponownie");
+    } catch {
+      setPinError("Nieprawidłowy kod dostępu");
+      logUnlockAttempt(applicationFormId, false);
     }
   };
 

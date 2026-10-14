@@ -2,6 +2,7 @@ import { UserRole, UserStatus } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 
+import { prisma } from "../lib/prisma.js";
 import { authorize } from "../middlewares/authorize.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendPasswordResetEmail, sendUserInviteEmail } from "../services/mail.service.js";
@@ -120,10 +121,22 @@ router.patch(
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const payload = updateUserSchema.parse(req.body);
 
-    if (payload.role === UserRole.ADMIN && req.user?.role !== UserRole.ADMIN) {
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (
+      (targetUser.role === UserRole.ADMIN || payload.role === UserRole.ADMIN) &&
+      req.user?.role !== UserRole.ADMIN
+    ) {
       return res
         .status(403)
-        .json({ message: "Only admins can escalate accounts to admin role" });
+        .json({ message: "Only admins can modify or escalate admin accounts" });
     }
 
     const user = await updateUser({
@@ -146,6 +159,19 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const { password } = resetPasswordSchema.parse(req.body);
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (targetUser.role === UserRole.ADMIN && req.user?.role !== UserRole.ADMIN) {
+      return res.status(403).json({ message: "Only admins can reset admin passwords" });
+    }
 
     const user = await resetPassword({ userId: id, newPassword: password });
 

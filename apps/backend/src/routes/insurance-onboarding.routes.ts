@@ -3,7 +3,9 @@ import { z } from "zod";
 
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
+import { createRateLimiter } from "../middlewares/rateLimit.js";
 import { UserRole } from "@prisma/client";
+import { ensureOperatorCanMutateLead } from "../services/application-form.service.js";
 import {
     startOnboarding,
     getOnboardingStatus,
@@ -11,9 +13,17 @@ import {
     saveContactSlot,
     captureConsents,
 } from "../services/insurance-onboarding.service.js";
+import { getLeadById } from "../services/lead.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { canAccessLead } from "../utils/leadAccess.js";
 
 const router = Router();
+
+const onboardingPublicLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    keyPrefix: "insurance-onboarding:public",
+});
 
 // ── CRM (authenticated) routes ────────────────────────────────────────────────
 
@@ -24,6 +34,20 @@ router.post(
     authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
     asyncHandler(async (req, res) => {
         const { id: leadId } = z.object({ id: z.string().cuid() }).parse(req.params);
+        const lead = await getLeadById(leadId);
+        if (!lead) {
+            return res.status(404).json({ message: "Lead not found" });
+        }
+        if (!canAccessLead(lead, req.user)) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+        if (req.user?.role === UserRole.OPERATOR) {
+            await ensureOperatorCanMutateLead({
+                leadId,
+                actorUserId: req.user.id,
+                actorRole: req.user.role,
+            });
+        }
         const result = await startOnboarding({ leadId, actorUserId: req.user!.id });
         res.status(200).json(result);
     }),
@@ -36,6 +60,13 @@ router.get(
     authorize(UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN),
     asyncHandler(async (req, res) => {
         const { id: leadId } = z.object({ id: z.string().cuid() }).parse(req.params);
+        const lead = await getLeadById(leadId);
+        if (!lead) {
+            return res.status(404).json({ message: "Lead not found" });
+        }
+        if (!canAccessLead(lead, req.user)) {
+            return res.status(403).json({ message: "Access denied" });
+        }
         const status = await getOnboardingStatus(leadId);
         res.json({ data: status });
     }),
@@ -46,6 +77,7 @@ router.get(
 /** GET /api/insurance-onboarding/verify?token=...  – LP verifies token on load */
 router.get(
     "/insurance-onboarding/verify",
+    onboardingPublicLimiter,
     asyncHandler(async (req, res) => {
         const { token } = z.object({ token: z.string().min(32) }).parse(req.query);
         const result = await verifyOnboardingToken(token);
@@ -56,6 +88,7 @@ router.get(
 /** POST /api/insurance-onboarding/contact-slot  – save selected calendar slot */
 router.post(
     "/insurance-onboarding/contact-slot",
+    onboardingPublicLimiter,
     asyncHandler(async (req, res) => {
         const body = z.object({
             token: z.string().min(32),
@@ -77,6 +110,7 @@ router.post(
 /** POST /api/insurance-onboarding/consents  – save consent records */
 router.post(
     "/insurance-onboarding/consents",
+    onboardingPublicLimiter,
     asyncHandler(async (req, res) => {
         const body = z.object({
             token: z.string().min(32),

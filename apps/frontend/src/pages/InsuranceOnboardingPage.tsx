@@ -1,6 +1,7 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 type VerifyResponse = {
     sessionId: string;
@@ -329,7 +330,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
                                         </div>
                                         {expandedConsents[t.id] && (
                                             <div style={s.consentContentWrap}>
-                                                <div style={s.consentContent} dangerouslySetInnerHTML={{ __html: t.content }} />
+                                                <div style={s.consentContent} dangerouslySetInnerHTML={{ __html: sanitizeHtml(t.content) }} />
                                                 {t.helpText && <p style={s.consentHelp}>{t.helpText}</p>}
                                             </div>
                                         )}
