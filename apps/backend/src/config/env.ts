@@ -148,7 +148,9 @@ export const env = {
         user: parsed.data.LEAD_EMAIL_USER ?? parsed.data.SMTP_USER ?? "",
         password: parsed.data.LEAD_EMAIL_PASSWORD ?? parsed.data.SMTP_PASSWORD ?? "",
         secure: parsed.data.LEAD_EMAIL_SECURE ?? parsed.data.SMTP_SECURE ?? false,
-        imapHost: parsed.data.LEAD_IMAP_HOST ?? parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "",
+        imapHost:
+          parsed.data.LEAD_IMAP_HOST ??
+          (parsed.data.LEAD_EMAIL_HOST ?? parsed.data.SMTP_HOST ?? "").replace(/^smtp\./i, "imap."),
         imapPort: parsed.data.LEAD_IMAP_PORT ?? 993,
         imapSecure: parsed.data.LEAD_IMAP_SECURE ?? true,
       }

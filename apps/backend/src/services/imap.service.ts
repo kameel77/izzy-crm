@@ -18,6 +18,9 @@ export class ImapService {
                     host: inbox.imapHost,
                     port: inbox.imapPort ?? 993,
                     tls: inbox.imapSecure ?? true,
+                    tlsOptions: {
+                        servername: inbox.imapHost,
+                    },
                     authTimeout: 3000,
                 },
             };
