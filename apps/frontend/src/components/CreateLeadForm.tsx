@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ConsentTemplateDto, fetchAuthenticatedConsentTemplates } from "../api/consents";
 import { fetchPartners, PartnerSummary } from "../api/partners";
+import { Button, Checkbox, Select, TextField } from "./ui";
 
 interface CreateLeadFormProps {
   onCreate: (payload: {
@@ -359,232 +360,167 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={styles.form}>
-      <fieldset style={{ ...styles.fieldset, paddingBottom: "1.5rem" }}>
-        <legend style={styles.legend}>Wprowadź dane klienta</legend>
-        <div style={styles.row}>
-          <label style={styles.label}>
-            Imię
-            <input
-              style={styles.input}
-              value={firstName}
-              onChange={(event) => setFirstName(event.target.value)}
-              required
+    <form onSubmit={handleSubmit} className="app-form">
+      <fieldset className="app-lf-fieldset">
+        <legend className="app-lf-legend">Wprowadź dane klienta</legend>
+        <div className="app-lf-row">
+          <TextField
+            label="Imię"
+            value={firstName}
+            onChange={(event) => setFirstName(event.target.value)}
+            required
+          />
+          <TextField
+            label="Nazwisko"
+            value={lastName}
+            onChange={(event) => setLastName(event.target.value)}
+            required
+          />
+          {user?.role === "ADMIN" ? (
+            <Select
+              label="Partner"
+              value={partnerId}
+              onChange={(event) => setPartnerId(event.target.value)}
+              disabled={partnersLoading}
+              options={[
+                { value: "", label: "Wybierz partnera" },
+                ...partners.map((partner) => ({ value: partner.id, label: partner.name })),
+              ]}
+              error={partnersError ?? undefined}
             />
-          </label>
-          <label style={styles.label}>
-            Nazwisko
-            <input
-              style={styles.input}
-              value={lastName}
-              onChange={(event) => setLastName(event.target.value)}
-              required
+          ) : (
+            <TextField
+              label="Partner"
+              className="app-lf-readonly"
+              value={resolvedPartnerName}
+              readOnly
+              placeholder="Nazwa partnera"
             />
-          </label>
-          <label style={styles.label}>
-            Partner
-            {user?.role === "ADMIN" ? (
-              <>
-                <select
-                  style={styles.input}
-                  value={partnerId}
-                  onChange={(event) => setPartnerId(event.target.value)}
-                  disabled={partnersLoading}
-                >
-                  <option value="">Wybierz partnera</option>
-                  {partners.map((partner) => (
-                    <option key={partner.id} value={partner.id}>
-                      {partner.name}
-                    </option>
-                  ))}
-                </select>
-                {partnersError ? <span style={styles.fieldError}>{partnersError}</span> : null}
-              </>
-            ) : (
-              <input
-                style={{ ...styles.input, background: "#f3f4f6" }}
-                value={resolvedPartnerName}
-                readOnly
-                placeholder="Nazwa partnera"
-              />
-            )}
-          </label>
+          )}
         </div>
-        <div style={styles.row}>
-          <label style={styles.label}>
-            Email
-            <input
-              style={styles.input}
-              value={email}
-              type="email"
-              onChange={(event) => setEmail(event.target.value)}
-              onBlur={validate}
-            />
-            {errors.email && <span style={styles.fieldError}>{errors.email}</span>}
-          </label>
-          <label style={styles.label}>
-            Telefon
-            <input
-              style={styles.input}
-              value={phone}
-              type="tel"
-              onChange={(event) => setPhone(event.target.value)}
-              onBlur={validate}
-            />
-            {errors.phone && <span style={styles.fieldError}>{errors.phone}</span>}
-          </label>
-          <label style={styles.label}>
-            Rodzaj klienta
-            <select
-              style={styles.input}
-              value={customerType}
-              onChange={(event) => setCustomerType(event.target.value)}
-            >
-              <option value="">Wybierz</option>
-              {customerTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="app-lf-row">
+          <TextField
+            label="Email"
+            value={email}
+            type="email"
+            onChange={(event) => setEmail(event.target.value)}
+            onBlur={validate}
+            error={errors.email}
+          />
+          <TextField
+            label="Telefon"
+            value={phone}
+            type="tel"
+            onChange={(event) => setPhone(event.target.value)}
+            onBlur={validate}
+            error={errors.phone}
+          />
+          <Select
+            label="Rodzaj klienta"
+            value={customerType}
+            onChange={(event) => setCustomerType(event.target.value)}
+            options={[{ value: "", label: "Wybierz" }, ...customerTypes.map((type) => ({ value: type, label: type }))]}
+          />
         </div>
-        <div style={styles.row}>
-          <label style={styles.label}>
-            Miasto
-            <input
-              style={styles.input}
-              value={city}
-              onChange={(event) => setCity(event.target.value)}
-              placeholder="np. Warszawa"
-            />
-          </label>
-          <label style={styles.label}>
-            Kod pocztowy
-            <input
-              style={styles.input}
-              value={postalCode}
-              onChange={handlePostalCodeChange}
-              placeholder="np. 00-000"
-              maxLength={6}
-            />
-            {errors.postalCode && <span style={styles.fieldError}>{errors.postalCode}</span>}
-          </label>
-          <label style={styles.label}>
-            Województwo
-            <select
-              style={styles.input}
-              value={voivodeship}
-              onChange={(event) => setVoivodeship(event.target.value)}
-            >
-              <option value="">Wybierz</option>
-              {voivodeships.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={styles.label}>
-            Dostępna kwota (PLN)
-            <input
-              style={styles.input}
-              value={downPayment}
-              type="number"
-              min="0"
-              step="0.01"
-              onChange={(event) => setDownPayment(event.target.value)}
-            />
-            {errors.downPayment && <span style={styles.fieldError}>{errors.downPayment}</span>}
-          </label>
+        <div className="app-lf-row">
+          <TextField
+            label="Miasto"
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            placeholder="np. Warszawa"
+          />
+          <TextField
+            label="Kod pocztowy"
+            value={postalCode}
+            onChange={handlePostalCodeChange}
+            placeholder="np. 00-000"
+            maxLength={6}
+            error={errors.postalCode}
+          />
+          <Select
+            label="Województwo"
+            value={voivodeship}
+            onChange={(event) => setVoivodeship(event.target.value)}
+            options={[{ value: "", label: "Wybierz" }, ...voivodeships.map((item) => ({ value: item, label: item }))]}
+          />
+          <TextField
+            label="Dostępna kwota (PLN)"
+            value={downPayment}
+            type="number"
+            min="0"
+            step="0.01"
+            onChange={(event) => setDownPayment(event.target.value)}
+            error={errors.downPayment}
+          />
         </div>
       </fieldset>
 
-      <fieldset style={styles.fieldset}>
+      <fieldset className="app-lf-fieldset">
         <legend
-          style={{ ...styles.legend, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
+          className="app-lf-legend app-lf-legend--toggle"
           onClick={() => setIsVehicleDataExpanded(!isVehicleDataExpanded)}
         >
           Informacje o pojeździe
-          <span style={{ fontSize: "0.8em" }}>{isVehicleDataExpanded ? "▼" : "▶"}</span>
+          <span className="app-lf-legend__caret">{isVehicleDataExpanded ? "▼" : "▶"}</span>
         </legend>
 
         {isVehicleDataExpanded && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
-            <div style={styles.row}>
-              <label style={styles.label}>
-                Marka (obecny pojazd)
-                <input
-                  style={styles.input}
-                  value={currentMake}
-                  onChange={(event) => setCurrentMake(event.target.value)}
-                  placeholder="np. Toyota"
-                />
-              </label>
-              <label style={styles.label}>
-                Model (obecny pojazd)
-                <input
-                  style={styles.input}
-                  value={currentModel}
-                  onChange={(event) => setCurrentModel(event.target.value)}
-                  placeholder="np. Corolla"
-                />
-              </label>
+          <div className="app-lf-vehicle-data">
+            <div className="app-lf-row">
+              <TextField
+                label="Marka (obecny pojazd)"
+                value={currentMake}
+                onChange={(event) => setCurrentMake(event.target.value)}
+                placeholder="np. Toyota"
+              />
+              <TextField
+                label="Model (obecny pojazd)"
+                value={currentModel}
+                onChange={(event) => setCurrentModel(event.target.value)}
+                placeholder="np. Corolla"
+              />
             </div>
-            <div style={styles.row}>
-              <label style={styles.label}>
-                Rok produkcji (obecny pojazd)
-                <input
-                  style={styles.input}
-                  value={currentYear}
-                  type="number"
-                  min="1900"
-                  max={new Date().getFullYear() + 1}
-                  onChange={(event) => setCurrentYear(event.target.value)}
-                />
-              </label>
-              <label style={styles.label}>
-                Przebieg [km] (obecny pojazd)
-                <input
-                  style={styles.input}
-                  value={currentMileage}
-                  type="number"
-                  min="0"
-                  step="1"
-                  onChange={(event) => setCurrentMileage(event.target.value)}
-                />
-              </label>
-              <label style={styles.label}>
-                Nr VIN pojazdu
-                <input
-                  style={styles.input}
-                  value={currentVin}
-                  onChange={handleVinChange}
-                  placeholder="17 znaków alfanumerycznych"
-                  maxLength={17}
-                />
-                {errors.vin && <span style={styles.fieldError}>{errors.vin}</span>}
-              </label>
+            <div className="app-lf-row">
+              <TextField
+                label="Rok produkcji (obecny pojazd)"
+                value={currentYear}
+                type="number"
+                min="1900"
+                max={new Date().getFullYear() + 1}
+                onChange={(event) => setCurrentYear(event.target.value)}
+              />
+              <TextField
+                label="Przebieg [km] (obecny pojazd)"
+                value={currentMileage}
+                type="number"
+                min="0"
+                step="1"
+                onChange={(event) => setCurrentMileage(event.target.value)}
+              />
+              <TextField
+                label="Nr VIN pojazdu"
+                value={currentVin}
+                onChange={handleVinChange}
+                placeholder="17 znaków alfanumerycznych"
+                maxLength={17}
+                error={errors.vin}
+              />
             </div>
 
-            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px dashed #e5e7eb" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <h4 style={{ margin: 0, fontSize: "1rem", color: "#374151" }}>Poszukiwane pojazdy</h4>
-                <button
-                  type="button"
-                  onClick={addDesiredVehicle}
-                  style={{ padding: "0.4rem 0.8rem", borderRadius: 6, background: "#f3f4f6", border: "1px solid #d1d5db", cursor: "pointer", fontSize: "0.85rem" }}
-                >
-                  + Dodaj pojazd
-                </button>
+            <div className="app-lf-desired">
+              <div className="app-lf-desired__head">
+                <h4 className="app-section-title">Poszukiwane pojazdy</h4>
+                <Button type="button" variant="secondary" size="sm" icon="plus" onClick={addDesiredVehicle}>
+                  Dodaj pojazd
+                </Button>
               </div>
 
               {desiredVehicles.length > 1 && (
-                <div style={{ marginBottom: "1.5rem", padding: "1rem", background: "#f3f4f6", borderRadius: 8 }}>
-                  <h5 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", color: "#4b5563" }}>Dodane pojazdy:</h5>
-                  <ul style={{ margin: 0, paddingLeft: "1.5rem", fontSize: "0.85rem", color: "#374151" }}>
+                <div className="app-panel app-lf-added">
+                  <h5 className="app-lf-added__title">Dodane pojazdy:</h5>
+                  <ul className="app-lf-added__list">
                     {desiredVehicles.slice(0, -1).map((v, i) => (
-                      <li key={i} style={{ marginBottom: "0.25rem" }}>
+                      <li key={i}>
                         <strong>{v.make || "Dowolna"} {v.model || ""}</strong>
                         {(v.yearFrom || v.yearTo) && ` • Rocznik: ${v.yearFrom || "od"} - ${v.yearTo || "do"}`}
                         {(v.budgetFrom || v.budgetTo) && ` • Budżet: ${v.budgetFrom || "0"} - ${v.budgetTo || ""} PLN`}
@@ -602,235 +538,122 @@ export const CreateLeadForm: React.FC<CreateLeadFormProps> = ({
               </datalist>
 
               {desiredVehicles.map((vehicle, index) => (
-                <div key={index} style={{ background: "#f9fafb", padding: "1rem", borderRadius: 8, marginBottom: "1rem", border: "1px solid #e5e7eb", position: "relative", display: index === desiredVehicles.length - 1 ? "block" : "none" }}>
-                  <div style={{ ...styles.row, marginBottom: "1rem" }}>
-                    <label style={styles.label}>
-                      Marka
-                      <input
-                        style={styles.input}
-                        value={vehicle.make}
-                        onChange={(e) => handleDesiredVehicleChange(index, "make", e.target.value)}
-                        placeholder="np. Skoda"
-                      />
-                    </label>
-                    <label style={styles.label}>
-                      Model
-                      <input
-                        style={styles.input}
-                        value={vehicle.model}
-                        onChange={(e) => handleDesiredVehicleChange(index, "model", e.target.value)}
-                        placeholder="np. Octavia"
-                      />
-                    </label>
+                <div
+                  key={index}
+                  className={
+                    index === desiredVehicles.length - 1
+                      ? "app-panel app-lf-vehicle"
+                      : "app-panel app-lf-vehicle app-lf-vehicle--hidden"
+                  }
+                >
+                  <div className="app-lf-row">
+                    <TextField
+                      label="Marka"
+                      value={vehicle.make}
+                      onChange={(e) => handleDesiredVehicleChange(index, "make", e.target.value)}
+                      placeholder="np. Skoda"
+                    />
+                    <TextField
+                      label="Model"
+                      value={vehicle.model}
+                      onChange={(e) => handleDesiredVehicleChange(index, "model", e.target.value)}
+                      placeholder="np. Octavia"
+                    />
                   </div>
-                  <div style={{ ...styles.row, marginBottom: "1rem" }}>
-                    <label style={{ ...styles.label, minWidth: 100 }}>
-                      Rok od
-                      <input
-                        style={styles.input}
-                        value={vehicle.yearFrom}
-                        type="number"
-                        min="1900"
-                        max={new Date().getFullYear() + 1}
-                        list="year-options"
-                        onChange={(e) => handleDesiredVehicleChange(index, "yearFrom", e.target.value)}
-                      />
-                    </label>
-                    <label style={{ ...styles.label, minWidth: 100 }}>
-                      Rok do
-                      <input
-                        style={styles.input}
-                        value={vehicle.yearTo}
-                        type="number"
-                        min="1900"
-                        max={new Date().getFullYear() + 1}
-                        list="year-options"
-                        onChange={(e) => handleDesiredVehicleChange(index, "yearTo", e.target.value)}
-                      />
-                    </label>
-                    <label style={{ ...styles.label, minWidth: 120 }}>
-                      Budżet od (PLN)
-                      <input
-                        style={styles.input}
-                        value={vehicle.budgetFrom}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        onChange={(e) => handleDesiredVehicleChange(index, "budgetFrom", e.target.value)}
-                      />
-                    </label>
-                    <label style={{ ...styles.label, minWidth: 120 }}>
-                      Budżet do (PLN)
-                      <input
-                        style={styles.input}
-                        value={vehicle.budgetTo}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        onChange={(e) => handleDesiredVehicleChange(index, "budgetTo", e.target.value)}
-                      />
-                    </label>
+                  <div className="app-lf-row">
+                    <TextField
+                      label="Rok od"
+                      className="app-lf-field--sm"
+                      value={vehicle.yearFrom}
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear() + 1}
+                      list="year-options"
+                      onChange={(e) => handleDesiredVehicleChange(index, "yearFrom", e.target.value)}
+                    />
+                    <TextField
+                      label="Rok do"
+                      className="app-lf-field--sm"
+                      value={vehicle.yearTo}
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear() + 1}
+                      list="year-options"
+                      onChange={(e) => handleDesiredVehicleChange(index, "yearTo", e.target.value)}
+                    />
+                    <TextField
+                      label="Budżet od (PLN)"
+                      className="app-lf-field--md"
+                      value={vehicle.budgetFrom}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      onChange={(e) => handleDesiredVehicleChange(index, "budgetFrom", e.target.value)}
+                    />
+                    <TextField
+                      label="Budżet do (PLN)"
+                      className="app-lf-field--md"
+                      value={vehicle.budgetTo}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      onChange={(e) => handleDesiredVehicleChange(index, "budgetTo", e.target.value)}
+                    />
                   </div>
-                  <div style={styles.row}>
-                    <label style={styles.label}>
-                      Uwagi
-                      <input
-                        style={styles.input}
-                        value={vehicle.comment}
-                        onChange={(e) => handleDesiredVehicleChange(index, "comment", e.target.value)}
-                        placeholder="np. rodzinne kombi"
-                      />
-                    </label>
+                  <div className="app-lf-row">
+                    <TextField
+                      label="Uwagi"
+                      value={vehicle.comment}
+                      onChange={(e) => handleDesiredVehicleChange(index, "comment", e.target.value)}
+                      placeholder="np. rodzinne kombi"
+                    />
                   </div>
                   {desiredVehicles.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeDesiredVehicle(index)}
-                      style={{ position: "absolute", bottom: "1rem", right: "1rem", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 4, padding: "0.4rem 0.8rem", cursor: "pointer", fontSize: "0.85rem" }}
-                    >
-                      Usuń {vehicle.make || vehicle.model ? `${vehicle.make} ${vehicle.model}` : "ten pojazd"}
-                    </button>
+                    <div className="app-form-actions">
+                      <Button type="button" variant="danger" size="sm" onClick={() => removeDesiredVehicle(index)}>
+                        Usuń {vehicle.make || vehicle.model ? `${vehicle.make} ${vehicle.model}` : "ten pojazd"}
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))}
-              {errors.desiredBudget && <span style={styles.fieldError}>{errors.desiredBudget}</span>}
+              {errors.desiredBudget && <div className="app-alert app-alert--danger">{errors.desiredBudget}</div>}
             </div>
           </div>
         )}
       </fieldset>
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Zgody</legend>
+      <fieldset className="app-lf-fieldset">
+        <legend className="app-lf-legend">Zgody</legend>
         {consentsLoading ? (
-          <p>Ładowanie zgód...</p>
+          <p className="app-muted">Ładowanie zgód...</p>
         ) : (
           consentTemplates.map(consent => (
-            <div key={consent.id} style={styles.consentItem}>
-              <div style={styles.consentHeader}>
-                <label style={styles.consentLabel}>
-                  <input
-                    type="checkbox"
-                    checked={consentState[consent.id] || false}
-                    onChange={e => handleConsentChange(consent.id, e.target.checked)}
-                  />
-                  {consent.title} {consent.isRequired && "*"}
-                </label>
-                <button
-                  type="button"
-                  style={styles.consentToggle}
-                  onClick={() => toggleConsentOpen(consent.id)}
-                >
+            <div key={consent.id} className="app-lf-consent">
+              <div className="app-lf-consent__head">
+                <Checkbox
+                  checked={consentState[consent.id] || false}
+                  onChange={e => handleConsentChange(consent.id, e.target.checked)}
+                  label={<>{consent.title} {consent.isRequired && "*"}</>}
+                />
+                <Button type="button" variant="ghost" size="sm" onClick={() => toggleConsentOpen(consent.id)}>
                   {consentOpen[consent.id] ? "Ukryj treść" : "Pokaż treść"}
-                </button>
+                </Button>
               </div>
               {consentOpen[consent.id] ? (
-                <div style={styles.consentContent}>{consent.content || "Brak treści zgody."}</div>
+                <div className="app-lf-consent__content">{consent.content || "Brak treści zgody."}</div>
               ) : null}
             </div>
           ))
         )}
-        {errors.consents && <div style={styles.error}>{errors.consents}</div>}
+        {errors.consents && <div className="app-alert app-alert--danger">{errors.consents}</div>}
       </fieldset>
 
-      {errors.form ? <div style={styles.error}>{errors.form}</div> : null}
-      <button type="submit" style={styles.submit} disabled={loading || consentsLoading}>
-        {loading ? "Tworzenie..." : "Utwórz lead"}
-      </button>
+      {errors.form ? <div className="app-alert app-alert--danger">{errors.form}</div> : null}
+      <div className="app-form-actions app-form-actions--start">
+        <Button type="submit" variant="primary" disabled={loading || consentsLoading}>
+          {loading ? "Tworzenie..." : "Utwórz lead"}
+        </Button>
+      </div>
     </form>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  form: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  title: {
-    margin: 0,
-    fontSize: "1.1rem",
-  },
-  row: {
-    display: "flex",
-    gap: "1rem",
-    flexWrap: "wrap",
-  },
-  label: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    minWidth: 180,
-  },
-  input: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-  },
-  submit: {
-    alignSelf: "flex-start",
-    padding: "0.6rem 1.2rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#16a34a",
-    color: "#fff",
-    cursor: "pointer",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.5rem",
-    borderRadius: 8,
-  },
-  fieldError: {
-    color: "#b91c1c",
-    fontSize: "0.8rem",
-  },
-  fieldset: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 8,
-    padding: "0.75rem 0.75rem 0.5rem",
-  },
-  legend: {
-    fontWeight: 600,
-    padding: "0 0.5rem",
-    fontSize: "0.95rem",
-  },
-  consentItem: {
-    borderTop: "1px solid #e5e7eb",
-    padding: "0.35rem 0",
-  },
-  consentHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-    alignItems: "center",
-    flexWrap: "wrap",
-  },
-  consentLabel: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    fontSize: "0.95rem",
-  },
-  consentToggle: {
-    background: "transparent",
-    border: "1px solid #e5e7eb",
-    borderRadius: 6,
-    padding: "0.2rem 0.65rem",
-    fontSize: "0.9rem",
-    cursor: "pointer",
-  },
-  consentContent: {
-    marginTop: "0.5rem",
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: 6,
-    padding: "0.65rem",
-    whiteSpace: "pre-wrap",
-    fontSize: "0.92rem",
-  },
 };

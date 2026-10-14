@@ -1,5 +1,7 @@
 import React from "react";
 import { apiFetch, ApiError } from "../api/client";
+import { Badge, Button, Card, Icon } from "./ui";
+import type { IconName, Tone } from "./ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,29 +46,18 @@ const STATUS_LABELS: Record<OnboardingStatus, string> = {
     COMPLETED: "Zakończony",
 };
 
-const STATUS_COLORS: Record<OnboardingStatus, React.CSSProperties> = {
-    CREATED: { background: "hsl(215,30%,95%)", color: "hsl(215,30%,40%)" },
-    ONBOARDING_SENT: { background: "hsl(200,80%,93%)", color: "hsl(200,80%,30%)" },
-    LINK_OPENED: { background: "hsl(240,70%,93%)", color: "hsl(240,60%,40%)" },
-    SLOT_SELECTED: { background: "hsl(40,90%,92%)", color: "hsl(40,90%,30%)" },
-    ONBOARDING_CONFIRMED: { background: "hsl(24,95%,55%)", color: "#fff", fontWeight: 700 },
-    CONSENTS_CAPTURED: { background: "hsl(142,65%,90%)", color: "hsl(142,60%,25%)" },
-    COMPLETED: { background: "hsl(142,65%,90%)", color: "hsl(142,60%,25%)" },
+const STATUS_TONES: Record<OnboardingStatus, Tone> = {
+    CREATED: "neutral",
+    ONBOARDING_SENT: "info",
+    LINK_OPENED: "accent",
+    SLOT_SELECTED: "warning",
+    ONBOARDING_CONFIRMED: "success",
+    CONSENTS_CAPTURED: "success",
+    COMPLETED: "success",
 };
 
 const StatusBadge: React.FC<{ status: OnboardingStatus }> = ({ status }) => (
-    <span
-        style={{
-            display: "inline-block",
-            padding: "0.25em 0.7em",
-            borderRadius: "1rem",
-            fontSize: "0.78rem",
-            fontWeight: 600,
-            ...STATUS_COLORS[status],
-        }}
-    >
-        {STATUS_LABELS[status] ?? status}
-    </span>
+    <Badge tone={STATUS_TONES[status] ?? "neutral"}>{STATUS_LABELS[status] ?? status}</Badge>
 );
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
@@ -138,44 +129,41 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
 
     if (loading && session === undefined) {
         return (
-            <div style={s.box}>
-                <div style={s.row}>
-                    <span style={s.title}>🔗 Insurance Onboarding</span>
-                    <span style={s.hint}>Ładowanie…</span>
-                </div>
-            </div>
+            <Card title="Insurance onboarding" icon="shield">
+                <span className="app-muted">Ładowanie…</span>
+            </Card>
         );
     }
 
     return (
-        <div style={s.box}>
-            <div style={s.row}>
-                <span style={s.title}>🔗 Insurance Onboarding</span>
-                <div style={s.actions}>
+        <Card
+            title="Insurance onboarding"
+            icon="shield"
+            actions={
+                <div className="app-lead-ins-actions">
                     {session && <StatusBadge status={session.status} />}
-                    <button
-                        style={{ ...s.btn, ...(sending ? s.btnDisabled : {}) }}
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={session ? "refresh" : "mail"}
                         onClick={handleSend}
                         disabled={sending}
                     >
-                        {sending
-                            ? "Wysyłam…"
-                            : session
-                                ? "↺ Wyślij ponownie"
-                                : "📤 Wyślij onboarding"}
-                    </button>
+                        {sending ? "Wysyłam…" : session ? "Wyślij ponownie" : "Wyślij onboarding"}
+                    </Button>
                 </div>
-            </div>
-
-            {success && <p style={s.successMsg}>{success}</p>}
-            {error && <p style={s.errorMsg}>{error}</p>}
+            }
+        >
+            <div className="app-lead-ins-body">
+            {success && <div className="app-alert app-alert--success">{success}</div>}
+            {error && <div className="app-alert app-alert--danger">{error}</div>}
 
             {session && (
-                <div style={s.details}>
+                <div className="app-lead-ins-details">
                     {/* Timeline */}
-                    <div style={s.timeline}>
+                    <div className="app-lead-ins-timeline">
                         <TimelineItem
-                            icon="📤"
+                            icon="mail"
                             label="Link wysłany"
                             date={session.smsSentAt ?? session.emailSentAt}
                             sub={
@@ -187,19 +175,19 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                             }
                         />
                         <TimelineItem
-                            icon="👁"
+                            icon="arrow-up-right"
                             label="Link otwarty"
                             date={session.openedAt}
                             sub={session.openedAt ? <span>Link ✓</span> : undefined}
                         />
                         <TimelineItem
-                            icon="📅"
+                            icon="calendar"
                             label="Termin potwierdzony"
                             date={session.slotSelectedAt}
                             sub={session.slotSelectedAt ? <span>Termin ✓</span> : undefined}
                         />
                         <TimelineItem
-                            icon="✅"
+                            icon="check"
                             label="Zgody zebrane"
                             date={session.consentsCapAt}
                             sub={session.consentsCapAt ? <span>Zgody ✓</span> : undefined}
@@ -207,11 +195,11 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                     </div>
 
                     {session.contactSchedule && (
-                        <div style={s.slotHighlight}>
-                            <span style={s.slotIcon}>📞</span>
+                        <div className="app-lead-ins-slot">
+                            <Icon name="clock" size={20} />
                             <div>
-                                <div style={s.slotLabel}>Preferowany termin kontaktu</div>
-                                <div style={s.slotValue}>
+                                <div className="app-lead-ins-slot__label">Preferowany termin kontaktu</div>
+                                <div className="app-lead-ins-slot__value">
                                     {fmtSlotDate(session.contactSchedule.preferredDate)},{" "}
                                     <strong>{session.contactSchedule.preferredSlot}</strong>
                                 </div>
@@ -219,93 +207,35 @@ export const LeadInsuranceOnboarding: React.FC<{ leadId: string }> = ({ leadId }
                         </div>
                     )}
 
-                    <p style={s.expiry}>
+                    <p className="app-lead-ins-expiry">
                         Link wygasa: {fmtDate(session.tokenExpiresAt)} · Wysłano:{" "}
                         {fmtDate(session.createdAt)}
                     </p>
                 </div>
             )}
-        </div>
+            </div>
+        </Card>
     );
 };
 
 const TimelineItem: React.FC<{
-    icon: string;
+    icon: IconName;
     label: string;
     date: string | null | undefined;
     sub?: React.ReactNode;
     badge?: string;
 }> = ({ icon, label, date, sub, badge }) => (
-    <div style={ti.row}>
-        <div style={{ ...ti.dot, ...(date ? ti.dotDone : {}) }}>{date ? icon : "○"}</div>
-        <div style={ti.content}>
-            <span style={{ ...ti.label, ...(date ? ti.labelDone : {}) }}>{label}</span>
-            {date && <span style={ti.date}>{fmtDate(date)}</span>}
-            {sub && <span style={ti.sub}>{sub}</span>}
-            {badge && <span style={ti.badge}>{badge}</span>}
+    <div className="app-lead-ins-step">
+        <div className={`app-lead-ins-step__dot${date ? " app-lead-ins-step__dot--done" : ""}`}>
+            {date ? <Icon name={icon} size={14} /> : "○"}
+        </div>
+        <div className="app-lead-ins-step__content">
+            <span className={`app-lead-ins-step__label${date ? " app-lead-ins-step__label--done" : ""}`}>{label}</span>
+            {date && <span className="app-lead-ins-step__date">{fmtDate(date)}</span>}
+            {sub && <span className="app-lead-ins-step__sub">{sub}</span>}
+            {badge && <Badge tone="warning">{badge}</Badge>}
         </div>
     </div>
 );
-
-const ti: Record<string, React.CSSProperties> = {
-    row: { display: "flex", gap: "0.75rem", alignItems: "center", padding: "0.3rem 0", justifyContent: "center", textAlign: "center", flexDirection: "column" },
-    dot: { width: "1.75rem", height: "1.75rem", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", background: "hsl(215,20%,92%)", color: "hsl(215,20%,55%)", flexShrink: 0, marginTop: "0.1rem" },
-    dotDone: { background: "hsl(142,65%,90%)", color: "hsl(142,60%,30%)" },
-    content: { display: "flex", flexDirection: "column", gap: "0.1rem", alignItems: "center" },
-    label: { fontSize: "0.85rem", color: "hsl(215,20%,55%)", fontWeight: 500 },
-    labelDone: { color: "hsl(213,45%,20%)" },
-    date: { fontSize: "0.8rem", color: "hsl(215,20%,55%)" },
-    sub: { fontSize: "0.8rem", color: "hsl(142,60%,35%)", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.2rem" },
-    badge: { fontSize: "0.75rem", color: "hsl(40,90%,35%)", background: "hsl(40,90%,90%)", padding: "0.2rem 0.6rem", borderRadius: "1rem", fontWeight: 600, marginTop: "0.2rem" },
-};
-
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
-const s: Record<string, React.CSSProperties> = {
-    box: {
-        border: "1px solid hsl(215,20%,88%)",
-        borderRadius: "0.875rem",
-        padding: "1.25rem",
-        background: "hsl(215,30%,99%)",
-        marginBottom: "1rem",
-    },
-    row: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "0.75rem",
-        marginBottom: "0.75rem",
-    },
-    title: { fontWeight: 700, fontSize: "0.95rem", color: "hsl(213,45%,20%)" },
-    actions: { display: "flex", alignItems: "center", gap: "0.5rem" },
-    btn: {
-        padding: "0.45rem 1rem",
-        border: "none",
-        borderRadius: "0.5rem",
-        background: "linear-gradient(135deg,hsl(24,95%,53%),hsl(28,95%,42%))",
-        color: "#fff",
-        fontWeight: 600,
-        fontSize: "0.82rem",
-        cursor: "pointer",
-        boxShadow: "0 2px 10px rgba(249,115,22,0.25)",
-        transition: "opacity 0.15s",
-    },
-    btnDisabled: { opacity: 0.6, cursor: "not-allowed" },
-    hint: { color: "hsl(215,20%,55%)", fontSize: "0.85rem" },
-    successMsg: { color: "hsl(142,60%,30%)", fontSize: "0.85rem", margin: "0.25rem 0" },
-    errorMsg: { color: "hsl(0,75%,50%)", fontSize: "0.85rem", margin: "0.25rem 0" },
-    details: { marginTop: "1rem", display: "flex", flexDirection: "column", alignItems: "center" },
-    timeline: { display: "flex", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem", marginBottom: "1.5rem" },
-    slotHighlight: {
-        display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-        background: "hsl(24,95%,96%)", border: "1px solid hsl(24,95%,88%)",
-        borderRadius: "0.625rem", padding: "0.75rem 1rem", marginBottom: "0.75rem",
-    },
-    slotIcon: { fontSize: "1.4rem" },
-    slotLabel: { fontSize: "0.75rem", color: "hsl(24,80%,40%)", fontWeight: 600, marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center" },
-    slotValue: { fontSize: "0.92rem", color: "hsl(213,45%,20%)", textAlign: "center" },
-    expiry: { fontSize: "0.75rem", color: "hsl(215,20%,60%)", margin: "0.5rem 0 0", textAlign: "center" },
-};
 
 export default LeadInsuranceOnboarding;

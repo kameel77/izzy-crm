@@ -7,6 +7,10 @@ import { TelemetryProvider } from "./hooks/useTelemetry";
 import { ToastProvider } from "./providers/ToastProvider";
 import "./styles/global.css";
 import "./styles/layout.css";
+import "./styles/forms.css";
+import "./styles/lead-detail.css";
+import "./styles/lead-forms.css";
+import "./styles/admin.css";
 
 const rootElement = document.getElementById("root");
 

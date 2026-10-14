@@ -4,6 +4,7 @@ import { PartnerSummary, PartnerStatus } from "../api/partners";
 import { Modal } from "../components/Modal";
 import { PartnerForm } from "../components/PartnerForm";
 import { PartnerTable } from "../components/PartnerTable";
+import { Button, Select, TextField } from "../components/ui";
 import { usePartnerAdmin } from "../hooks/usePartnerAdmin";
 
 const STATUS_OPTIONS: PartnerStatus[] = ["ACTIVE", "INACTIVE", "PENDING"];
@@ -58,39 +59,40 @@ export const AdminPartnersPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
+    <div className="app-page">
+      <div className="app-title-row">
         <div>
-          <h1 style={styles.heading}>Partner Administration</h1>
-          <p style={styles.subtitle}>Create partners, adjust SLA targets, and keep contacts up to date.</p>
+          <h1 className="app-page-title">Partner administration</h1>
+          <p className="app-page-desc">Create partners, adjust SLA targets, and keep contacts up to date.</p>
         </div>
-        <div style={styles.filters}>
-          <select style={styles.filterInput} onChange={handleStatusFilter} defaultValue={filters.status || ""}>
-            <option value="">All statuses</option>
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-          <input
+        <div className="app-title-row__acts app-adm-acts">
+          <Select
+            aria-label="Status"
+            className="app-adm-filter"
+            onChange={handleStatusFilter}
+            defaultValue={filters.status || ""}
+            options={[{ value: "", label: "All statuses" }, ...STATUS_OPTIONS]}
+          />
+          <TextField
             type="search"
+            icon="search"
+            aria-label="Search partner name"
+            className="app-adm-filter"
             placeholder="Search partner name"
             defaultValue={filters.search || ""}
             onChange={handleSearchChange}
-            style={styles.filterInput}
           />
-          <button type="button" style={styles.refresh} onClick={() => loadPartners()}>
+          <Button variant="secondary" onClick={() => loadPartners()}>
             Refresh
-          </button>
-          <button type="button" style={styles.create} onClick={handleOpenCreate}>
+          </Button>
+          <Button variant="primary" icon="plus" onClick={handleOpenCreate}>
             Add partner
-          </button>
+          </Button>
         </div>
-      </header>
+      </div>
 
-      {error ? <div style={styles.error}>{error}</div> : null}
-      {success ? <div style={styles.success}>{success}</div> : null}
+      {error ? <div className="app-alert app-alert--danger">{error}</div> : null}
+      {success ? <div className="app-alert app-alert--success">{success}</div> : null}
 
       <PartnerTable
         partners={partners}
@@ -122,72 +124,4 @@ export const AdminPartnersPage: React.FC = () => {
       </Modal>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "1rem",
-    flexWrap: "wrap",
-    padding: "1.5rem",
-    borderRadius: "1rem",
-    background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
-  },
-  heading: {
-    margin: 0,
-    fontSize: "2rem",
-  },
-  subtitle: {
-    margin: "0.25rem 0 0",
-    color: "#6b7280",
-  },
-  filters: {
-    display: "flex",
-    gap: "0.75rem",
-    flexWrap: "wrap",
-  },
-  filterInput: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-  },
-  refresh: {
-    padding: "0.5rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    cursor: "pointer",
-  },
-  create: {
-    padding: "0.5rem 1.1rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.35)",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.75rem",
-    borderRadius: 8,
-  },
-  success: {
-    background: "#ecfdf5",
-    color: "#047857",
-    padding: "0.75rem",
-    borderRadius: 8,
-  },
 };
