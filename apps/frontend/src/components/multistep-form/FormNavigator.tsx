@@ -1,5 +1,7 @@
 import React from "react";
 
+import { Button } from "../ui";
+
 interface FormNavigatorProps {
   currentStep: number;
   totalSteps: number;
@@ -18,62 +20,19 @@ export const FormNavigator: React.FC<FormNavigatorProps> = ({
   isSubmittable = true,
 }) => {
   return (
-    <div className="form-navigator" style={styles.navigator}>
-      <button
-        style={{ ...styles.button, background: '#64748b' }}
-        onClick={onBack}
-        disabled={currentStep === 1}
-      >
+    <div className="form-navigator">
+      <Button variant="secondary" size="lg" icon="chevron-left" onClick={onBack} disabled={currentStep === 1}>
         Wstecz
-      </button>
+      </Button>
       {currentStep === totalSteps ? (
-        <button
-          style={{
-            ...styles.button,
-            ...(isSubmittable
-              ? {}
-              : {
-                background: "#94a3b8",
-                color: "#e2e8f0",
-                borderColor: "transparent",
-                cursor: "not-allowed",
-                opacity: 0.85,
-              }),
-          }}
-          onClick={onSubmit}
-          disabled={!isSubmittable}
-        >
+        <Button variant="primary" size="lg" onClick={onSubmit} disabled={!isSubmittable}>
           Wyślij wniosek
-        </button>
+        </Button>
       ) : (
-        <button
-          style={styles.button}
-          onClick={onNext}
-        >
+        <Button variant="primary" size="lg" iconRight="chevron-right" onClick={onNext}>
           Dalej
-        </button>
+        </Button>
       )}
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  navigator: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "2rem",
-    paddingTop: "1.5rem",
-    borderTop: "1px solid #e5e7eb",
-  },
-  button: {
-    padding: "0.75rem 1.5rem",
-    border: "1px solid transparent",
-    borderRadius: "0.5rem",
-    fontSize: "1rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    background: "linear-gradient(135deg, hsl(24, 95%, 53%) 0%, hsl(28, 95%, 48%) 100%)",
-    boxShadow: "0 4px 6px -1px rgba(249, 115, 22, 0.2)",
-    color: "#ffffff",
-  },
 };

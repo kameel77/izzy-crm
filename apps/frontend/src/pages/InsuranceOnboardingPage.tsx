@@ -1,6 +1,8 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
+import { Button, Checkbox, Icon } from "../components/ui";
+import { cx } from "../components/ui/cx";
 
 type VerifyResponse = {
     sessionId: string;
@@ -208,168 +210,179 @@ export const InsuranceOnboardingPage: React.FC = () => {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={s.shell}>
-            <div style={s.card}>
+        <div className="app-io">
+            <div className="app-io__card">
                 {/* Header */}
-                <div style={s.header}>
-                    <img src="https://krqwvegfxnlwdhgjuflh.supabase.co/storage/v1/object/public/izzy-img-public/car-salon-logo-white.png" alt="Carsalon" style={s.logoImg} />
-                    <h1 style={s.heading}>Znajdziemy Ci nowe auto</h1>
+                <div className="app-io__header">
+                    <img src="https://krqwvegfxnlwdhgjuflh.supabase.co/storage/v1/object/public/izzy-img-public/car-salon-logo-white.png" alt="Carsalon" className="app-io__logo" />
+                    <h1 className="app-io__title">Znajdziemy Ci nowe auto</h1>
                 </div>
 
-                {step === "loading" && (
-                    <div style={s.center}>
-                        <div style={s.spinner} />
-                        <p style={s.hint}>Weryfikujemy Twój link…</p>
-                    </div>
-                )}
-
-                {step === "error" && (
-                    <div style={s.errorBox}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⚠️</div>
-                        <p style={s.errorText}>{errorMsg}</p>
-                    </div>
-                )}
-
-                {step === "calendar" && (
-                    <>
-                        <p style={s.intro}>
-                            {session?.firstName ? `Cześć ${session.firstName}! ` : ""}
-                            Ponieważ jesteś w trakcie procesu likwidacji szkody Twojego samochodu, przesłano nam Twoje dane, abyśmy mogli pomóc Ci znaleźć nowe auto. Wybierz termin, w którym możemy się z Tobą skontaktować.
-                        </p>
-
-                        {/* Step indicator */}
-                        <StepIndicator current={1} />
-
-                        <h2 style={s.subheading}>Wybierz dzień</h2>
-                        <div style={s.calGrid}>
-                            {availableDays.map((day) => {
-                                const key = day.toISOString();
-                                const active = selectedDay?.toISOString() === key;
-                                return (
-                                    <button
-                                        key={key}
-                                        style={{ ...s.dayBtn, ...(active ? s.dayBtnActive : {}) }}
-                                        onClick={() => { setSelectedDay(day); setSelectedSlot(null); }}
-                                    >
-                                        <span style={s.dayName}>
-                                            {day.toLocaleDateString("pl-PL", { weekday: "short" })}
-                                        </span>
-                                        <span style={s.dayNum}>
-                                            {day.toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                <div className="app-io__body">
+                    {step === "loading" && (
+                        <div className="app-io__center">
+                            <Icon name="loader" size={28} className="app-io__spinner" />
+                            <p className="app-muted">Weryfikujemy Twój link…</p>
                         </div>
+                    )}
 
-                        {selectedDay && (
-                            <>
-                                <h2 style={s.subheading}>
-                                    Wybierz godzinę – {formatDatePL(selectedDay)}
-                                </h2>
-                                <div style={s.slotGrid}>
-                                    {getAvailableSlots(selectedDay).map((slot) => (
+                    {step === "error" && (
+                        <div className="app-io__center">
+                            <span className="app-io__status app-io__status--danger">
+                                <Icon name="alert" size={24} />
+                            </span>
+                            <p className="app-io__error">{errorMsg}</p>
+                        </div>
+                    )}
+
+                    {step === "calendar" && (
+                        <>
+                            <p className="app-io__intro">
+                                {session?.firstName ? `Cześć ${session.firstName}! ` : ""}
+                                Ponieważ jesteś w trakcie procesu likwidacji szkody Twojego samochodu, przesłano nam Twoje dane, abyśmy mogli pomóc Ci znaleźć nowe auto. Wybierz termin, w którym możemy się z Tobą skontaktować.
+                            </p>
+
+                            {/* Step indicator */}
+                            <StepIndicator current={1} />
+
+                            <h2 className="app-io__subtitle">Wybierz dzień</h2>
+                            <div className="app-io-choices">
+                                {availableDays.map((day) => {
+                                    const key = day.toISOString();
+                                    const active = selectedDay?.toISOString() === key;
+                                    return (
                                         <button
-                                            key={slot}
-                                            style={{ ...s.slotBtn, ...(selectedSlot === slot ? s.slotBtnActive : {}) }}
-                                            onClick={() => setSelectedSlot(slot)}
+                                            key={key}
+                                            type="button"
+                                            className={cx("app-io-day", active && "app-io-day--active")}
+                                            aria-pressed={active}
+                                            onClick={() => { setSelectedDay(day); setSelectedSlot(null); }}
                                         >
-                                            {slot}
+                                            <span className="app-io-day__name">
+                                                {day.toLocaleDateString("pl-PL", { weekday: "short" })}
+                                            </span>
+                                            <span className="app-io-day__num">
+                                                {day.toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}
+                                            </span>
                                         </button>
-                                    ))}
-                                </div>
-                            </>
-                        )}
+                                    );
+                                })}
+                            </div>
 
-                        <button
-                            style={{
-                                ...s.cta,
-                                opacity: !selectedDay || !selectedSlot || submittingSlot ? 0.5 : 1,
-                                cursor: !selectedDay || !selectedSlot || submittingSlot ? "not-allowed" : "pointer",
-                            }}
-                            disabled={!selectedDay || !selectedSlot || submittingSlot}
-                            onClick={handleSlotSubmit}
-                        >
-                            {submittingSlot ? "Zapisuję…" : "Dalej →"}
-                        </button>
-                    </>
-                )}
+                            {selectedDay && (
+                                <>
+                                    <h2 className="app-io__subtitle">
+                                        Wybierz godzinę – {formatDatePL(selectedDay)}
+                                    </h2>
+                                    <div className="app-io-choices">
+                                        {getAvailableSlots(selectedDay).map((slot) => (
+                                            <button
+                                                key={slot}
+                                                type="button"
+                                                className={cx("app-io-slot", selectedSlot === slot && "app-io-slot--active")}
+                                                aria-pressed={selectedSlot === slot}
+                                                onClick={() => setSelectedSlot(slot)}
+                                            >
+                                                {slot}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
 
-                {step === "consents" && (
-                    <>
-                        <StepIndicator current={2} />
-                        <h2 style={s.subheading}>Wymagane zgody</h2>
-                        <p style={{ ...s.hint, marginBottom: "1.5rem" }}>
-                            Aby nasi doradcy mogli się z Tobą skontaktować i pomóc znaleźć nowe auto, prosimy o wyrażenie poniższych zgód.
-                        </p>
+                            <Button
+                                variant="primary"
+                                size="lg"
+                                className="app-io__cta"
+                                iconRight={submittingSlot ? undefined : "chevron-right"}
+                                disabled={!selectedDay || !selectedSlot || submittingSlot}
+                                onClick={handleSlotSubmit}
+                            >
+                                {submittingSlot ? "Zapisuję…" : "Dalej"}
+                            </Button>
+                        </>
+                    )}
 
-                        <div style={s.consentList}>
-                            {consentTemplates.map((t) => (
-                                <div key={t.id} style={s.consentItem}>
-                                    <label style={s.checkboxWrap}>
-                                        <input
-                                            type="checkbox"
+                    {step === "consents" && (
+                        <>
+                            <StepIndicator current={2} />
+                            <h2 className="app-io__subtitle">Wymagane zgody</h2>
+                            <p className="app-muted app-io__lead">
+                                Aby nasi doradcy mogli się z Tobą skontaktować i pomóc znaleźć nowe auto, prosimy o wyrażenie poniższych zgód.
+                            </p>
+
+                            <div className="app-io-consents">
+                                {consentTemplates.map((t) => (
+                                    <div key={t.id} className="app-io-consent">
+                                        <Checkbox
+                                            label={null}
+                                            aria-label={t.title}
                                             checked={Boolean(consentState[t.id])}
                                             onChange={(e) =>
                                                 setConsentState((prev) => ({ ...prev, [t.id]: e.target.checked }))
                                             }
-                                            style={s.checkbox}
                                         />
-                                    </label>
-                                    <div style={s.consentBody}>
-                                        <div
-                                            style={s.consentHeaderWrap}
-                                            onClick={() => setExpandedConsents((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
-                                        >
-                                            <strong style={s.consentTitle}>
-                                                {t.title}
-                                                {t.isRequired && <span style={s.required}> *wymagana</span>}
-                                            </strong>
-                                            <span style={s.chevron}>{expandedConsents[t.id] ? "▲" : "▼"}</span>
+                                        <div className="app-io-consent__body">
+                                            <button
+                                                type="button"
+                                                className="app-io-consent__toggle"
+                                                aria-expanded={Boolean(expandedConsents[t.id])}
+                                                onClick={() => setExpandedConsents((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
+                                            >
+                                                <strong className="app-io-consent__title">
+                                                    {t.title}
+                                                    {t.isRequired && <span className="app-io-consent__required"> *wymagana</span>}
+                                                </strong>
+                                                <Icon
+                                                    name="chevron-down"
+                                                    size={16}
+                                                    className={cx("app-io-consent__chevron", expandedConsents[t.id] && "app-io-consent__chevron--open")}
+                                                />
+                                            </button>
+                                            {expandedConsents[t.id] && (
+                                                <div className="app-io-consent__content">
+                                                    <div dangerouslySetInnerHTML={{ __html: t.content }} />
+                                                    {t.helpText && <p className="app-io-consent__help">{t.helpText}</p>}
+                                                </div>
+                                            )}
                                         </div>
-                                        {expandedConsents[t.id] && (
-                                            <div style={s.consentContentWrap}>
-                                                <div style={s.consentContent} dangerouslySetInnerHTML={{ __html: t.content }} />
-                                                {t.helpText && <p style={s.consentHelp}>{t.helpText}</p>}
-                                            </div>
-                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+
+                            {errorMsg && <p className="app-alert app-alert--danger app-io__alert">{errorMsg}</p>}
+
+                            <Button
+                                variant="primary"
+                                size="lg"
+                                className="app-io__cta"
+                                disabled={!allRequiredAccepted || submittingConsents}
+                                onClick={handleConsentsSubmit}
+                            >
+                                {submittingConsents ? "Zapisuję…" : "Zatwierdź i wyślij"}
+                            </Button>
+                        </>
+                    )}
+
+                    {step === "success" && (
+                        <div className="app-io__center">
+                            <span className="app-io__status app-io__status--success">
+                                <Icon name="check" size={24} />
+                            </span>
+                            <h2 className="app-io__subtitle app-io__subtitle--success">
+                                Gotowe!
+                            </h2>
+                            <p className="app-io__intro app-io__intro--center">
+                                {selectedDay && selectedSlot
+                                    ? `Nasz doradca skontaktuje się z Tobą ${formatDatePL(selectedDay)} w godzinach ${selectedSlot}.`
+                                    : "Nasz doradca skontaktuje się z Tobą wkrótce."}
+                            </p>
+                            <p className="app-muted app-io__text-center">
+                                Na Twój adres email wyślemy potwierdzenie.
+                            </p>
                         </div>
-
-                        {errorMsg && <p style={s.errorText}>{errorMsg}</p>}
-
-                        <button
-                            style={{
-                                ...s.cta,
-                                opacity: !allRequiredAccepted || submittingConsents ? 0.5 : 1,
-                                cursor: !allRequiredAccepted || submittingConsents ? "not-allowed" : "pointer",
-                            }}
-                            disabled={!allRequiredAccepted || submittingConsents}
-                            onClick={handleConsentsSubmit}
-                        >
-                            {submittingConsents ? "Zapisuję…" : "Zatwierdź i wyślij"}
-                        </button>
-                    </>
-                )}
-
-                {step === "success" && (
-                    <div style={s.successBox}>
-                        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🎉</div>
-                        <h2 style={{ ...s.subheading, textAlign: "center", color: "hsl(142,70%,35%)" }}>
-                            Gotowe!
-                        </h2>
-                        <p style={{ ...s.intro, textAlign: "center" }}>
-                            {selectedDay && selectedSlot
-                                ? `Nasz doradca skontaktuje się z Tobą ${formatDatePL(selectedDay)} w godzinach ${selectedSlot}.`
-                                : "Nasz doradca skontaktuje się z Tobą wkrótce."}
-                        </p>
-                        <p style={{ ...s.hint, textAlign: "center", marginTop: "0.5rem" }}>
-                            Na Twój adres email wyślemy potwierdzenie.
-                        </p>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -378,144 +391,18 @@ export const InsuranceOnboardingPage: React.FC = () => {
 // ── Step indicator ───────────────────────────────────────────────────────────
 
 const StepIndicator: React.FC<{ current: 1 | 2 }> = ({ current }) => (
-    <div style={si.wrap}>
+    <div className="app-io-steps">
         {[
             { n: 1, label: "Termin" },
             { n: 2, label: "Zgody" },
         ].map(({ n, label }) => (
-            <div key={n} style={si.item}>
-                <div style={{ ...si.dot, ...(current >= n ? si.dotActive : {}) }}>{n}</div>
-                <span style={{ ...si.label, ...(current >= n ? si.labelActive : {}) }}>{label}</span>
+            <div key={n} className="app-io-steps__item">
+                <div className={cx("app-io-steps__dot", current >= n && "app-io-steps__dot--active")}>{n}</div>
+                <span className={cx("app-io-steps__label", current >= n && "app-io-steps__label--active")}>{label}</span>
             </div>
         ))}
-        <div style={si.line} />
+        <div className="app-io-steps__line" />
     </div>
 );
-
-const si: Record<string, React.CSSProperties> = {
-    wrap: { display: "flex", alignItems: "center", gap: "0", margin: "2.5rem 0 2rem", position: "relative" },
-    item: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", flex: 1 },
-    dot: {
-        width: "2rem", height: "2rem", borderRadius: "50%",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 700, fontSize: "0.9rem",
-        background: "hsl(215,20%,88%)", color: "hsl(215,20%,50%)",
-        position: "relative", zIndex: 1,
-    },
-    dotActive: { background: "hsl(24,95%,53%)", color: "#fff" },
-    label: { fontSize: "0.75rem", color: "hsl(215,20%,55%)", fontWeight: 500 },
-    labelActive: { color: "hsl(24,95%,53%)" },
-    line: {
-        position: "absolute", top: "1rem", left: "25%", right: "25%",
-        height: "2px", background: "hsl(215,20%,88%)", zIndex: 0,
-    },
-};
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const s: Record<string, React.CSSProperties> = {
-    shell: {
-        minHeight: "100vh",
-        width: "100%",
-        background: "linear-gradient(135deg, hsl(213,60%,97%) 0%, hsl(20,60%,97%) 100%)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem 1rem",
-        fontFamily: '"Inter","Outfit",sans-serif',
-    },
-    card: {
-        width: "min(680px,100%)",
-        background: "#fff",
-        borderRadius: "1.25rem",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
-        overflow: "hidden",
-    },
-    header: {
-        background: "linear-gradient(135deg, hsl(24,95%,53%), hsl(28,95%,42%))",
-        padding: "2rem 2.5rem",
-        color: "#fff",
-    },
-    logoImg: { height: "2.5rem", marginBottom: "1.25rem", objectFit: "contain" },
-    heading: { margin: 0, fontSize: "1.75rem", fontWeight: 800, lineHeight: 1.2 },
-    intro: { padding: "0 2.5rem", color: "hsl(215,25%,30%)", lineHeight: 1.65, fontSize: "0.95rem", marginTop: "1.5rem" },
-    subheading: { padding: "0 2.5rem", fontSize: "1.1rem", fontWeight: 700, color: "hsl(213,45%,20%)", margin: "1.5rem 0 0.75rem" },
-    hint: { color: "hsl(215,20%,55%)", fontSize: "0.9rem", padding: "0 2.5rem" },
-    center: { display: "flex", flexDirection: "column", alignItems: "center", padding: "3rem", gap: "1rem" },
-    spinner: {
-        width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-        border: "3px solid hsl(215,20%,90%)", borderTopColor: "hsl(24,95%,53%)",
-        animation: "spin 0.8s linear infinite",
-    },
-    errorBox: {
-        padding: "2.5rem", textAlign: "center",
-        display: "flex", flexDirection: "column", alignItems: "center",
-    },
-    errorText: { color: "hsl(0,75%,50%)", lineHeight: 1.6 },
-    calGrid: {
-        display: "flex", flexWrap: "wrap", gap: "0.5rem",
-        padding: "0 2.5rem", marginBottom: "0.5rem",
-        justifyContent: "center",
-    },
-    dayBtn: {
-        display: "flex", flexDirection: "column", alignItems: "center",
-        gap: "0.2rem", padding: "0.6rem 0.9rem",
-        border: "1.5px solid hsl(215,20%,88%)", borderRadius: "0.75rem",
-        background: "#fff", cursor: "pointer", transition: "all 0.15s",
-        minWidth: "5rem",
-    },
-    dayBtnActive: {
-        borderColor: "hsl(24,95%,53%)", background: "hsl(24,95%,96%)",
-        boxShadow: "0 0 0 3px hsl(24,95%,90%)",
-    },
-    dayName: { fontSize: "0.7rem", color: "hsl(215,20%,55%)", textTransform: "capitalize" },
-    dayNum: { fontSize: "0.9rem", fontWeight: 600, color: "hsl(213,45%,20%)" },
-    slotGrid: {
-        display: "flex", flexWrap: "wrap", gap: "0.5rem",
-        padding: "0 2.5rem", marginBottom: "0.5rem",
-        justifyContent: "center",
-    },
-    slotBtn: {
-        padding: "0.5rem 0.9rem",
-        border: "1.5px solid hsl(215,20%,88%)", borderRadius: "0.625rem",
-        background: "#fff", cursor: "pointer", fontSize: "0.9rem",
-        fontWeight: 500, color: "hsl(213,45%,25%)", transition: "all 0.15s",
-    },
-    slotBtnActive: {
-        borderColor: "hsl(24,95%,53%)", background: "hsl(24,95%,96%)",
-        boxShadow: "0 0 0 3px hsl(24,95%,90%)",
-    },
-    cta: {
-        display: "block", width: "calc(100% - 5rem)", margin: "1.75rem 2.5rem",
-        padding: "1rem", borderRadius: "0.75rem", border: "none",
-        background: "linear-gradient(135deg,hsl(24,95%,53%),hsl(28,95%,42%))",
-        color: "#fff", fontSize: "1.05rem", fontWeight: 700,
-        boxShadow: "0 4px 20px rgba(249,115,22,0.3)",
-        transition: "transform 0.1s, box-shadow 0.1s",
-    },
-    consentList: {
-        display: "flex", flexDirection: "column", gap: "1rem",
-        padding: "0 2.5rem",
-    },
-    consentItem: {
-        display: "flex", gap: "0.75rem", alignItems: "flex-start",
-        background: "hsl(215,30%,98%)", borderRadius: "0.75rem",
-        padding: "1rem", border: "1px solid hsl(215,20%,90%)",
-    },
-    checkboxWrap: { display: "flex", alignItems: "flex-start", paddingTop: "0.15rem", cursor: "pointer" },
-    checkbox: { flexShrink: 0, width: "1.1rem", height: "1.1rem", accentColor: "hsl(24,95%,53%)", cursor: "pointer" },
-    consentBody: { flex: 1 },
-    consentHeaderWrap: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", width: "100%" },
-    chevron: { fontSize: "0.75rem", color: "hsl(215,20%,55%)", marginLeft: "0.5rem", marginTop: "0.2rem" },
-    consentContentWrap: { marginTop: "0.75rem" },
-    consentTitle: { display: "block", fontSize: "0.9rem", color: "hsl(213,45%,20%)", marginBottom: "0.15rem" },
-    consentContent: { margin: 0, fontSize: "0.82rem", color: "hsl(215,20%,40%)", lineHeight: 1.5 },
-    consentHelp: { margin: "0.35rem 0 0", fontSize: "0.78rem", color: "hsl(215,20%,55%)" },
-    required: { color: "hsl(0,75%,55%)", fontWeight: 600, fontSize: "0.75rem" },
-    successBox: {
-        padding: "2.5rem", display: "flex", flexDirection: "column",
-        alignItems: "center",
-    },
-};
 
 export default InsuranceOnboardingPage;

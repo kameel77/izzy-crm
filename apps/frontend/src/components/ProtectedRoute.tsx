@@ -21,7 +21,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const hasWarnedRef = useRef(false);
 
   if (isLoading) {
-    return <div style={styles.loader}>Validating your session…</div>;
+    return <div className="app-empty">Validating your session…</div>;
   }
 
   if (!user) {
@@ -37,12 +37,4 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   return children;
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  loader: {
-    padding: "2rem",
-    textAlign: "center",
-    color: "#475569",
-  },
 };

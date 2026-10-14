@@ -8,6 +8,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
 import { DateMaskInput } from "../../ui/DateMaskInput";
+import { Checkbox, TextField } from "../../ui";
 
 const schema = z.object({
   registeredStreet: z.string().min(1, "Ulica jest wymagana"),
@@ -101,98 +102,60 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 
   return (
     <form>
-      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
-      <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 3: Adresy</h2>
-      
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Adres zameldowania</legend>
+      <fieldset disabled={isReadOnly} className="app-client-fieldset">
+      <h2 className="app-client-step-title">Krok 3: Adresy</h2>
+
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Adres zameldowania</legend>
         <div className="form-grid">
-          <div style={styles.field}>
-            <label htmlFor="registeredStreet">Ulica, nr budynku/mieszkania</label>
-            <input id="registeredStreet" {...register("registeredStreet")} />
-            {errors.registeredStreet && <span style={styles.error}>{errors.registeredStreet.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="registeredPostalCode">Kod pocztowy</label>
-            <input id="registeredPostalCode" {...register("registeredPostalCode")} />
-            {errors.registeredPostalCode && <span style={styles.error}>{errors.registeredPostalCode.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="registeredCity">Miejscowość</label>
-            <input id="registeredCity" {...register("registeredCity")} />
-            {errors.registeredCity && <span style={styles.error}>{errors.registeredCity.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="registeredPostOffice">Poczta</label>
-            <input id="registeredPostOffice" {...register("registeredPostOffice")} />
-            {errors.registeredPostOffice && <span style={styles.error}>{errors.registeredPostOffice.message}</span>}
-          </div>
+          <TextField id="registeredStreet" label="Ulica, nr budynku/mieszkania" {...register("registeredStreet")} error={errors.registeredStreet?.message} />
+          <TextField id="registeredPostalCode" label="Kod pocztowy" {...register("registeredPostalCode")} error={errors.registeredPostalCode?.message} />
+          <TextField id="registeredCity" label="Miejscowość" {...register("registeredCity")} error={errors.registeredCity?.message} />
+          <TextField id="registeredPostOffice" label="Poczta" {...register("registeredPostOffice")} error={errors.registeredPostOffice?.message} />
         </div>
       </fieldset>
 
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Adres zamieszkania (korespondencyjny)</legend>
-        <div style={{...styles.field, marginBottom: '1rem'}}>
-          <label>
-            <input type="checkbox" {...register("isResidentialSameAsRegistered")} />
-            Adres zamieszkania taki sam jak zameldowania
-          </label>
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Adres zamieszkania (korespondencyjny)</legend>
+        <div className="app-client-row">
+          <Checkbox label="Adres zamieszkania taki sam jak zameldowania" {...register("isResidentialSameAsRegistered")} />
         </div>
 
         <div className="form-grid">
-          <div style={styles.field}>
-            <label htmlFor="residentialCountry">Kraj zamieszkania</label>
-            <input id="residentialCountry" {...register("residentialCountry")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="residentialStreet">Ulica, nr budynku/mieszkania</label>
-            <input id="residentialStreet" {...register("residentialStreet")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="residentialPostalCode">Kod pocztowy</label>
-            <input id="residentialPostalCode" {...register("residentialPostalCode")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="residentialCity">Miejscowość</label>
-            <input id="residentialCity" {...register("residentialCity")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="residentialPostOffice">Poczta</label>
-            <input id="residentialPostOffice" {...register("residentialPostOffice")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="propertyType">Typ lokalu</label>
-            <input id="propertyType" {...register("propertyType")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="ownershipType">Rodzaj własności</label>
-            <input id="ownershipType" {...register("ownershipType")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="addressFrom">Adres od (RRRR-MM)</label>
-            <Controller
-              control={control}
-              name="addressFrom"
-              render={({ field }) => (
-                <DatePicker
-                  id="addressFrom"
-                  locale={pl}
-                  dateFormat="yyyy-MM"
-                  showMonthYearPicker
-                  placeholderText="RRRR-MM"
-                  selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
-                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
-                  disabled={isReadOnly}
-                  showYearDropdown
-                  dropdownMode="select"
-                  yearDropdownItemNumber={100}
-                  scrollableYearDropdown
-                  customInput={<DateMaskInput maskFormat="YYYY-MM" />}
-                  className="date-picker-input native-input"
-                  wrapperClassName="date-picker-wrapper"
-                />
-              )}
-            />
+          <TextField id="residentialCountry" label="Kraj zamieszkania" {...register("residentialCountry")} />
+          <TextField id="residentialStreet" label="Ulica, nr budynku/mieszkania" {...register("residentialStreet")} />
+          <TextField id="residentialPostalCode" label="Kod pocztowy" {...register("residentialPostalCode")} />
+          <TextField id="residentialCity" label="Miejscowość" {...register("residentialCity")} />
+          <TextField id="residentialPostOffice" label="Poczta" {...register("residentialPostOffice")} />
+          <TextField id="propertyType" label="Typ lokalu" {...register("propertyType")} />
+          <TextField id="ownershipType" label="Rodzaj własności" {...register("ownershipType")} />
+          <div className="iz-field">
+            <label className="iz-field__label" htmlFor="addressFrom">Adres od (RRRR-MM)</label>
+            <div className="iz-field__control">
+              <Controller
+                control={control}
+                name="addressFrom"
+                render={({ field }) => (
+                  <DatePicker
+                    id="addressFrom"
+                    locale={pl}
+                    dateFormat="yyyy-MM"
+                    showMonthYearPicker
+                    placeholderText="RRRR-MM"
+                    selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
+                    onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
+                    disabled={isReadOnly}
+                    showYearDropdown
+                    dropdownMode="select"
+                    yearDropdownItemNumber={100}
+                    scrollableYearDropdown
+                    customInput={<DateMaskInput maskFormat="YYYY-MM" />}
+                    className="date-picker-input"
+                    wrapperClassName="date-picker-wrapper"
+                  />
+                )}
+              />
+            </div>
           </div>
         </div>
       </fieldset>
@@ -202,34 +165,3 @@ export const Step3_Addresses = forwardRef<Step3Ref, Step3Props>(({ onFormChange,
 });
 
 Step3_Addresses.displayName = "Step3_Addresses";
-
-const styles: Record<string, React.CSSProperties> = {
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  fieldset: {
-    border: "none",
-    padding: 0,
-    margin: "0 0 2rem 0",
-  },
-  legend: {
-    fontWeight: 600,
-    fontSize: "1.1rem",
-    marginBottom: "1rem",
-    padding: 0,
-    width: '100%',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "0.875rem",
-  },
-  readOnlyFieldset: {
-    border: "none",
-    padding: 0,
-    margin: 0,
-    width: "100%",
-  },
-};

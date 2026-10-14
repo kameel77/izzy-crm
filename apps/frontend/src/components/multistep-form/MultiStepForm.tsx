@@ -7,6 +7,7 @@ import {
   saveApplicationFormProgress,
   submitApplicationForm,
 } from "../../api/application-forms";
+import { cx } from "../ui/cx";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -21,7 +22,7 @@ const TOTAL_STEPS = 6;
 type StepRef = Step1Ref | Step2Ref | Step3Ref | Step4Ref | Step5Ref | Step6Ref;
 
 const AutoSaveStatus: React.FC<{ status: string }> = ({ status }) => (
-  <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.875rem', height: '20px' }}>
+  <div className={cx("app-client-autosave", status === 'error' && "app-client-autosave--error")} aria-live="polite">
     {status === 'saving' && 'Zapisywanie...'}
     {status === 'saved' && 'Zapisano.'}
     {status === 'error' && 'Błąd zapisu.'}
@@ -204,7 +205,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
   };
 
   if (isLoading) {
-    return <div>Ładowanie...</div>;
+    return <div className="app-empty">Ładowanie...</div>;
   }
 
   const isReadOnly = formStatus === 'SUBMITTED' || formStatus === 'LOCKED';
@@ -231,9 +232,9 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
       <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
       <AutoSaveStatus status={saveStatus} />
       
-      <div style={{ minHeight: "300px", padding: "1rem 0" }}>
+      <div className="app-client-steps">
         {steps.map((step, index) => (
-          <div key={index} style={{ display: currentStep === index + 1 ? 'block' : 'none' }}>
+          <div key={index} hidden={currentStep !== index + 1}>
             {step}
           </div>
         ))}

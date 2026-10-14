@@ -11,6 +11,7 @@ import "./styles/forms.css";
 import "./styles/lead-detail.css";
 import "./styles/lead-forms.css";
 import "./styles/admin.css";
+import "./styles/client-form.css";
 
 const rootElement = document.getElementById("root");
 
