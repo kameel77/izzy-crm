@@ -80,8 +80,6 @@ export async function apiFetch<TResponse>(
     mergedHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  console.log("Using token for auth:", token);
-
   init.headers = mergedHeaders;
 
   const response = await fetch(`${API_BASE_URL}${path}`, {

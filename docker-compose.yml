@@ -34,25 +34,25 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - DATABASE_URL=${SERVER_DATABASE_URL:-postgresql://izzy:izzy@postgres:5432/izzy}
-      - JWT_SECRET=${JWT_SECRET:-change-me-dev-secret}
+      - DATABASE_URL=${SERVER_DATABASE_URL:?SERVER_DATABASE_URL is required}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
       - postgres
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
 
   postgres:
     image: postgres:15
     container_name: izzy_postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=izzy
-      - POSTGRES_USER=izzy
-      - POSTGRES_PASSWORD=izzy
+      - POSTGRES_DB=${POSTGRES_DB:-izzy}
+      - POSTGRES_USER=${POSTGRES_USER:-izzy}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
 volumes:
   pg_data:

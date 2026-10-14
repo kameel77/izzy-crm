@@ -25,6 +25,7 @@ import { Badge, Button, Card, Select, StatusBadge, TextField } from "./ui";
 import { SendEmailModal } from "./SendEmailModal";
 import { LeadInsuranceOnboarding } from "./LeadInsuranceOnboarding";
 import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 type UnlockHistoryEntry = {
   unlockedBy?: string | null;
@@ -84,15 +85,18 @@ type ClientFormState = {
   postalCode: string;
 };
 
-const resolveDocumentUrl = (path: string) => {
+const resolveDocumentUrl = (path: string, authToken?: string | null) => {
   if (!path) return "#";
   if (/^https?:\/\//i.test(path)) {
     return path;
   }
-  if (path.startsWith("/")) {
-    return `${API_BASE_URL}${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const baseUrl = `${API_BASE_URL}${normalizedPath}`;
+  if (authToken && normalizedPath.startsWith("/uploads/")) {
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}token=${encodeURIComponent(authToken)}`;
   }
-  return `${API_BASE_URL}/${path}`;
+  return baseUrl;
 };
 
 type FormStatusTone = "neutral" | "info" | "success" | "warning" | "danger";
@@ -1041,7 +1045,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           </div>
         );
       }
-      return <div dangerouslySetInnerHTML={{ __html: html }} />;
+      return <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
     }
     const content = note.content || "";
     return (
@@ -1448,7 +1452,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                     <strong>{doc.type}</strong>
                     <div className="app-muted">
                       <a
-                        href={resolveDocumentUrl(doc.filePath)}
+                        href={resolveDocumentUrl(doc.filePath, token)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="app-link"
@@ -1558,7 +1562,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                 </div>
                 <div
                   className="app-lead-consent-text"
-                  dangerouslySetInnerHTML={{ __html: record.consentText }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(record.consentText) }}
                 />
               </li>
             ))
@@ -1593,7 +1597,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         <div className="app-panel app-lead-consent-modal">
           <div
             className="app-lead-consent-html"
-            dangerouslySetInnerHTML={{ __html: selectedConsentContent }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedConsentContent) }}
           />
         </div>
       </Modal>

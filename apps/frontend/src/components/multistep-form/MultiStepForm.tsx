@@ -8,6 +8,7 @@ import {
   submitApplicationForm,
 } from "../../api/application-forms";
 import { cx } from "../ui/cx";
+import { clientFormStore } from "../../store/clientFormStore";
 import { FormNavigator } from "./FormNavigator";
 import { ProgressBar } from "./ProgressBar";
 import { Step1_PersonalData, Step1Ref } from "./steps/Step1_PersonalData";
@@ -34,7 +35,7 @@ export interface MultiStepFormProps {
 }
 
 export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) => {
-  const { applicationFormId } = useParams<{ applicationFormId: string }>();
+  const { applicationFormId, leadId } = useParams<{ applicationFormId: string; leadId?: string }>();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
@@ -44,6 +45,11 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
   const [saveStatus, setSaveStatus] = useState('idle');
   const [isLoading, setIsLoading] = useState(true);
   const isSavingRef = useRef(false);
+
+  const accessCodeHash = React.useMemo(() => {
+    if (!applicationFormId || !leadId) return null;
+    return clientFormStore.load(applicationFormId, leadId)?.accessCodeHash ?? null;
+  }, [applicationFormId, leadId]);
 
   const [debouncedFormData] = useDebounce(formData, 3000);
 
@@ -62,7 +68,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
         return;
       }
       try {
-        const savedForm = await getApplicationForm(applicationFormId);
+        const savedForm = await getApplicationForm(applicationFormId, accessCodeHash);
         if (savedForm && savedForm.formData) {
           setFormData(savedForm.formData);
         }
@@ -87,7 +93,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
     };
 
     loadFormData();
-  }, [applicationFormId]);
+  }, [applicationFormId, accessCodeHash]);
 
   useEffect(() => {
     if (isLoading || !applicationFormId || formStatus === 'SUBMITTED' || formStatus === 'LOCKED') {
@@ -96,7 +102,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
 
     const pingHeartbeat = async () => {
       try {
-        await heartbeatApplicationForm(applicationFormId);
+        await heartbeatApplicationForm(applicationFormId, accessCodeHash);
       } catch (error) {
         console.error("Heartbeat failed", error);
       }
@@ -108,7 +114,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
     return () => {
       window.clearInterval(interval);
     };
-  }, [applicationFormId, formStatus, isLoading]);
+  }, [applicationFormId, accessCodeHash, formStatus, isLoading]);
 
   useEffect(() => {
     const performSave = async () => {
@@ -128,11 +134,15 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
       setSaveStatus('saving');
       try {
         const completionPercent = Math.round(((currentStep - 1) / TOTAL_STEPS) * 100);
-        await saveApplicationFormProgress(applicationFormId, {
-          formData: debouncedFormData,
-          currentStep,
-          completionPercent,
-        });
+        await saveApplicationFormProgress(
+          applicationFormId,
+          {
+            formData: debouncedFormData,
+            currentStep,
+            completionPercent,
+          },
+          accessCodeHash,
+        );
         setSaveStatus('saved');
       } catch (error) {
         console.error("Failed to save data to backend", error);
@@ -143,7 +153,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
     };
 
     performSave();
-  }, [debouncedFormData, currentStep, applicationFormId, isLoading, formStatus]);
+  }, [debouncedFormData, currentStep, applicationFormId, accessCodeHash, isLoading, formStatus]);
 
   const handleNext = async () => {
     const currentStepRef = stepRefs.current[currentStep - 1]?.current;
@@ -184,11 +194,10 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({ onStepChange }) =>
         return;
       }
       try {
-        await submitApplicationForm(applicationFormId, formData);
+        await submitApplicationForm(applicationFormId, formData, accessCodeHash);
         const ts = new Date().toISOString();
         setFormStatus('SUBMITTED');
         setSubmittedAt(ts);
-        console.log("Form submitted successfully:", formData);
         navigate('/thank-you');
       } catch (error) {
         console.error("Failed to submit form", error);

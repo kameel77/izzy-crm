@@ -25,3 +25,9 @@ export const requestPasswordReset = (email: string) =>
     method: "POST",
     body: JSON.stringify({ email }),
   });
+
+export const confirmPasswordReset = (token: string, password: string) =>
+  apiFetch<void>("/api/auth/reset-password/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });

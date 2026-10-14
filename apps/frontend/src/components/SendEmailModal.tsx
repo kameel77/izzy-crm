@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../providers/ToastProvider";
 import { Modal } from "./Modal";
 import { Button, TextField } from "./ui";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 interface ReplyContext {
   noteId?: string;
@@ -379,7 +380,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
               <div className="app-lf-preview__label">Podgląd cytowanej historii</div>
               <div
                 className="app-lf-preview__content"
-                dangerouslySetInnerHTML={{ __html: replyContext.quotedHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(replyContext.quotedHtml) }}
               />
             </div>
           ) : null}

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import {
   ApplicationFormStatus,
   ConsentMethod,
@@ -9,7 +10,15 @@ import {
 
 import { prisma } from "../lib/prisma.js";
 import { createHttpError } from "../utils/httpError.js";
+import { canAccessLead } from "../utils/leadAccess.js";
 import { notifyApplicationReadyForReview } from "./crm-notification.service.js";
+
+const safeCompareStrings = (a: string, b: string) => {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+};
 
 const DEFAULT_FORM_TYPE = "financing_application";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -174,6 +183,10 @@ export const recordConsentBatch = async (payload: RecordConsentPayload) => {
     throw createConsentError(409, "LINK_EXPIRED", "Form is locked for edits");
   }
 
+  if (!form.accessCodeHash || !safeCompareStrings(form.accessCodeHash, payload.accessCodeHash)) {
+    throw createConsentError(401, "INVALID_CODE", "Nieprawidłowy kod dostępu");
+  }
+
   const templateIds = payload.consents.map((consent) => consent.consentTemplateId);
   const uniqueTemplateIds = [...new Set(templateIds)];
 
@@ -306,10 +319,73 @@ export type ListConsentRecordsParams = {
   sortOrder?: "asc" | "desc"; // New: sorting order
   skip?: number;
   take?: number;
+  actorUser?: { id: string; role: UserRole; partnerId?: string | null };
 };
 
 export const listConsentRecords = async (params: ListConsentRecordsParams) => {
-  const { skip, take, recordedAtStart, recordedAtEnd, withdrawnAtStart, withdrawnAtEnd, clientSearch, sortBy, sortOrder, ...whereParams } = params;
+  const {
+    skip,
+    take,
+    recordedAtStart,
+    recordedAtEnd,
+    withdrawnAtStart,
+    withdrawnAtEnd,
+    clientSearch,
+    sortBy,
+    sortOrder,
+    actorUser,
+    ...whereParams
+  } = params;
+
+  const andConditions: Prisma.ConsentRecordWhereInput[] = [];
+
+  if (actorUser?.role === UserRole.OPERATOR) {
+    if (actorUser.partnerId) {
+      andConditions.push({
+        OR: [
+          { lead: { partnerId: actorUser.partnerId } },
+          { lead: { assignedUserId: actorUser.id } },
+        ],
+      });
+    } else {
+      andConditions.push({ lead: { assignedUserId: actorUser.id } });
+    }
+  }
+
+  if (clientSearch) {
+    andConditions.push({
+      OR: [
+        {
+          lead: {
+            customerProfile: {
+              firstName: { contains: clientSearch, mode: "insensitive" },
+            },
+          },
+        },
+        {
+          lead: {
+            customerProfile: {
+              lastName: { contains: clientSearch, mode: "insensitive" },
+            },
+          },
+        },
+        {
+          lead: {
+            customerProfile: {
+              email: { contains: clientSearch, mode: "insensitive" },
+            },
+          },
+        },
+        {
+          lead: {
+            customerProfile: {
+              phone: { contains: clientSearch, mode: "insensitive" },
+            },
+          },
+        },
+      ],
+    });
+  }
 
   const where: Prisma.ConsentRecordWhereInput = {
     ...whereParams,
@@ -321,40 +397,8 @@ export const listConsentRecords = async (params: ListConsentRecordsParams) => {
       gte: withdrawnAtStart,
       lte: withdrawnAtEnd,
     },
+    ...(andConditions.length > 0 ? { AND: andConditions } : {}),
   };
-
-  if (clientSearch) {
-    where.OR = [
-      {
-        lead: {
-          customerProfile: {
-            firstName: { contains: clientSearch, mode: "insensitive" },
-          },
-        },
-      },
-      {
-        lead: {
-          customerProfile: {
-            lastName: { contains: clientSearch, mode: "insensitive" },
-          },
-        },
-      },
-      {
-        lead: {
-          customerProfile: {
-            email: { contains: clientSearch, mode: "insensitive" },
-          },
-        },
-      },
-      {
-        lead: {
-          customerProfile: {
-            phone: { contains: clientSearch, mode: "insensitive" },
-          },
-        },
-      },
-    ];
-  }
 
   let orderBy: Prisma.Enumerable<Prisma.ConsentRecordOrderByWithRelationInput>;
   switch (sortBy) {
@@ -436,7 +480,43 @@ export const exportConsentRecords = async (
   params: Omit<ListConsentRecordsParams, "skip" | "take">,
   format: "csv" | "json"
 ) => {
-  const { recordedAtStart, recordedAtEnd, withdrawnAtStart, withdrawnAtEnd, clientSearch, sortBy, sortOrder, ...whereParams } = params;
+  const {
+    recordedAtStart,
+    recordedAtEnd,
+    withdrawnAtStart,
+    withdrawnAtEnd,
+    clientSearch,
+    sortBy,
+    sortOrder,
+    actorUser,
+    ...whereParams
+  } = params;
+
+  const andConditions: Prisma.ConsentRecordWhereInput[] = [];
+
+  if (actorUser?.role === UserRole.OPERATOR) {
+    if (actorUser.partnerId) {
+      andConditions.push({
+        OR: [
+          { lead: { partnerId: actorUser.partnerId } },
+          { lead: { assignedUserId: actorUser.id } },
+        ],
+      });
+    } else {
+      andConditions.push({ lead: { assignedUserId: actorUser.id } });
+    }
+  }
+
+  if (clientSearch) {
+    andConditions.push({
+      OR: [
+        { lead: { customerProfile: { firstName: { contains: clientSearch, mode: "insensitive" } } } },
+        { lead: { customerProfile: { lastName: { contains: clientSearch, mode: "insensitive" } } } },
+        { lead: { customerProfile: { email: { contains: clientSearch, mode: "insensitive" } } } },
+        { lead: { customerProfile: { phone: { contains: clientSearch, mode: "insensitive" } } } },
+      ],
+    });
+  }
 
   const where: Prisma.ConsentRecordWhereInput = {
     ...whereParams,
@@ -448,16 +528,8 @@ export const exportConsentRecords = async (
       gte: withdrawnAtStart,
       lte: withdrawnAtEnd,
     },
+    ...(andConditions.length > 0 ? { AND: andConditions } : {}),
   };
-
-  if (clientSearch) {
-    where.OR = [
-      { lead: { customerProfile: { firstName: { contains: clientSearch, mode: "insensitive" } } } },
-      { lead: { customerProfile: { lastName: { contains: clientSearch, mode: "insensitive" } } } },
-      { lead: { customerProfile: { email: { contains: clientSearch, mode: "insensitive" } } } },
-      { lead: { customerProfile: { phone: { contains: clientSearch, mode: "insensitive" } } } },
-    ];
-  }
 
   let orderBy: Prisma.Enumerable<Prisma.ConsentRecordOrderByWithRelationInput>;
   switch (sortBy) {
@@ -511,17 +583,41 @@ export const withdrawConsent = async (params: {
   consentRecordId: string;
   actorUserId: string;
   actorRole: UserRole;
+  actorPartnerId?: string | null;
 }) => {
-  const { consentRecordId, actorUserId, actorRole } = params;
+  const { consentRecordId, actorUserId, actorRole, actorPartnerId } = params;
 
   return prisma.$transaction(async (tx) => {
     const consentRecord = await tx.consentRecord.findUnique({
       where: { id: consentRecordId },
-      select: { id: true, withdrawnAt: true, leadId: true, consentType: true },
+      select: {
+        id: true,
+        withdrawnAt: true,
+        leadId: true,
+        consentType: true,
+        lead: {
+          select: {
+            id: true,
+            partnerId: true,
+            createdByUserId: true,
+            assignedUserId: true,
+          },
+        },
+      },
     });
 
     if (!consentRecord) {
       throw createHttpError({ status: 404, message: "Consent record not found" });
+    }
+
+    if (
+      !canAccessLead(consentRecord.lead, {
+        id: actorUserId,
+        role: actorRole,
+        partnerId: actorPartnerId,
+      })
+    ) {
+      throw createHttpError({ status: 403, message: "Access denied" });
     }
 
     if (consentRecord.withdrawnAt) {

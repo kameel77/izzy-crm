@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
+import { createRateLimiter } from "../middlewares/rateLimit.js";
 import {
   createConsentTemplate,
   deleteConsentTemplate,
@@ -17,6 +18,12 @@ import {
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
+
+const publicConsentRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyPrefix: "public-consent",
+});
 
 const parseBoolean = (value: unknown): boolean | undefined => {
   if (typeof value === "boolean") {
@@ -162,6 +169,7 @@ router.get(
     const records = await listConsentRecords({
       ...rest,
       consentGiven: parseBoolean(consentGiven),
+      actorUser: req.user,
     });
     res.json({ data: records.records, count: records.count });
   }),
@@ -181,6 +189,7 @@ router.get(
       consentGiven: parseBoolean(consentGiven),
       sortBy,
       sortOrder,
+      actorUser: req.user,
       // No skip/take for export
     }, format);
 
@@ -202,6 +211,7 @@ router.post(
       consentRecordId: id,
       actorUserId: actorUser.id,
       actorRole: actorUser.role,
+      actorPartnerId: actorUser.partnerId,
     });
 
     res.json(withdrawnRecord);
@@ -210,6 +220,7 @@ router.post(
 
 router.post(
   "/consent-records",
+  publicConsentRateLimiter,
   asyncHandler(async (req, res) => {
     const body = consentRecordSchema.parse(req.body);
 

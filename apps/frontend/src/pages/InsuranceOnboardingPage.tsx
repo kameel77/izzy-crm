@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
 import { Button, Checkbox, Icon } from "../components/ui";
 import { cx } from "../components/ui/cx";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 type VerifyResponse = {
     sessionId: string;
@@ -341,7 +342,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
                                             </button>
                                             {expandedConsents[t.id] && (
                                                 <div className="app-io-consent__content">
-                                                    <div dangerouslySetInnerHTML={{ __html: t.content }} />
+                                                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(t.content) }} />
                                                     {t.helpText && <p className="app-io-consent__help">{t.helpText}</p>}
                                                 </div>
                                             )}
