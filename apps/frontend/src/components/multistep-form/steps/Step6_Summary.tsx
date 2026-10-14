@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useParams } from "react-router-dom";
 import { ConsentTemplateDto, fetchConsentTemplates } from "../../../api/consents";
+import { Button, Checkbox } from "../../ui";
+import { cx } from "../../ui/cx";
 
 export interface Step6Ref {
   triggerValidation: () => Promise<boolean>;
@@ -106,9 +108,9 @@ const SUMMARY_SECTIONS: Array<{ title: string; keys: string[] }> = [
 ];
 
 const SummaryItem = ({ label, value }: { label: string; value: unknown }) => (
-  <div style={styles.summaryItem}>
-    <span style={styles.summaryLabel}>{label}</span>
-    <span style={styles.summaryValue}>{String(value ?? "—")}</span>
+  <div className="app-client-summary__row">
+    <span className="app-client-summary__label">{label}</span>
+    <span className="app-client-summary__value">{String(value ?? "—")}</span>
   </div>
 );
 
@@ -193,11 +195,11 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
 
   return (
     <div>
-      <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 6: Zgody i podsumowanie</h2>
+      <h2 className="app-client-step-title">Krok 6: Zgody i podsumowanie</h2>
 
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Podsumowanie danych</legend>
-        <p>Proszę zweryfikować poprawność wprowadzonych danych przed wysłaniem wniosku.</p>
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Podsumowanie danych</legend>
+        <p className="app-client-note">Proszę zweryfikować poprawność wprowadzonych danych przed wysłaniem wniosku.</p>
 
         {SUMMARY_SECTIONS.map((section) => {
           const sectionRows = section.keys
@@ -209,49 +211,43 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
           if (sectionRows.length === 0) return null;
 
           return (
-            <div key={section.title} style={styles.summarySection}>
-              <h3 style={styles.summarySectionTitle}>{section.title}</h3>
+            <div key={section.title}>
+              <h3 className="app-client-summary__title">{section.title}</h3>
               {sectionRows}
             </div>
           );
         })}
       </fieldset>
 
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Zgody</legend>
-        {isLoading && <p>Ładowanie zgód...</p>}
-        {error && <p style={styles.error}>{error}</p>}
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Zgody</legend>
+        {isLoading && <p className="app-muted">Ładowanie zgód...</p>}
+        {error && <div className="app-alert app-alert--danger">{error}</div>}
         {templates.map((consent) => {
           const hasError = submitAttempted && consent.isRequired && !consentState[consent.id];
           return (
-            <div key={consent.id} style={styles.consentItem}>
-              <div style={styles.consentHeader}>
-                <label style={hasError ? { ...styles.consentLabel, ...styles.errorLabel } : styles.consentLabel}>
-                  <input
-                    type="checkbox"
-                    checked={consentState[consent.id] || false}
-                    onChange={(e) => handleConsentChange(consent.id, e.target.checked)}
-                    disabled={isReadOnly}
-                  />
-                  {consent.title || consent.content} {consent.isRequired && "*"}
-                </label>
-                <button
-                  type="button"
-                  style={styles.consentToggle}
-                  onClick={() => toggleConsentOpen(consent.id)}
-                >
+            <div key={consent.id} className={cx("app-client-consent", hasError && "app-client-consent--error")}>
+              <div className="app-client-consent__head">
+                <Checkbox
+                  checked={consentState[consent.id] || false}
+                  onChange={(e) => handleConsentChange(consent.id, e.target.checked)}
+                  disabled={isReadOnly}
+                  label={<>{consent.title || consent.content} {consent.isRequired && "*"}</>}
+                  className={hasError ? "app-client-consent__check--error" : undefined}
+                />
+                <Button type="button" variant="ghost" size="sm" onClick={() => toggleConsentOpen(consent.id)}>
                   {consentOpen[consent.id] ? "Ukryj treść" : "Pokaż treść"}
-                </button>
+                </Button>
               </div>
-              {consent.helpText && <small style={styles.helpText}>{consent.helpText}</small>}
+              {consent.helpText && <small className="app-client-consent__help">{consent.helpText}</small>}
               {consentOpen[consent.id] ? (
-                <div style={styles.consentContent}>{consent.content || "Brak treści zgody."}</div>
+                <div className="app-client-consent__content">{consent.content || "Brak treści zgody."}</div>
               ) : null}
             </div>
           );
         })}
         {submittedAt ? (
-          <p style={styles.submittedNote}>Wniosek został wysłany: {new Date(submittedAt).toLocaleString()}</p>
+          <div className="app-alert app-alert--success">Wniosek został wysłany: {new Date(submittedAt).toLocaleString()}</div>
         ) : null}
       </fieldset>
     </div>
@@ -259,95 +255,3 @@ export const Step6_Summary = forwardRef<Step6Ref, Step6Props>(({
 });
 
 Step6_Summary.displayName = "Step6_Summary";
-
-const styles: Record<string, React.CSSProperties> = {
-  fieldset: {
-    border: "none",
-    padding: 0,
-    margin: "0 0 2rem 0",
-  },
-  legend: {
-    fontWeight: 600,
-    fontSize: "1.1rem",
-    marginBottom: "1rem",
-    padding: 0,
-    width: "100%",
-    borderBottom: "1px solid #e5e7eb",
-  },
-  summarySection: {
-    marginBottom: "1rem",
-  },
-  summarySectionTitle: {
-    marginBottom: "0.5rem",
-  },
-  summaryItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "0.5rem 0",
-    borderBottom: "1px solid #f3f4f6",
-  },
-  summaryLabel: {
-    color: "#475569",
-  },
-  summaryValue: {
-    fontWeight: 500,
-  },
-  errorLabel: {
-    color: "#ef4444",
-    fontWeight: "bold",
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "0.875rem",
-    marginBottom: "1rem",
-  },
-  submittedNote: {
-    marginTop: "0.5rem",
-    color: "#065f46",
-    background: "#d1fae5",
-    border: "1px solid #10b981",
-    borderRadius: "6px",
-    padding: "0.5rem 0.75rem",
-    fontSize: "0.9rem",
-  },
-  consentItem: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 8,
-    padding: "0.65rem 0.75rem",
-    marginBottom: "0.75rem",
-  },
-  consentHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-    alignItems: "center",
-    flexWrap: "wrap",
-  },
-  consentLabel: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    fontSize: "0.95rem",
-  },
-  consentToggle: {
-    background: "transparent",
-    border: "1px solid #e5e7eb",
-    borderRadius: 6,
-    padding: "0.2rem 0.65rem",
-    fontSize: "0.9rem",
-    cursor: "pointer",
-  },
-  consentContent: {
-    marginTop: "0.5rem",
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: 6,
-    padding: "0.65rem",
-    whiteSpace: "pre-wrap",
-    fontSize: "0.92rem",
-  },
-  helpText: {
-    color: "#6b7280",
-    fontSize: "0.85rem",
-  },
-};

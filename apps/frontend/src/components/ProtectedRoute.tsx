@@ -17,11 +17,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
-  const toast = useToasts();
+  const { addToast } = useToasts();
   const hasWarnedRef = useRef(false);
 
   if (isLoading) {
-    return <div style={styles.loader}>Validating your session…</div>;
+    return <div className="app-empty">Validating your session…</div>;
   }
 
   if (!user) {
@@ -30,19 +30,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (roles && !roles.includes(user.role)) {
     if (!hasWarnedRef.current) {
-      toast.error("You do not have access to that area. Redirected to your workspace.");
+      addToast("You do not have access to that area. Redirected to your workspace.", "error");
       hasWarnedRef.current = true;
     }
     return <Navigate to={unauthorizedRedirect} replace state={{ from: location, reason: "unauthorized" }} />;
   }
 
   return children;
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  loader: {
-    padding: "2rem",
-    textAlign: "center",
-    color: "#475569",
-  },
 };

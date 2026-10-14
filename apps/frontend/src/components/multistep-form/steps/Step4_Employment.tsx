@@ -8,6 +8,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
 import { DateMaskInput } from "../../ui/DateMaskInput";
+import { Icon, TextField } from "../../ui";
+import { cx } from "../../ui/cx";
 
 const schema = z.object({
   incomeSource: z.string().min(1, "Źródło dochodów jest wymagane"),
@@ -71,113 +73,66 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
 
   return (
     <form>
-      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
-      <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 4: Zatrudnienie</h2>
-      
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Informacje o zatrudnieniu</legend>
+      <fieldset disabled={isReadOnly} className="app-client-fieldset">
+      <h2 className="app-client-step-title">Krok 4: Zatrudnienie</h2>
+
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Informacje o zatrudnieniu</legend>
         <div className="form-grid">
-          <div style={styles.field}>
-            <label htmlFor="incomeSource">Źródło dochodów</label>
-            <input id="incomeSource" {...register("incomeSource")} />
-            {errors.incomeSource && <span style={styles.error}>{errors.incomeSource.message}</span>}
+          <TextField id="incomeSource" label="Źródło dochodów" {...register("incomeSource")} error={errors.incomeSource?.message} />
+          <div className={cx("iz-field", errors.employmentSince && "iz-field--error")}>
+            <label className="iz-field__label" htmlFor="employmentSince">Zatrudnienie od (RRRR-MM)</label>
+            <div className="iz-field__control">
+              <Controller
+                control={control}
+                name="employmentSince"
+                render={({ field }) => (
+                  <DatePicker
+                    id="employmentSince"
+                    locale={pl}
+                    dateFormat="yyyy-MM"
+                    showMonthYearPicker
+                    placeholderText="RRRR-MM"
+                    selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
+                    onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
+                    disabled={isReadOnly}
+                    showYearDropdown
+                    dropdownMode="select"
+                    yearDropdownItemNumber={100}
+                    scrollableYearDropdown
+                    customInput={<DateMaskInput maskFormat="YYYY-MM" />}
+                    className="date-picker-input"
+                    wrapperClassName="date-picker-wrapper"
+                  />
+                )}
+              />
+            </div>
+            {errors.employmentSince && (
+              <div className="iz-field__hint">
+                <Icon name="alert" size={12} />
+                {errors.employmentSince.message}
+              </div>
+            )}
           </div>
-          <div style={styles.field}>
-            <label htmlFor="employmentSince">Zatrudnienie od (RRRR-MM)</label>
-            <Controller
-              control={control}
-              name="employmentSince"
-              render={({ field }) => (
-                <DatePicker
-                  id="employmentSince"
-                  locale={pl}
-                  dateFormat="yyyy-MM"
-                  showMonthYearPicker
-                  placeholderText="RRRR-MM"
-                  selected={field.value ? parse(field.value, "yyyy-MM", new Date()) : null}
-                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM") : "")}
-                  disabled={isReadOnly}
-                  showYearDropdown
-                  dropdownMode="select"
-                  yearDropdownItemNumber={100}
-                  scrollableYearDropdown
-                  customInput={<DateMaskInput maskFormat="YYYY-MM" />}
-                  className="date-picker-input native-input"
-                  wrapperClassName="date-picker-wrapper"
-                />
-              )}
-            />
-            {errors.employmentSince && <span style={styles.error}>{errors.employmentSince.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="profession">Zawód</label>
-            <input id="profession" {...register("profession")} />
-            {errors.profession && <span style={styles.error}>{errors.profession.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="position">Stanowisko</label>
-            <input id="position" {...register("position")} />
-            {errors.position && <span style={styles.error}>{errors.position.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employmentSector">Sektor zatrudnienia</label>
-            <input id="employmentSector" {...register("employmentSector")} />
-            {errors.employmentSector && <span style={styles.error}>{errors.employmentSector.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="totalWorkExperience">Całkowity staż pracy</label>
-            <input id="totalWorkExperience" {...register("totalWorkExperience")} />
-            {errors.totalWorkExperience && <span style={styles.error}>{errors.totalWorkExperience.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="workplaceType">Rodzaj zakładu pracy</label>
-            <input id="workplaceType" {...register("workplaceType")} />
-            {errors.workplaceType && <span style={styles.error}>{errors.workplaceType.message}</span>}
-          </div>
+          <TextField id="profession" label="Zawód" {...register("profession")} error={errors.profession?.message} />
+          <TextField id="position" label="Stanowisko" {...register("position")} error={errors.position?.message} />
+          <TextField id="employmentSector" label="Sektor zatrudnienia" {...register("employmentSector")} error={errors.employmentSector?.message} />
+          <TextField id="totalWorkExperience" label="Całkowity staż pracy" {...register("totalWorkExperience")} error={errors.totalWorkExperience?.message} />
+          <TextField id="workplaceType" label="Rodzaj zakładu pracy" {...register("workplaceType")} error={errors.workplaceType?.message} />
         </div>
       </fieldset>
 
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Dane pracodawcy</legend>
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Dane pracodawcy</legend>
         <div className="form-grid">
-          <div style={styles.field}>
-            <label htmlFor="employerName">Nazwa</label>
-            <input id="employerName" {...register("employerName")} />
-            {errors.employerName && <span style={styles.error}>{errors.employerName.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerPhone">Telefon</label>
-            <input id="employerPhone" {...register("employerPhone")} />
-            {errors.employerPhone && <span style={styles.error}>{errors.employerPhone.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerStreet">Ulica, nr budynku/mieszkania</label>
-            <input id="employerStreet" {...register("employerStreet")} />
-            {errors.employerStreet && <span style={styles.error}>{errors.employerStreet.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerPostalCode">Kod pocztowy</label>
-            <input id="employerPostalCode" {...register("employerPostalCode")} />
-            {errors.employerPostalCode && <span style={styles.error}>{errors.employerPostalCode.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerCity">Miejscowość</label>
-            <input id="employerCity" {...register("employerCity")} />
-            {errors.employerCity && <span style={styles.error}>{errors.employerCity.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerPostOffice">Poczta</label>
-            <input id="employerPostOffice" {...register("employerPostOffice")} />
-            {errors.employerPostOffice && <span style={styles.error}>{errors.employerPostOffice.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerNip">NIP (opcjonalnie)</label>
-            <input id="employerNip" {...register("employerNip")} />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="employerRegon">REGON (opcjonalnie)</label>
-            <input id="employerRegon" {...register("employerRegon")} />
-          </div>
+          <TextField id="employerName" label="Nazwa" {...register("employerName")} error={errors.employerName?.message} />
+          <TextField id="employerPhone" label="Telefon" {...register("employerPhone")} error={errors.employerPhone?.message} />
+          <TextField id="employerStreet" label="Ulica, nr budynku/mieszkania" {...register("employerStreet")} error={errors.employerStreet?.message} />
+          <TextField id="employerPostalCode" label="Kod pocztowy" {...register("employerPostalCode")} error={errors.employerPostalCode?.message} />
+          <TextField id="employerCity" label="Miejscowość" {...register("employerCity")} error={errors.employerCity?.message} />
+          <TextField id="employerPostOffice" label="Poczta" {...register("employerPostOffice")} error={errors.employerPostOffice?.message} />
+          <TextField id="employerNip" label="NIP (opcjonalnie)" {...register("employerNip")} />
+          <TextField id="employerRegon" label="REGON (opcjonalnie)" {...register("employerRegon")} />
         </div>
       </fieldset>
       </fieldset>
@@ -186,34 +141,3 @@ export const Step4_Employment = forwardRef<Step4Ref, Step4Props>(({ onFormChange
 });
 
 Step4_Employment.displayName = "Step4_Employment";
-
-const styles: Record<string, React.CSSProperties> = {
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  fieldset: {
-    border: "none",
-    padding: 0,
-    margin: "0 0 2rem 0",
-  },
-  legend: {
-    fontWeight: 600,
-    fontSize: "1.1rem",
-    marginBottom: "1rem",
-    padding: 0,
-    width: '100%',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "0.875rem",
-  },
-  readOnlyFieldset: {
-    border: "none",
-    padding: 0,
-    margin: 0,
-    width: "100%",
-  },
-};

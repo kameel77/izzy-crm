@@ -127,7 +127,7 @@ test("shows modal when submit returns 409 and triggers refetch", async ({ page, 
 
   await page.getByRole("button", { name: "Zapisz zgody" }).click();
   await expect(page.getByText("Wersja formularza nieaktualna")).toBeVisible();
-  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
 
   await page.getByRole("button", { name: "Zapisz zgody" }).click();
   await expect(page.getByText("Zgody zostały zapisane")).toBeVisible();

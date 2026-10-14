@@ -32,10 +32,15 @@ export const ToastProvider: React.FC<React.PropsWithChildren<ToasterProps>> = ({
         position="top-right"
         toastOptions={{
           style: {
-            borderRadius: "10px",
-            background: "#0f172a",
-            color: "#f8fafc",
+            borderRadius: "var(--radius-md)",
+            background: "var(--solid)",
+            color: "var(--on-solid)",
+            fontSize: "13px",
+            lineHeight: "18px",
+            boxShadow: "var(--shadow-md)",
           },
+          success: { iconTheme: { primary: "var(--success)", secondary: "var(--on-solid)" } },
+          error: { iconTheme: { primary: "var(--danger)", secondary: "var(--on-solid)" } },
         }}
         {...props}
       />

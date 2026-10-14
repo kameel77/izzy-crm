@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { fetchPartners, PartnerSummary } from "../api/partners";
 import { CreateUserPayload, UpdateUserPayload, UserSummary } from "../api/users";
 import { useAuth } from "../hooks/useAuth";
+import { Button, Select, TextField } from "./ui";
 
 interface UserFormProps {
   mode: "create" | "edit";
@@ -145,177 +146,76 @@ export const UserForm: React.FC<UserFormProps> = ({ mode, user, onSubmit, onRese
   };
 
   return (
-    <section style={styles.container}>
-      <h2 style={styles.title}>{mode === "create" ? "Invite/Create User" : "Edit User"}</h2>
-      <form onSubmit={handleSubmit} style={styles.form}>
+    <section className="app-form">
+      <h2 className="app-section-title">{mode === "create" ? "Invite/Create user" : "Edit user"}</h2>
+      <form onSubmit={handleSubmit} className="app-form">
         {mode === "create" ? (
-          <label style={styles.label}>
-            Email
-            <input
-              style={styles.input}
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </label>
-        ) : null}
-        <label style={styles.label}>
-          Full name
-          <input
-            style={styles.input}
-            value={fullName}
-            onChange={(event) => setFullName(event.target.value)}
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             required
           />
-        </label>
-        <label style={styles.label}>
-          Phone
-          <input
-            style={styles.input}
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-          />
-        </label>
-        <label style={styles.label}>
-          Role
-          <select value={role} onChange={(event) => setRole(event.target.value)} style={styles.input}>
-            {ROLE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={styles.label}>
-          Status
-          <select value={status} onChange={(event) => setStatus(event.target.value)} style={styles.input}>
-            {STATUS_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={styles.label}>
-          Partner (optional)
-          <select
-            value={partnerId}
-            onChange={(event) => setPartnerId(event.target.value)}
-            style={styles.input}
-            disabled={partnersLoading || Boolean(partnersError)}
-          >
-            <option value="">No partner</option>
-            {partners.map((partner) => (
-              <option key={partner.id} value={partner.id}>
-                {partner.name}
-              </option>
-            ))}
-          </select>
-          {partnersLoading ? (
-            <span style={styles.hint}>Loading partners…</span>
-          ) : partnersError ? (
-            <span style={styles.errorInline}>{partnersError}</span>
-          ) : null}
-        </label>
-        <label style={styles.label}>
-          Password {mode === "create" ? "(optional)" : "(leave blank to keep current)"}
-          <input
-            style={styles.input}
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        {error ? <div style={styles.error}>{error}</div> : null}
-        {success ? <div style={styles.success}>{success}</div> : null}
-        <button type="submit" style={styles.submit} disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : mode === "create" ? "Create User" : "Save Changes"}
-        </button>
+        ) : null}
+        <TextField
+          label="Full name"
+          value={fullName}
+          onChange={(event) => setFullName(event.target.value)}
+          required
+        />
+        <TextField label="Phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
+        <Select label="Role" value={role} onChange={(event) => setRole(event.target.value)} options={ROLE_OPTIONS} />
+        <Select
+          label="Status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+          options={STATUS_OPTIONS}
+        />
+        <Select
+          label="Partner (optional)"
+          value={partnerId}
+          onChange={(event) => setPartnerId(event.target.value)}
+          disabled={partnersLoading || Boolean(partnersError)}
+          options={[
+            { value: "", label: "No partner" },
+            ...partners.map((partner) => ({ value: partner.id, label: partner.name })),
+          ]}
+          hint={partnersLoading ? "Loading partners…" : undefined}
+          error={partnersError || undefined}
+        />
+        <TextField
+          label={`Password ${mode === "create" ? "(optional)" : "(leave blank to keep current)"}`}
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+        {error ? <div className="app-alert app-alert--danger">{error}</div> : null}
+        {success ? <div className="app-alert app-alert--success">{success}</div> : null}
+        <div className="app-form-actions app-form-actions--start">
+          <Button type="submit" variant="primary" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : mode === "create" ? "Create user" : "Save changes"}
+          </Button>
+        </div>
       </form>
 
       {mode === "edit" && user && onResetPassword ? (
-        <form onSubmit={handleResetPassword} style={styles.form}>
-          <h3 style={styles.subtitle}>Reset Password</h3>
-          <label style={styles.label}>
-            New password
-            <input
-              style={styles.input}
-              type="password"
-              value={resetPasswordValue}
-              onChange={(event) => setResetPasswordValue(event.target.value)}
-              required
-            />
-          </label>
-          <button type="submit" style={styles.submit} disabled={isSubmitting}>
-            {isSubmitting ? "Resetting..." : "Reset Password"}
-          </button>
+        <form onSubmit={handleResetPassword} className="app-form app-adm-subform">
+          <h3 className="app-section-title">Reset password</h3>
+          <TextField
+            label="New password"
+            type="password"
+            value={resetPasswordValue}
+            onChange={(event) => setResetPasswordValue(event.target.value)}
+            required
+          />
+          <div className="app-form-actions app-form-actions--start">
+            <Button type="submit" variant="secondary" disabled={isSubmitting}>
+              {isSubmitting ? "Resetting..." : "Reset password"}
+            </Button>
+          </div>
         </form>
       ) : null}
     </section>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  title: {
-    margin: 0,
-  },
-  subtitle: {
-    margin: 0,
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.35rem",
-  },
-  input: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-  },
-  submit: {
-    alignSelf: "flex-start",
-    padding: "0.6rem 1.2rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    cursor: "pointer",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.5rem",
-    borderRadius: 8,
-  },
-  success: {
-    background: "#ecfdf5",
-    color: "#047857",
-    padding: "0.5rem",
-    borderRadius: 8,
-  },
-  hint: {
-    marginTop: "0.25rem",
-    fontSize: "0.8rem",
-    color: "#6b7280",
-  },
-  errorInline: {
-    marginTop: "0.25rem",
-    fontSize: "0.8rem",
-    color: "#b91c1c",
-  },
 };

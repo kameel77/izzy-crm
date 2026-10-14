@@ -1,0 +1,171 @@
+/* lead-forms screens. Tokens only — see global.css. */
+
+/* ---------- Shared grids ---------- */
+.app-lf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+.app-lf-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ---------- CreateLeadForm ---------- */
+.app-lf-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.app-lf-legend {
+  padding: 0 var(--space-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.app-lf-legend--toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.app-lf-legend__caret {
+  font-size: 11px;
+  color: var(--ink-tertiary);
+}
+.app-lf-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.app-lf-row > * {
+  flex: 1;
+  min-width: 180px;
+}
+.app-lf-row > .app-lf-field--sm {
+  min-width: 100px;
+}
+.app-lf-row > .app-lf-field--md {
+  min-width: 120px;
+}
+.app-lf-readonly .iz-field__control {
+  background: var(--surface-subtle);
+}
+.app-lf-vehicle-data {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.app-lf-desired {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border);
+}
+.app-lf-desired__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.app-lf-added__title {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+.app-lf-added__list {
+  margin: 0;
+  padding-left: var(--space-6);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}
+.app-lf-added__list li + li {
+  margin-top: var(--space-1);
+}
+.app-lf-vehicle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.app-lf-vehicle--hidden {
+  display: none;
+}
+.app-lf-consent {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+.app-lf-consent__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.app-lf-consent__content {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* ---------- SendEmailModal ---------- */
+.app-lf-inline-row {
+  display: flex;
+  gap: var(--space-4);
+}
+.app-lf-inline-row > * {
+  flex: 1;
+}
+.app-lf-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.app-lf-link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.app-lf-link-row__field {
+  flex: 1;
+}
+.app-lf-links__add {
+  align-self: flex-start;
+}
+.app-lf-preview {
+  padding: var(--space-3);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.app-lf-preview__label {
+  margin-bottom: var(--space-2);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+.app-lf-preview__content {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}

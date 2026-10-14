@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 import { ApiError } from "../api/client";
+import { Button, TextField } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
 
 export const LoginPage: React.FC = () => {
@@ -33,121 +34,34 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <h1 style={styles.title}>Izzy CRM</h1>
-          <p style={styles.subtitle}>Sign in to continue</p>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <label style={styles.label}>
-              Email
-              <input
-                style={styles.input}
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </label>
-            <label style={styles.label}>
-              Password
-              <input
-                style={styles.input}
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
-            {error ? <div style={styles.error}>{error}</div> : null}
-            <button type="submit" style={styles.button} disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-          <Link to="/reset-password" style={styles.link}>
-            Zresetuj hasło
-          </Link>
-        </div>
+    <div className="app-auth">
+      <div className="app-auth__card">
+        <h1 className="app-auth__title">Izzy CRM</h1>
+        <p className="app-auth__desc">Sign in to continue</p>
+        <form onSubmit={handleSubmit} className="app-form">
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+          {error ? <div className="app-alert app-alert--danger">{error}</div> : null}
+          <Button type="submit" variant="primary" size="lg" className="app-adm-full" disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
+        <Link to="/reset-password" className="app-link app-adm-auth-link">
+          Zresetuj hasło
+        </Link>
       </div>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "radial-gradient(circle at 20% 20%, #e0e7ff, transparent 35%), radial-gradient(circle at 80% 0%, #c7d2fe, transparent 30%), #eef2ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "2rem",
-    zIndex: 1000,
-  },
-  container: {
-    width: "100%",
-    maxWidth: 480,
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-  },
-  card: {
-    width: "100%",
-    background: "#ffffff",
-    borderRadius: 12,
-    padding: "2.5rem",
-    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
-  },
-  title: {
-    margin: 0,
-    fontSize: "1.75rem",
-    color: "#1f2937",
-  },
-  subtitle: {
-    margin: "0.5rem 0 1.5rem",
-    color: "#6b7280",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    fontSize: "0.9rem",
-    color: "#374151",
-  },
-  input: {
-    padding: "0.75rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    fontSize: "1rem",
-  },
-  button: {
-    marginTop: "0.5rem",
-    padding: "0.75rem 1rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#2563eb",
-    color: "#ffffff",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.75rem",
-    borderRadius: 8,
-  },
-  link: {
-    display: "block",
-    marginTop: "1.25rem",
-    color: "#2563eb",
-    fontWeight: 600,
-    textDecoration: "none",
-    textAlign: "center",
-  },
 };

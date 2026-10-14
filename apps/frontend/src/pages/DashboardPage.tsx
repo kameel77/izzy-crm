@@ -17,6 +17,7 @@ import { CreateLeadForm } from "../components/CreateLeadForm";
 import { LeadDetailCard } from "../components/LeadDetailCard";
 import { LeadList } from "../components/LeadList";
 import { Modal } from "../components/Modal";
+import { Button, Icon } from "../components/ui";
 import { LeadStatus } from "../constants/leadStatus";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../providers/ToastProvider";
@@ -199,35 +200,47 @@ export const DashboardPage: React.FC = () => {
   }, [leadMeta]);
 
   return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}>
+    <div className="app-page">
+      <div className="app-title-row">
         <div>
-          <h1 style={styles.heading}>Lead Dashboard</h1>
-          <p style={styles.meta}>
+          <h1 className="app-page-title">Leads</h1>
+          <p className="app-page-desc">
             Zalogowany/a jako <strong>{user?.fullName || user?.email}</strong>{user?.partner ? ` (Partner: ${user.partner.name})` : ""} · {metaSummary}
           </p>
         </div>
+        <div className="app-title-row__acts">
+          <Button icon="plus" onClick={() => setIsCreateLeadOpen(true)}>
+            New lead
+          </Button>
+        </div>
       </div>
 
-      {notification ? <div style={styles.notice}>{notification}</div> : null}
-      {error ? <div style={styles.error}>{error}</div> : null}
+      {notification ? (
+        <div className="app-alert app-alert--success" role="status">
+          <Icon name="check" />
+          {notification}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="app-alert app-alert--danger" role="alert">
+          <Icon name="alert" />
+          {error}
+        </div>
+      ) : null}
 
-      <div style={styles.layout}>
-        <LeadList
-          leads={leadList}
-          isLoading={isLoadingLeads}
-          selectedLeadId={selectedLeadId}
-          onRefresh={() => loadLeads({ selectLeadId: selectedLeadId ?? undefined })}
-          onCreateLeadClick={() => setIsCreateLeadOpen(true)}
-          onMore={handleOpenLeadDetail}
-          statusFilter={statusFilter}
-          onStatusFilterChange={handleStatusFilterChange}
-          search={search}
-          onSearchChange={handleSearchChange}
-          meta={leadMeta}
-          onPageChange={handlePageChange}
-        />
-      </div>
+      <LeadList
+        leads={leadList}
+        isLoading={isLoadingLeads}
+        selectedLeadId={selectedLeadId}
+        onRefresh={() => loadLeads({ selectLeadId: selectedLeadId ?? undefined })}
+        onMore={handleOpenLeadDetail}
+        statusFilter={statusFilter}
+        onStatusFilterChange={handleStatusFilterChange}
+        search={search}
+        onSearchChange={handleSearchChange}
+        meta={leadMeta}
+        onPageChange={handlePageChange}
+      />
 
       <Modal
         isOpen={isCreateLeadOpen}
@@ -247,7 +260,7 @@ export const DashboardPage: React.FC = () => {
         width="min(1000px, 96%)"
       >
         {isLoadingDetail ? (
-          <div style={styles.detailLoader}>Loading lead detail...</div>
+          <div className="app-empty">Loading lead detail...</div>
         ) : (
           <LeadDetailCard
             lead={selectedLead}
@@ -260,59 +273,4 @@ export const DashboardPage: React.FC = () => {
       </Modal>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-    fontFamily: "var(--font-family-sans)",
-  },
-  pageHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: "1.5rem",
-    borderRadius: "1rem",
-    background: "var(--app-surface-elevated)",
-    border: "1px solid var(--app-border)",
-    boxShadow: "0 18px 32px rgba(15, 23, 42, 0.08)",
-  },
-  heading: {
-    margin: 0,
-    fontSize: "2rem",
-    fontWeight: "var(--font-weight-bold)",
-  },
-  meta: {
-    margin: "0.25rem 0 0",
-    color: "var(--app-text-muted)",
-  },
-  notice: {
-    padding: "0.75rem",
-    borderRadius: 8,
-    background: "rgba(16, 185, 129, 0.12)",
-    color: "var(--app-success)",
-    border: "1px solid rgba(16, 185, 129, 0.2)",
-  },
-  error: {
-    padding: "0.75rem",
-    borderRadius: 8,
-    background: "rgba(239, 68, 68, 0.12)",
-    color: "var(--app-danger)",
-    border: "1px solid rgba(239, 68, 68, 0.2)",
-  },
-  layout: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-  },
-  detailLoader: {
-    padding: "1rem",
-    borderRadius: 12,
-    background: "#f3f4f6",
-    color: "#1f2937",
-    fontWeight: 500,
-    textAlign: "center",
-  },
 };

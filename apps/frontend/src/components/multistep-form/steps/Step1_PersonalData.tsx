@@ -8,6 +8,8 @@ import { pl } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
+import { Checkbox, Icon, Select, TextField } from "../../ui";
+import { cx } from "../../ui/cx";
 
 const phoneRegex = /^\+?[0-9\s-]{9,15}$/;
 
@@ -103,133 +105,82 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 
   return (
     <form>
-      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
-      <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 1: Dane osobowe</h2>
+      <fieldset disabled={isReadOnly} className="app-client-fieldset">
+      <h2 className="app-client-step-title">Krok 1: Dane osobowe</h2>
       <div className="form-grid">
         {/* Row 1 */}
-        <div style={styles.field}>
-          <label htmlFor="pesel">PESEL</label>
-          <input id="pesel" {...register("pesel")} />
-          {errors.pesel && <span style={styles.error}>{errors.pesel.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="gender">Płeć</label>
-          <input id="gender" {...register("gender")} disabled />
-          {errors.gender && <span style={styles.error}>{errors.gender.message}</span>}
-        </div>
+        <TextField id="pesel" label="PESEL" {...register("pesel")} error={errors.pesel?.message} />
+        <TextField id="gender" label="Płeć" disabled {...register("gender")} error={errors.gender?.message} />
 
         {/* Row 2 */}
-        <div style={styles.field}>
-          <label htmlFor="firstName">Imię</label>
-          <input id="firstName" {...register("firstName")} />
-          {errors.firstName && <span style={styles.error}>{errors.firstName.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="lastName">Nazwisko</label>
-          <input id="lastName" {...register("lastName")} />
-          {errors.lastName && <span style={styles.error}>{errors.lastName.message}</span>}
-        </div>
+        <TextField id="firstName" label="Imię" {...register("firstName")} error={errors.firstName?.message} />
+        <TextField id="lastName" label="Nazwisko" {...register("lastName")} error={errors.lastName?.message} />
 
         {/* Row 3 */}
-        <div style={styles.field}>
-          <label htmlFor="mobilePhone">Telefon komórkowy</label>
-          <input id="mobilePhone" {...register("mobilePhone")} />
-          {errors.mobilePhone && <span style={styles.error}>{errors.mobilePhone.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="email">E-mail</label>
-          <input id="email" {...register("email")} />
-          {errors.email && <span style={styles.error}>{errors.email.message}</span>}
-        </div>
-        
+        <TextField id="mobilePhone" label="Telefon komórkowy" {...register("mobilePhone")} error={errors.mobilePhone?.message} />
+        <TextField id="email" label="E-mail" {...register("email")} error={errors.email?.message} />
+
         {/* Row 4 */}
-        <div style={styles.field}>
-          <label htmlFor="birthDate">Data urodzenia</label>
-          <Controller
-            control={control}
-            name="birthDate"
-            render={({ field }) => (
-              <DatePicker
-                id="birthDate"
-                locale={pl}
-                dateFormat="yyyy-MM-dd"
-                placeholderText="RRRR-MM-DD"
-                selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
-                onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                disabled={true}
-                className="date-picker-input-readonly"
-                wrapperClassName="date-picker-wrapper"
-              />
-            )}
-          />
-          {errors.birthDate && <span style={styles.error}>{errors.birthDate.message}</span>}
+        <div className={cx("iz-field", errors.birthDate && "iz-field--error", "iz-field--disabled")}>
+          <label className="iz-field__label" htmlFor="birthDate">Data urodzenia</label>
+          <div className="iz-field__control">
+            <Controller
+              control={control}
+              name="birthDate"
+              render={({ field }) => (
+                <DatePicker
+                  id="birthDate"
+                  locale={pl}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="RRRR-MM-DD"
+                  selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
+                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                  disabled={true}
+                  className="date-picker-input-readonly"
+                  wrapperClassName="date-picker-wrapper"
+                />
+              )}
+            />
+          </div>
+          {errors.birthDate && (
+            <div className="iz-field__hint">
+              <Icon name="alert" size={12} />
+              {errors.birthDate.message}
+            </div>
+          )}
         </div>
-        <div style={styles.field}>
-          <label htmlFor="birthPlace">Miejsce urodzenia</label>
-          <input id="birthPlace" {...register("birthPlace")} />
-          {errors.birthPlace && <span style={styles.error}>{errors.birthPlace.message}</span>}
-        </div>
+        <TextField id="birthPlace" label="Miejsce urodzenia" {...register("birthPlace")} error={errors.birthPlace?.message} />
 
         {/* Row 5 */}
-        <div style={styles.field}>
-          <label htmlFor="countryOfBirth">Kraj urodzenia</label>
-          <input id="countryOfBirth" {...register("countryOfBirth")} />
-          {errors.countryOfBirth && <span style={styles.error}>{errors.countryOfBirth.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="nationality">Narodowość</label>
-          <input id="nationality" {...register("nationality")} />
-          {errors.nationality && <span style={styles.error}>{errors.nationality.message}</span>}
-        </div>
+        <TextField id="countryOfBirth" label="Kraj urodzenia" {...register("countryOfBirth")} error={errors.countryOfBirth?.message} />
+        <TextField id="nationality" label="Narodowość" {...register("nationality")} error={errors.nationality?.message} />
 
         {/* Row 6 */}
-        <div style={styles.field}>
-          <label htmlFor="citizenship">Obywatelstwo</label>
-          <input id="citizenship" {...register("citizenship")} />
-          {errors.citizenship && <span style={styles.error}>{errors.citizenship.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="secondCitizenship">Drugie obywatelstwo (opcjonalnie)</label>
-          <input id="secondCitizenship" {...register("secondCitizenship")} />
-        </div>
+        <TextField id="citizenship" label="Obywatelstwo" {...register("citizenship")} error={errors.citizenship?.message} />
+        <TextField id="secondCitizenship" label="Drugie obywatelstwo (opcjonalnie)" {...register("secondCitizenship")} />
 
         {/* Row 7 */}
-        <div style={styles.field}>
-          <label htmlFor="maidenName">Nazwisko rodowe</label>
-          <input id="maidenName" {...register("maidenName")} />
-          {errors.maidenName && <span style={styles.error}>{errors.maidenName.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="mothersMaidenName">Nazwisko panieńskie matki</label>
-          <input id="mothersMaidenName" {...register("mothersMaidenName")} />
-          {errors.mothersMaidenName && <span style={styles.error}>{errors.mothersMaidenName.message}</span>}
-        </div>
+        <TextField id="maidenName" label="Nazwisko rodowe" {...register("maidenName")} error={errors.maidenName?.message} />
+        <TextField id="mothersMaidenName" label="Nazwisko panieńskie matki" {...register("mothersMaidenName")} error={errors.mothersMaidenName?.message} />
 
         {/* Row 8 */}
-        <div style={styles.field}>
-          <label htmlFor="maritalStatus">Stan cywilny</label>
-          <select id="maritalStatus" {...register("maritalStatus")}>
-            <option value="">Wybierz...</option>
-            <option value="single">Panna / Kawaler</option>
-            <option value="married">Żonaty / Mężatka</option>
-            <option value="divorced">Rozwiedziony / Rozwiedziona</option>
-            <option value="widowed">Wdowiec / Wdowa</option>
-          </select>
-          {errors.maritalStatus && <span style={styles.error}>{errors.maritalStatus.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="childrenCount">Liczba dzieci</label>
-          <input id="childrenCount" type="number" min="0" {...register("childrenCount")} />
-          {errors.childrenCount && <span style={styles.error}>{errors.childrenCount.message}</span>}
-        </div>
+        <Select
+          id="maritalStatus"
+          label="Stan cywilny"
+          {...register("maritalStatus")}
+          error={errors.maritalStatus?.message}
+          options={[
+            { value: "", label: "Wybierz..." },
+            { value: "single", label: "Panna / Kawaler" },
+            { value: "married", label: "Żonaty / Mężatka" },
+            { value: "divorced", label: "Rozwiedziony / Rozwiedziona" },
+            { value: "widowed", label: "Wdowiec / Wdowa" },
+          ]}
+        />
+        <TextField id="childrenCount" label="Liczba dzieci" type="number" min="0" {...register("childrenCount")} error={errors.childrenCount?.message} />
 
         {/* Row 9 */}
-        <div style={styles.field}>
-          <label>
-            <input type="checkbox" {...register("isTaxResident")} />
-            Jestem rezydentem podatkowym
-          </label>
-        </div>
+        <Checkbox label="Jestem rezydentem podatkowym" {...register("isTaxResident")} />
       </div>
       </fieldset>
     </form>
@@ -237,21 +188,3 @@ export const Step1_PersonalData = forwardRef<Step1Ref, Step1Props>(({ onFormChan
 });
 
 Step1_PersonalData.displayName = "Step1_PersonalData";
-
-const styles: Record<string, React.CSSProperties> = {
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "0.875rem",
-  },
-  readOnlyFieldset: {
-    border: "none",
-    padding: 0,
-    margin: 0,
-    width: "100%",
-  },
-};

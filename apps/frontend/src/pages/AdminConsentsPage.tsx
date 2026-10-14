@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import {
   ConsentTemplateDto,
   fetchAuthenticatedConsentTemplates,
@@ -9,6 +9,8 @@ import {
   UpdateConsentTemplatePayload,
 } from "../api/consents";
 import { Modal } from "../components/Modal";
+import { Button, Card, Checkbox, DataTable, Select, TextField } from "../components/ui";
+import type { DataTableColumn } from "../components/ui";
 import { useToasts } from "../providers/ToastProvider";
 
 const ConsentTemplateForm: React.FC<{
@@ -16,6 +18,7 @@ const ConsentTemplateForm: React.FC<{
   onSave: (payload: CreateConsentTemplatePayload | UpdateConsentTemplatePayload) => void;
   onCancel: () => void;
 }> = ({ template, onSave, onCancel }) => {
+  const contentId = useId();
   const [formData, setFormData] = useState({
     consentType: template?.consentType || "PARTNER_DECLARATION",
     formType: template?.formType || "financing_application",
@@ -41,53 +44,65 @@ const ConsentTemplateForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} style={styles.form}>
-      <label style={styles.label}>
-        <span>Consent Type</span>
-        <select name="consentType" value={formData.consentType} onChange={handleChange} style={styles.input}>
-          <option value="PARTNER_DECLARATION">Partner Declaration</option>
-          <option value="MARKETING">Marketing</option>
-          <option value="FINANCIAL_PARTNERS">Financial Partners</option>
-          <option value="VEHICLE_PARTNERS">Vehicle Partners</option>
-        </select>
-      </label>
-      <label style={styles.label}>
-        <span>Form Type</span>
-        <select name="formType" value={formData.formType} onChange={handleChange} required style={styles.input}>
-          <option value="financing_application">Financing Application</option>
-          <option value="lead_creation">Lead Creation</option>
-          <option value="onboarding_insurance">Onboarding Insurance</option>
-        </select>
-      </label>
-      <label style={styles.label}>
-        <span>Title</span>
-        <input name="title" value={formData.title} onChange={handleChange} required style={styles.input} />
-      </label>
-      <label style={styles.label}>
-        <span>Content</span>
-        <textarea name="content" value={formData.content} onChange={handleChange} required style={styles.textarea} />
-      </label>
-      <label style={styles.label}>
-        <span>Version</span>
-        <input type="number" name="version" value={formData.version} onChange={handleChange} required min="1" style={styles.input} />
-      </label>
-      <div style={styles.checkboxGroup}>
-        <label style={styles.checkboxLabel}>
-          <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleChange} />
-          Active
+    <form onSubmit={handleSubmit} className="app-form">
+      <Select
+        label="Consent type"
+        name="consentType"
+        value={formData.consentType}
+        onChange={handleChange}
+        options={[
+          { value: "PARTNER_DECLARATION", label: "Partner declaration" },
+          { value: "MARKETING", label: "Marketing" },
+          { value: "FINANCIAL_PARTNERS", label: "Financial partners" },
+          { value: "VEHICLE_PARTNERS", label: "Vehicle partners" },
+        ]}
+      />
+      <Select
+        label="Form type"
+        name="formType"
+        value={formData.formType}
+        onChange={handleChange}
+        required
+        options={[
+          { value: "financing_application", label: "Financing application" },
+          { value: "lead_creation", label: "Lead creation" },
+          { value: "onboarding_insurance", label: "Onboarding insurance" },
+        ]}
+      />
+      <TextField label="Title" name="title" value={formData.title} onChange={handleChange} required />
+      <div className="iz-field">
+        <label className="iz-field__label" htmlFor={contentId}>
+          Content
         </label>
-        <label style={styles.checkboxLabel}>
-          <input type="checkbox" name="isRequired" checked={formData.isRequired} onChange={handleChange} />
-          Required
-        </label>
+        <textarea
+          id={contentId}
+          className="app-textarea app-adm-textarea"
+          name="content"
+          value={formData.content}
+          onChange={handleChange}
+          required
+        />
       </div>
-      <div style={styles.modalActions}>
-        <button type="submit" style={styles.primaryButton}>
-          Save template
-        </button>
-        <button type="button" onClick={onCancel} style={styles.secondaryButton}>
+      <TextField
+        label="Version"
+        type="number"
+        name="version"
+        value={formData.version}
+        onChange={handleChange}
+        required
+        min="1"
+      />
+      <div className="app-adm-checks">
+        <Checkbox label="Active" name="isActive" checked={formData.isActive} onChange={handleChange} />
+        <Checkbox label="Required" name="isRequired" checked={formData.isRequired} onChange={handleChange} />
+      </div>
+      <div className="app-form-actions">
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
+        <Button type="submit" variant="primary">
+          Save template
+        </Button>
       </div>
     </form>
   );
@@ -146,81 +161,67 @@ export const AdminConsentsPage: React.FC = () => {
     }
   };
 
+  const columns: DataTableColumn<ConsentTemplateDto>[] = [
+    { key: "title", header: "Title", render: (template) => template.title },
+    { key: "consentType", header: "Type", render: (template) => template.consentType },
+    { key: "formType", header: "Form type", render: (template) => template.formType },
+    { key: "version", header: "Version", align: "right", render: (template) => template.version },
+    { key: "isActive", header: "Active", render: (template) => (template.isActive ? "Yes" : "No") },
+    { key: "isRequired", header: "Required", render: (template) => (template.isRequired ? "Yes" : "No") },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right",
+      render: (template) => (
+        <div className="app-adm-actions">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setEditingTemplate(template);
+              setIsModalOpen(true);
+            }}
+          >
+            Edit
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)}>
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
+    <div className="app-page">
+      <div className="app-title-row">
         <div>
-          <h1 style={styles.heading}>Consent Management</h1>
-          <p style={styles.subtitle}>Create and maintain consent templates for every flow.</p>
+          <h1 className="app-page-title">Consent management</h1>
+          <p className="app-page-desc">Create and maintain consent templates for every flow.</p>
         </div>
-        <button
-          type="button"
-          style={styles.createButton}
-          onClick={() => {
-            setEditingTemplate(null);
-            setIsModalOpen(true);
-          }}
-        >
-          Create template
-        </button>
-      </header>
-
-      {error ? <div style={styles.bannerError}>{error}</div> : null}
-
-      <section style={styles.tableCard}>
-        <div style={styles.tableHeader}>
-          <h2 style={styles.tableTitle}>Templates</h2>
-          <span style={styles.caption}>{templates.length} total</span>
+        <div className="app-title-row__acts">
+          <Button
+            variant="primary"
+            icon="plus"
+            onClick={() => {
+              setEditingTemplate(null);
+              setIsModalOpen(true);
+            }}
+          >
+            Create template
+          </Button>
         </div>
+      </div>
+
+      {error ? <div className="app-alert app-alert--danger">{error}</div> : null}
+
+      <Card title="Templates" subtitle={`${templates.length} total`} flush>
         {loading ? (
-          <p style={styles.message}>Loading templates...</p>
+          <p className="app-empty">Loading templates...</p>
         ) : (
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Form Type</th>
-                  <th style={styles.metricHeader}>Version</th>
-                  <th style={styles.metricHeader}>Active</th>
-                  <th style={styles.metricHeader}>Required</th>
-                  <th style={styles.actionsHeader}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {templates.map((template) => (
-                  <tr key={template.id}>
-                    <td>{template.title}</td>
-                    <td>{template.consentType}</td>
-                    <td>{template.formType}</td>
-                    <td style={styles.metricCell}>{template.version}</td>
-                    <td style={styles.metricCell}>{template.isActive ? "Yes" : "No"}</td>
-                    <td style={styles.metricCell}>{template.isRequired ? "Yes" : "No"}</td>
-                    <td style={styles.actionsCell}>
-                      <div style={styles.actionGroup}>
-                        <button
-                          type="button"
-                          style={styles.secondaryButton}
-                          onClick={() => {
-                            setEditingTemplate(template);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button type="button" style={styles.dangerButton} onClick={() => handleDelete(template.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable rows={templates} rowKey="id" columns={columns} empty="No consent templates yet." />
         )}
-      </section>
+      </Card>
 
       <Modal
         isOpen={isModalOpen}
@@ -228,7 +229,7 @@ export const AdminConsentsPage: React.FC = () => {
           setIsModalOpen(false);
           setEditingTemplate(null);
         }}
-        title={`${editingTemplate ? "Edit" : "Create"} Consent Template`}
+        title={`${editingTemplate ? "Edit" : "Create"} consent template`}
       >
         <ConsentTemplateForm
           template={editingTemplate}
@@ -241,171 +242,4 @@ export const AdminConsentsPage: React.FC = () => {
       </Modal>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-    width: "100%",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "1rem",
-    flexWrap: "wrap",
-    padding: "1.5rem",
-    borderRadius: "1rem",
-    background: "#fff",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
-  },
-  heading: {
-    margin: 0,
-    fontSize: "2rem",
-  },
-  subtitle: {
-    margin: "0.25rem 0 0",
-    color: "#6b7280",
-  },
-  createButton: {
-    padding: "0.6rem 1.25rem",
-    borderRadius: 10,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.35)",
-  },
-  bannerError: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.75rem 1rem",
-    borderRadius: 10,
-  },
-  tableCard: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  tableHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  tableTitle: {
-    margin: 0,
-  },
-  caption: {
-    color: "#6b7280",
-  },
-  tableWrapper: {
-    width: "100%",
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  metricHeader: {
-    textAlign: "center",
-    width: "90px",
-  },
-  metricCell: {
-    textAlign: "center",
-    fontVariantNumeric: "tabular-nums",
-  },
-  actionsHeader: {
-    textAlign: "right",
-    width: "170px",
-    paddingRight: "0.25rem",
-  },
-  actionsCell: {
-    textAlign: "right",
-    width: "170px",
-  },
-  actionGroup: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "0.75rem",
-  },
-  primaryButton: {
-    padding: "0.45rem 1rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  secondaryButton: {
-    padding: "0.45rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #2563eb",
-    background: "transparent",
-    color: "#2563eb",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  dangerButton: {
-    padding: "0.45rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #ef4444",
-    background: "#fef2f2",
-    color: "#b91c1c",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.35rem",
-    fontWeight: 500,
-    color: "#0f172a",
-  },
-  input: {
-    padding: "0.6rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-  },
-  textarea: {
-    minHeight: 140,
-    padding: "0.6rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    fontFamily: "inherit",
-  },
-  checkboxGroup: {
-    display: "flex",
-    gap: "1rem",
-    flexWrap: "wrap",
-  },
-  checkboxLabel: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.4rem",
-    fontWeight: 500,
-  },
-  modalActions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "0.75rem",
-    marginTop: "0.5rem",
-  },
-  message: {
-    margin: 0,
-    color: "#6b7280",
-  },
 };
