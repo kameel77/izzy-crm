@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
 import { Button, Checkbox, Icon } from "../components/ui";
 import { cx } from "../components/ui/cx";
+import { useBrandTheme } from "../hooks/useBrandTheme";
 import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 type VerifyResponse = {
@@ -90,6 +91,7 @@ const formatDatePL = (d: Date) =>
 // ── Main component ────────────────────────────────────────────────────────────
 
 export const InsuranceOnboardingPage: React.FC = () => {
+    useBrandTheme("carsalon");
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token") ?? "";
 
@@ -215,7 +217,7 @@ export const InsuranceOnboardingPage: React.FC = () => {
             <div className="app-io__card">
                 {/* Header */}
                 <div className="app-io__header">
-                    <img src="https://krqwvegfxnlwdhgjuflh.supabase.co/storage/v1/object/public/izzy-img-public/car-salon-logo-white.png" alt="Carsalon" className="app-io__logo" />
+                    <img src="/brands/carsalon/logo.png" alt="CarSalon" className="app-io__logo" />
                     <h1 className="app-io__title">Znajdziemy Ci nowe auto</h1>
                 </div>
 

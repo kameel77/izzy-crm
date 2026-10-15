@@ -1,11 +1,15 @@
 import React from 'react';
 
 import { Icon } from '../components/ui';
+import { useBrandTheme } from '../hooks/useBrandTheme';
 
 export const ThankYouPage: React.FC = () => {
+  useBrandTheme('carsalon');
+
   return (
     <div className="app-auth">
       <div className="app-auth__card app-client-done">
+        <img src="/brands/carsalon/logo.png" alt="CarSalon" className="app-client__logo" />
         <span className="app-client-done__icon">
           <Icon name="check" size={24} />
         </span>

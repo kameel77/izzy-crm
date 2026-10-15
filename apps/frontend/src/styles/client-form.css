@@ -16,6 +16,12 @@
   margin: 0 auto var(--space-6);
   text-align: center;
 }
+.app-client__logo {
+  display: block;
+  height: 28px;
+  width: auto;
+  margin: 0 auto var(--space-6);
+}
 .app-client__title {
   margin: 0 0 var(--space-2);
   font-size: 28px;
@@ -344,15 +350,15 @@
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
-/* The logo PNG is white, so the header stays a solid accent background. */
 .app-io__header {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
   padding: var(--space-8) var(--space-8) var(--space-6);
 }
 .app-io__logo {
   display: block;
-  height: 40px;
+  height: 28px;
   margin-bottom: var(--space-5);
   object-fit: contain;
 }
