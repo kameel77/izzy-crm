@@ -23,59 +23,9 @@ import {
 import { upload, saveUploadedFile } from "../utils/upload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { buildOfferLink } from "../utils/offerLink.js";
+import { canAccessLead, isPartnerScopedRole } from "../utils/leadAccess.js";
 
 const router = Router();
-
-const PARTNER_SCOPED_ROLES: UserRole[] = [
-  UserRole.PARTNER,
-  UserRole.PARTNER_MANAGER,
-  UserRole.PARTNER_EMPLOYEE,
-];
-
-const isPartnerScopedRole = (role?: UserRole | null) =>
-  Boolean(role && PARTNER_SCOPED_ROLES.includes(role));
-
-const isOperatorAssignedToLead = (
-  user: { role?: UserRole | null; id?: string | null } | undefined,
-  lead: { assignedUser?: { id: string | null } | null },
-) =>
-  user?.role === UserRole.OPERATOR &&
-  Boolean(lead.assignedUser?.id && lead.assignedUser.id === user.id);
-
-const canAccessLead = (
-  lead: { partnerId: string; createdByUserId?: string | null; assignedUser?: { id: string | null } | null },
-  user: { role?: UserRole | null; partnerId?: string | null; id?: string | null } | undefined,
-) => {
-  const operatorAssigned = isOperatorAssignedToLead(user, lead);
-
-  if (user && isPartnerScopedRole(user.role)) {
-    const partnerId = typeof user.partnerId === "string" ? user.partnerId : null;
-
-    if (!partnerId || lead.partnerId !== partnerId) {
-      return false;
-    }
-
-    if (user.role === UserRole.PARTNER_EMPLOYEE && lead.createdByUserId !== user.id) {
-      return false;
-    }
-
-    return true;
-  }
-
-  if (user && user.role === UserRole.OPERATOR) {
-    const partnerId = typeof user.partnerId === "string" ? user.partnerId : null;
-
-    if (partnerId) {
-      if (lead.partnerId !== partnerId && !operatorAssigned) {
-        return false;
-      }
-    } else if (!operatorAssigned) {
-      return false;
-    }
-  }
-
-  return true;
-};
 
 const createLeadSchema = z.object({
   partnerId: z.string().min(1).optional(),
@@ -229,7 +179,16 @@ const financingSchema = z.object({
 
 const documentSchema = z.object({
   type: z.string().min(1),
-  filePath: z.string().min(1),
+  filePath: z
+    .string()
+    .min(1)
+    .max(2048)
+    .refine(
+      (val) =>
+        !val.includes("..") &&
+        (val.startsWith("/uploads/") || /^https?:\/\//i.test(val)),
+      "Invalid file path",
+    ),
   checksum: z.string().optional(),
 });
 
@@ -472,6 +431,14 @@ router.post(
 
     if (!req.user?.id) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(id);
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (req.user?.role === UserRole.OPERATOR) {
@@ -749,14 +716,12 @@ router.post(
     const { id } = leadIdParamSchema.parse(req.params);
     const payload = documentSchema.parse(req.body);
 
-    if (req.user?.role === UserRole.OPERATOR && req.user.partnerId) {
-      const lead = await getLeadById(id);
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
-      }
-      if (lead.partnerId !== req.user.partnerId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    const lead = await getLeadById(id);
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (req.user?.role === UserRole.OPERATOR) {
@@ -809,8 +774,6 @@ router.post(
       return res.status(403).json({ message: "Access denied" });
     }
 
-
-
     if (req.user?.role === UserRole.OPERATOR) {
       await ensureOperatorCanMutateLead({
         leadId: id,
@@ -846,6 +809,22 @@ router.post(
 
     if (!req.user?.id) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const lead = await getLeadById(id);
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+    if (!canAccessLead(lead, req.user)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (req.user?.role === UserRole.OPERATOR) {
+      await ensureOperatorCanMutateLead({
+        leadId: id,
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+      });
     }
 
     const result = await generateApplicationFormLink({

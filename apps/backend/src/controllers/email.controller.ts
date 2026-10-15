@@ -1,9 +1,11 @@
 import { LeadNoteType, LeadStatus } from "@prisma/client";
-import { randomUUID } from "crypto";
+import { randomUUID, timingSafeEqual } from "crypto";
 import { Request, Response } from "express";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { sendMail } from "../services/mail.service.js";
+import { escapeHtml, sanitizeEmailHtml } from "../utils/html.js";
+import { canAccessLead } from "../utils/leadAccess.js";
 
 const ANTISPAM_WINDOW_MS = 60 * 60 * 1000; // 1h
 const ANTISPAM_MAX_LEADS_PER_WINDOW = 10;
@@ -25,7 +27,7 @@ const extractNameParts = (from: string) => {
 
 const extractPhone = (text?: string | null) => {
     if (!text) return null;
-    const match = text.match(/(\+?\d[\d\s\-]{6,}\d)/);
+    const match = text.match(/(\+?\d[\d\s-]{6,}\d)/);
     return match ? match[1].replace(/\s+/g, "") : null;
 };
 
@@ -51,17 +53,24 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
     try {
         const lead = await prisma.lead.findUnique({
             where: { id },
-            include: { customerProfile: true },
+            include: {
+                customerProfile: true,
+                assignedUser: { select: { id: true } },
+            },
         });
 
         if (!lead || !lead.customerProfile?.email) {
             return res.status(404).json({ message: "Lead or customer email not found" });
         }
 
+        if (!canAccessLead(lead, req.user)) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
         const normalizedLinks = Array.isArray(links) ? links : [];
         const sanitizedLinks = normalizedLinks
             .map((link) => (typeof link === "string" ? link.trim() : ""))
-            .filter((link) => link.length);
+            .filter((link) => link.length && /^https?:\/\//i.test(link));
 
         // Append tracking parameters to links
         const trackedLinks = sanitizedLinks.map((link: string) => {
@@ -81,7 +90,7 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
             try {
                 const url = new URL(urlStr);
                 // Pattern: .../samochod/Make/Model/...
-                const match = url.pathname.match(/\/samochod\/([^\/]+)\/([^\/]+)/);
+                const match = url.pathname.match(/\/samochod\/([^/]+)\/([^/]+)/);
                 if (match) {
                     const make = match[1];
                     const model = match[2].replace(/-/g, " ");
@@ -104,22 +113,27 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
         const htmlLinks = trackedLinks
             .map((l: string) => {
                 const title = formatLinkTitle(l);
-                return `<a href="${l}">${title}</a>`;
+                return `<a href="${escapeHtml(l)}">${escapeHtml(title)}</a>`;
             })
             .join("<br>");
 
+        const safeQuotedHtml =
+            typeof quotedHtml === "string" && quotedHtml.trim().length
+                ? sanitizeEmailHtml(quotedHtml)
+                : "";
+
         const htmlSections: string[] = [
-            `<p>${message.replace(/\n/g, "<br>")}</p>`,
+            `<p>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`,
         ];
 
         if (trackedLinks.length) {
             htmlSections.push(`<p>Links:<br>${htmlLinks}</p>`);
         }
 
-        if (typeof quotedHtml === "string" && quotedHtml.trim().length) {
+        if (safeQuotedHtml.length) {
             htmlSections.push(
                 `<hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />`,
-                `<div style="color:#6b7280;font-size:0.9rem;">${quotedHtml}</div>`,
+                `<div style="color:#6b7280;font-size:0.9rem;">${safeQuotedHtml}</div>`,
             );
         }
 
@@ -148,7 +162,7 @@ export const sendLeadEmail = async (req: Request, res: Response) => {
                     html: htmlMessage,
                     messageId,
                     replyToNoteId: replyToNoteId ?? null,
-                    quotedHtml: quotedHtml ?? null,
+                    quotedHtml: safeQuotedHtml || null,
                 },
             },
             include: {
@@ -178,6 +192,7 @@ export const processIncomingEmail = async (params: {
     to?: string | null;
 }) => {
     const { from, subject, text, html, messageId, to } = params;
+    const safeHtml = html ? sanitizeEmailHtml(html) : undefined;
     // Extract email address from "Name <email@example.com>" format if necessary
     const emailMatch = from.match(/<(.+)>/);
     const senderEmail = emailMatch ? emailMatch[1] : from;
@@ -211,8 +226,8 @@ export const processIncomingEmail = async (params: {
         }
 
         const names = extractNameParts(from);
-        const phone = extractPhone(text ?? html ?? "");
-        const customerType = detectCustomerType(subject, text ?? html ?? "");
+        const phone = extractPhone(text ?? safeHtml ?? "");
+        const customerType = detectCustomerType(subject, text ?? safeHtml ?? "");
         const notesLines = [
             "Lead utworzony automatycznie z wiadomości e-mail (izzylease.pl).",
             `From: ${from}`,
@@ -255,7 +270,7 @@ export const processIncomingEmail = async (params: {
                     senderEmail,
                     to,
                     subject,
-                    html,
+                    html: safeHtml,
                     direction: "INCOMING",
                     messageId: messageId ?? null,
                     source: "izzylease.pl",
@@ -276,7 +291,7 @@ export const processIncomingEmail = async (params: {
                 senderEmail,
                 to,
                 subject,
-                html,
+                html: safeHtml,
                 direction: "INCOMING",
                 messageId: messageId ?? null,
             },
@@ -287,13 +302,28 @@ export const processIncomingEmail = async (params: {
 };
 
 export const handleIncomingEmailWebhook = async (req: Request, res: Response) => {
-    // This assumes a generic webhook payload structure. 
-    // Adjust based on the actual email provider (SendGrid, Mailgun, etc.)
-    // For now, we assume a simple JSON payload: { from, subject, text, html }
+    const expectedToken = env.CRM_WEBHOOK_TOKEN?.trim();
+    if (!expectedToken) {
+        return res.status(503).json({ message: "Webhook authentication is not configured" });
+    }
 
-    const { from, subject, text, html, messageId, to } = req.body;
+    const authHeader = req.get("Authorization") ?? "";
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const providedToken = (bearerMatch?.[1] ?? req.get("X-Webhook-Token") ?? "").trim();
 
-    if (!from) {
+    const expectedBuf = Buffer.from(expectedToken, "utf8");
+    const providedBuf = Buffer.from(providedToken, "utf8");
+    if (
+        expectedBuf.length === 0 ||
+        expectedBuf.length !== providedBuf.length ||
+        !timingSafeEqual(expectedBuf, providedBuf)
+    ) {
+        return res.status(401).json({ message: "Unauthorized webhook request" });
+    }
+
+    const { from, subject, text, html, messageId, to } = req.body ?? {};
+
+    if (!from || typeof from !== "string") {
         return res.status(400).json({ message: "Missing 'from' field" });
     }
 
@@ -316,6 +346,24 @@ export const saveLeadMessageDraft = async (req: Request, res: Response) => {
     }
 
     try {
+        const lead = await prisma.lead.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                partnerId: true,
+                createdByUserId: true,
+                assignedUser: { select: { id: true } },
+            },
+        });
+
+        if (!lead) {
+            return res.status(404).json({ message: "Lead not found" });
+        }
+
+        if (!canAccessLead(lead, req.user)) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
         const normalizedLinks = Array.isArray(links) ? links : [];
         const sanitizedLinks = normalizedLinks
             .map((link) => (typeof link === "string" ? link.trim() : ""))
@@ -358,6 +406,24 @@ export const getLeadMessageDraft = async (req: Request, res: Response) => {
     }
 
     try {
+        const lead = await prisma.lead.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                partnerId: true,
+                createdByUserId: true,
+                assignedUser: { select: { id: true } },
+            },
+        });
+
+        if (!lead) {
+            return res.status(404).json({ message: "Lead not found" });
+        }
+
+        if (!canAccessLead(lead, req.user)) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
         const draft = await prisma.messageDraft.findUnique({
             where: {
                 leadId_userId: {

@@ -8,6 +8,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import { parse, format } from "date-fns";
 import { DateMaskInput } from "../../ui/DateMaskInput";
+import { Icon, Select, TextField } from "../../ui";
+import { cx } from "../../ui/cx";
 
 const schema = z.object({
   documentType: z.string().min(1, "Rodzaj dokumentu jest wymagany"),
@@ -61,88 +63,102 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
 
   return (
     <form>
-      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
-      <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 2: Dokument tożsamości</h2>
+      <fieldset disabled={isReadOnly} className="app-client-fieldset">
+      <h2 className="app-client-step-title">Krok 2: Dokument tożsamości</h2>
       <div className="form-grid">
-        <div style={styles.field}>
-          <label htmlFor="documentType">Rodzaj dokumentu</label>
-          <select id="documentType" {...register("documentType")}>
-            <option value="">Wybierz...</option>
-            <option value="id_card">Dowód osobisty</option>
-            <option value="passport">Paszport</option>
-          </select>
-          {errors.documentType && <span style={styles.error}>{errors.documentType.message}</span>}
+        <Select
+          id="documentType"
+          label="Rodzaj dokumentu"
+          {...register("documentType")}
+          error={errors.documentType?.message}
+          options={[
+            { value: "", label: "Wybierz..." },
+            { value: "id_card", label: "Dowód osobisty" },
+            { value: "passport", label: "Paszport" },
+          ]}
+        />
+        <TextField id="documentNumber" label="Numer dokumentu" {...register("documentNumber")} error={errors.documentNumber?.message} />
+        <div className={cx("iz-field", errors.issueDate && "iz-field--error")}>
+          <label className="iz-field__label" htmlFor="issueDate">Data wydania</label>
+          <div className="iz-field__control">
+            <Controller
+              control={control}
+              name="issueDate"
+              render={({ field }) => (
+                <DatePicker
+                  id="issueDate"
+                  locale={pl}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="RRRR-MM-DD"
+                  selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
+                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                  disabled={isReadOnly}
+                  showYearDropdown
+                  dropdownMode="select"
+                  showMonthDropdown
+                  yearDropdownItemNumber={100}
+                  scrollableYearDropdown
+                  customInput={<DateMaskInput />}
+                  className="date-picker-input"
+                  wrapperClassName="date-picker-wrapper"
+                />
+              )}
+            />
+          </div>
+          {errors.issueDate && (
+            <div className="iz-field__hint">
+              <Icon name="alert" size={12} />
+              {errors.issueDate.message}
+            </div>
+          )}
         </div>
-        <div style={styles.field}>
-          <label htmlFor="documentNumber">Numer dokumentu</label>
-          <input id="documentNumber" {...register("documentNumber")} />
-          {errors.documentNumber && <span style={styles.error}>{errors.documentNumber.message}</span>}
+        <div className={cx("iz-field", errors.expiryDate && "iz-field--error")}>
+          <label className="iz-field__label" htmlFor="expiryDate">Data ważności</label>
+          <div className="iz-field__control">
+            <Controller
+              control={control}
+              name="expiryDate"
+              render={({ field }) => (
+                <DatePicker
+                  id="expiryDate"
+                  locale={pl}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="RRRR-MM-DD"
+                  selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
+                  onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                  disabled={isReadOnly}
+                  showYearDropdown
+                  dropdownMode="select"
+                  showMonthDropdown
+                  yearDropdownItemNumber={100}
+                  scrollableYearDropdown
+                  customInput={<DateMaskInput />}
+                  className="date-picker-input"
+                  wrapperClassName="date-picker-wrapper"
+                />
+              )}
+            />
+          </div>
+          {errors.expiryDate && (
+            <div className="iz-field__hint">
+              <Icon name="alert" size={12} />
+              {errors.expiryDate.message}
+            </div>
+          )}
         </div>
-        <div style={styles.field}>
-          <label htmlFor="issueDate">Data wydania</label>
-          <Controller
-            control={control}
-            name="issueDate"
-            render={({ field }) => (
-              <DatePicker
-                id="issueDate"
-                locale={pl}
-                dateFormat="yyyy-MM-dd"
-                placeholderText="RRRR-MM-DD"
-                selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
-                onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                disabled={isReadOnly}
-                showYearDropdown
-                dropdownMode="select"
-                showMonthDropdown
-                yearDropdownItemNumber={100}
-                scrollableYearDropdown
-                customInput={<DateMaskInput />}
-                className="date-picker-input native-input"
-                wrapperClassName="date-picker-wrapper"
-              />
-            )}
-          />
-          {errors.issueDate && <span style={styles.error}>{errors.issueDate.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="expiryDate">Data ważności</label>
-          <Controller
-            control={control}
-            name="expiryDate"
-            render={({ field }) => (
-              <DatePicker
-                id="expiryDate"
-                locale={pl}
-                dateFormat="yyyy-MM-dd"
-                placeholderText="RRRR-MM-DD"
-                selected={field.value ? parse(field.value, "yyyy-MM-dd", new Date()) : null}
-                onChange={(date: Date | null) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                disabled={isReadOnly}
-                showYearDropdown
-                dropdownMode="select"
-                showMonthDropdown
-                yearDropdownItemNumber={100}
-                scrollableYearDropdown
-                customInput={<DateMaskInput />}
-                className="date-picker-input native-input"
-                wrapperClassName="date-picker-wrapper"
-              />
-            )}
-          />
-          {errors.expiryDate && <span style={styles.error}>{errors.expiryDate.message}</span>}
-        </div>
-        <div style={styles.field}>
-          <label htmlFor="education">Wykształcenie</label>
-          <select id="education" {...register("education")}>
-            <option value="">Wybierz...</option>
-            <option value="primary">Podstawowe</option>
-            <option value="secondary">Średnie</option>
-            <option value="higher">Wyższe</option>
-            <option value="postgraduate">Podyplomowe</option>
-          </select>
-          {errors.education && <span style={styles.error}>{errors.education.message}</span>}
-        </div>
+        <Select
+          id="education"
+          label="Wykształcenie"
+          {...register("education")}
+          error={errors.education?.message}
+          options={[
+            { value: "", label: "Wybierz..." },
+            { value: "primary", label: "Podstawowe" },
+            { value: "secondary", label: "Średnie" },
+            { value: "higher", label: "Wyższe" },
+            { value: "postgraduate", label: "Podyplomowe" },
+          ]}
+        />
       </div>
       </fieldset>
     </form>
@@ -150,21 +166,3 @@ export const Step2_IdentityDocument = forwardRef<Step2Ref, Step2Props>(({ onForm
 });
 
 Step2_IdentityDocument.displayName = "Step2_IdentityDocument";
-
-const styles: Record<string, React.CSSProperties> = {
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "0.875rem",
-  },
-  readOnlyFieldset: {
-    border: "none",
-    padding: 0,
-    margin: 0,
-    width: "100%",
-  },
-};

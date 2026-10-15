@@ -1,6 +1,8 @@
 import React from "react";
 
 import { PartnerSummary } from "../api/partners";
+import { Badge, Button, Card, DataTable } from "./ui";
+import type { DataTableColumn, Tone } from "./ui";
 
 interface PartnerTableProps {
   partners: PartnerSummary[];
@@ -17,6 +19,18 @@ interface PartnerTableProps {
   onEdit?: (partner: PartnerSummary) => void;
 }
 
+const STATUS_BADGES: Record<string, { tone: Tone; label: string }> = {
+  ACTIVE: { tone: "success", label: "Active" },
+  PENDING: { tone: "warning", label: "Pending" },
+  INVITED: { tone: "warning", label: "Invited" },
+  INACTIVE: { tone: "neutral", label: "Inactive" },
+};
+
+const renderStatusBadge = (status: string) => {
+  const badge = STATUS_BADGES[status];
+  return <Badge tone={badge?.tone ?? "neutral"}>{badge?.label ?? status}</Badge>;
+};
+
 export const PartnerTable: React.FC<PartnerTableProps> = ({
   partners,
   meta,
@@ -29,177 +43,103 @@ export const PartnerTable: React.FC<PartnerTableProps> = ({
   const page = meta?.page ?? 1;
   const totalPages = meta?.totalPages ?? 1;
 
-  return (
-    <section style={styles.container}>
-      <header style={styles.header}>
-        <h2 style={styles.title}>Partners</h2>
-        <span style={styles.caption}>{meta ? `${meta.total} total` : `${partners.length} loaded`}</span>
-      </header>
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Primary contact</th>
-              <th>Notes</th>
-              <th style={styles.actionsHeader}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={5} style={styles.loader}>
-                  Loading partners...
-                </td>
-              </tr>
-            ) : partners.length ? (
-              partners.map((partner) => (
-                <tr
-                  key={partner.id}
-                  style={partner.id === selectedPartnerId ? styles.selectedRow : styles.row}
-                  onClick={() => onSelect(partner)}
-                >
-                  <td>
-                    <strong>{partner.name}</strong>
-                    <div style={styles.subtle}>
-                      {new Date(partner.createdAt).toLocaleDateString()} · Updated{" "}
-                      {new Date(partner.updatedAt).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td>
-                    <span style={styles.badge}>{partner.status}</span>
-                  </td>
-                  <td>
-                    <div>{partner.contact?.name || "—"}</div>
-                    <div style={styles.subtle}>{partner.contact?.email || partner.contact?.phone || ""}</div>
-                  </td>
-                  <td>{partner.notes ? partner.notes.slice(0, 80) : "—"}</td>
-                  <td style={styles.actionsCell}>
-                    <button
-                      type="button"
-                      style={styles.actionButton}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onSelect(partner);
-                        onEdit?.(partner);
-                      }}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} style={styles.loader}>
-                  No partners found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <footer style={styles.pagination}>
-        <button
-          type="button"
-          style={styles.pageButton}
-          onClick={() => onPageChange(page - 1)}
-          disabled={page <= 1 || isLoading}
+  const columns: DataTableColumn<PartnerSummary>[] = [
+    {
+      key: "name",
+      header: "Name",
+      render: (partner) => (
+        <div className="iz-table__person">
+          <div>
+            <b>{partner.name}</b>
+            <span>
+              {new Date(partner.createdAt).toLocaleDateString()} · Updated{" "}
+              {new Date(partner.updatedAt).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (partner) => renderStatusBadge(partner.status),
+    },
+    {
+      key: "contact",
+      header: "Primary contact",
+      render: (partner) => (
+        <div className="iz-table__person">
+          <div>
+            <b>{partner.contact?.name || "—"}</b>
+            <span>{partner.contact?.email || partner.contact?.phone || ""}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (partner) => (partner.notes ? partner.notes.slice(0, 80) : "—"),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right",
+      render: (partner) => (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(partner);
+            onEdit?.(partner);
+          }}
         >
-          Previous
-        </button>
-        <span>
-          Page {page} of {totalPages}
-        </span>
-        <button
-          type="button"
-          style={styles.pageButton}
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages || isLoading}
-        >
-          Next
-        </button>
-      </footer>
-    </section>
-  );
-};
+          Edit
+        </Button>
+      ),
+    },
+  ];
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    margin: 0,
-  },
-  caption: {
-    color: "#6b7280",
-  },
-  tableWrapper: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  row: {
-    cursor: "pointer",
-  },
-  selectedRow: {
-    cursor: "pointer",
-    background: "#eff6ff",
-  },
-  loader: {
-    padding: "1rem",
-    textAlign: "center",
-    color: "#6b7280",
-  },
-  subtle: {
-    fontSize: "0.8rem",
-    color: "#6b7280",
-  },
-  badge: {
-    display: "inline-block",
-    padding: "0.25rem 0.5rem",
-    background: "#f1f5f9",
-    borderRadius: 999,
-  },
-  actionsHeader: {
-    textAlign: "right",
-  },
-  actionsCell: {
-    textAlign: "right",
-  },
-  actionButton: {
-    padding: "0.35rem 0.85rem",
-    borderRadius: 8,
-    border: "1px solid #2563eb",
-    background: "transparent",
-    color: "#2563eb",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  pagination: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  pageButton: {
-    padding: "0.5rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    cursor: "pointer",
-  },
+  return (
+    <Card
+      title="Partners"
+      subtitle={meta ? `${meta.total} total` : `${partners.length} loaded`}
+      flush
+      footer={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="chevron-left"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1 || isLoading}
+          >
+            Previous
+          </Button>
+          <span className="iz-tnum app-adm-page">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconRight="chevron-right"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages || isLoading}
+          >
+            Next
+          </Button>
+        </>
+      }
+    >
+      <DataTable
+        rows={isLoading ? [] : partners}
+        rowKey="id"
+        selectedKey={selectedPartnerId ?? undefined}
+        onRowClick={onSelect}
+        empty={isLoading ? "Loading partners..." : "No partners found."}
+        columns={columns}
+      />
+    </Card>
+  );
 };

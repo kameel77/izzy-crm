@@ -1,21 +1,27 @@
 import React, { useState } from "react";
 import { MultiStepForm } from "../components/multistep-form/MultiStepForm";
+import { useBrandTheme } from "../hooks/useBrandTheme";
 
 export const ApplicationFormPage: React.FC = () => {
+  useBrandTheme("carsalon");
   const [currentStep, setCurrentStep] = useState(1);
 
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
+    <div className="app-client">
+      <header className="app-client__header">
         {currentStep === 1 ? (
           <>
-            <h1 style={styles.title}>Wniosek o finansowanie</h1>
-            <p style={styles.subtitle}>
+            <img src="/brands/carsalon/logo.png" alt="CarSalon" className="app-client__logo" />
+            <h1 className="app-client__title">Wniosek o finansowanie</h1>
+            <p className="app-client__desc">
               Wypełnij poniższy formularz, aby złożyć wniosek. Możesz zapisać postęp i wrócić w dowolnym momencie.
             </p>
           </>
         ) : (
-          <h1 style={styles.titleSmall}>Wniosek o finansowanie</h1>
+          <>
+            <img src="/brands/carsalon/logo.png" alt="CarSalon" className="app-client__logo" />
+            <h1 className="app-client__title app-client__title--compact">Wniosek o finansowanie</h1>
+          </>
         )}
       </header>
       <main className="form-main-card">
@@ -23,38 +29,4 @@ export const ApplicationFormPage: React.FC = () => {
       </main>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    background: "#f4f6fb",
-    width: "100%",
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  header: {
-    width: "100%",
-    maxWidth: "800px",
-    margin: "0 auto 2rem auto",
-    textAlign: "center",
-  },
-  title: {
-    fontSize: "2.25rem",
-    fontWeight: 700,
-    color: "#1e293b",
-    marginBottom: "0.5rem",
-  },
-  titleSmall: {
-    fontSize: "1.25rem",
-    fontWeight: 600,
-    color: "#1e293b",
-    marginBottom: "0.5rem",
-  },
-  subtitle: {
-    fontSize: "1.125rem",
-    color: "#475569",
-    marginTop: 0,
-  },
 };

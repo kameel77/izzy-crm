@@ -5,6 +5,7 @@ import { useToasts } from "../providers/ToastProvider";
 import { useDebounce } from "../hooks/useDebounce";
 import { API_BASE_URL } from "../api/client";
 import { Modal } from "../components/Modal";
+import { Badge, Button, Card, Select, TextField } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
 
 const buildExportUrl = (params: Omit<FetchConsentRecordsParams, "skip" | "take">, format: "csv" | "json") => {
@@ -135,132 +136,168 @@ export const AdminConsentRecordsPage: React.FC = () => {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1>Consent Records Archive</h1>
-        <div style={styles.exportButtons}>
-          <button onClick={() => handleExport("csv")} style={styles.button}>Export CSV</button>
-          <button onClick={() => handleExport("json")} style={styles.button}>Export JSON</button>
+    <div className="app-page">
+      <div className="app-title-row">
+        <h1 className="app-page-title">Consent records archive</h1>
+        <div className="app-title-row__acts">
+          <Button variant="secondary" onClick={() => handleExport("csv")}>Export CSV</Button>
+          <Button variant="secondary" onClick={() => handleExport("json")}>Export JSON</Button>
         </div>
-      </header>
+      </div>
 
-      <div style={styles.filters}>
-        <input
+      <div className="app-adm-filters">
+        <TextField
           type="text"
+          icon="search"
+          aria-label="Search by client name, email, phone"
+          className="app-adm-filters__search"
           placeholder="Search by client name, email, phone..."
           value={clientSearch}
           onChange={e => setClientSearch(e.target.value)}
-          style={styles.searchInput}
         />
-        <select name="consentType" onChange={handleFilterChange} style={styles.select}>
-          <option value="">All Types</option>
-          <option value="MARKETING">Marketing</option>
-          <option value="FINANCIAL_PARTNERS">Financial Partners</option>
-          <option value="VEHICLE_PARTNERS">Vehicle Partners</option>
-          <option value="PARTNER_DECLARATION">Partner Declaration</option>
-        </select>
-        <select name="consentMethod" onChange={handleFilterChange} style={styles.select}>
-          <option value="">All Methods</option>
-          <option value="ONLINE_FORM">Online Form</option>
-          <option value="PHONE_CALL">Phone Call</option>
-          <option value="PARTNER_SUBMISSION">Partner Submission</option>
-        </select>
-        <select name="consentGiven" onChange={handleFilterChange} style={styles.select}>
-          <option value="">Any Status</option>
-          <option value="true">Given</option>
-          <option value="false">Not Given</option>
-        </select>
+        <Select
+          aria-label="Consent type"
+          name="consentType"
+          onChange={handleFilterChange}
+          options={[
+            { value: "", label: "All types" },
+            { value: "MARKETING", label: "Marketing" },
+            { value: "FINANCIAL_PARTNERS", label: "Financial partners" },
+            { value: "VEHICLE_PARTNERS", label: "Vehicle partners" },
+            { value: "PARTNER_DECLARATION", label: "Partner declaration" },
+          ]}
+        />
+        <Select
+          aria-label="Consent method"
+          name="consentMethod"
+          onChange={handleFilterChange}
+          options={[
+            { value: "", label: "All methods" },
+            { value: "ONLINE_FORM", label: "Online form" },
+            { value: "PHONE_CALL", label: "Phone call" },
+            { value: "PARTNER_SUBMISSION", label: "Partner submission" },
+          ]}
+        />
+        <Select
+          aria-label="Consent status"
+          name="consentGiven"
+          onChange={handleFilterChange}
+          options={[
+            { value: "", label: "Any status" },
+            { value: "true", label: "Given" },
+            { value: "false", label: "Not given" },
+          ]}
+        />
       </div>
 
-      {loading && <p style={styles.message}>Loading...</p>}
-      {error && <div style={styles.bannerError}>{error}</div>}
+      {loading && <p className="app-muted">Loading...</p>}
+      {error && <div className="app-alert app-alert--danger">{error}</div>}
 
       {!loading && !error && (
-        <>
-          <div style={{ overflowX: "auto" }}>
-            <table style={styles.table}>
+        <Card
+          flush
+          footer={
+            <div className="app-adm-pager">
+              <span>Total records: {totalCount}</span>
+              <div className="app-adm-pager__nav">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon="chevron-left"
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="iz-tnum">Page {currentPage} of {totalPages || 1}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  iconRight="chevron-right"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="iz-table-wrap">
+            <table className="iz-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSortChange("clientName")} style={styles.th}>Client</th>
-                  <th onClick={() => handleSortChange("consentType")} style={styles.th}>Consent Type</th>
-                  <th style={styles.th}>Template</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Method</th>
-                  <th style={styles.th}>Recorded By</th>
-                  <th onClick={() => handleSortChange("recordedAt")} style={styles.th}>Recorded At</th>
-                  <th style={styles.th}>Actions</th>
+                  <th onClick={() => handleSortChange("clientName")} className="app-adm-th--sort">Client</th>
+                  <th onClick={() => handleSortChange("consentType")} className="app-adm-th--sort">Consent type</th>
+                  <th>Template</th>
+                  <th>Status</th>
+                  <th>Method</th>
+                  <th>Recorded by</th>
+                  <th onClick={() => handleSortChange("recordedAt")} className="app-adm-th--sort">Recorded at</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {records.map(record => (
                   <tr key={record.id}>
-                    <td style={styles.td}>
-                      <Link to={`/leads/${record.lead.id}`}>
+                    <td>
+                      <Link to={`/leads/${record.lead.id}`} className="app-link">
                         {record.lead.customerProfile ? `${record.lead.customerProfile.firstName} ${record.lead.customerProfile.lastName}` : record.lead.id}
                       </Link>
                     </td>
-                    <td style={styles.td}>
-                      <span style={styles.badgeOutline}>{record.consentType}</span>
+                    <td>
+                      <Badge tone="neutral">{record.consentType}</Badge>
                     </td>
-                    <td style={styles.td}>{record.consentTemplate.title} (v{record.consentTemplate.version})</td>
-                    <td style={styles.td}>
+                    <td>{record.consentTemplate.title} (v{record.consentTemplate.version})</td>
+                    <td>
                       {record.withdrawnAt ? (
-                        <span style={styles.badgeWithdrawn}>Withdrawn</span>
+                        <Badge tone="neutral">Withdrawn</Badge>
                       ) : (
-                        <span style={record.consentGiven ? styles.badgeSuccess : styles.badgeDanger}>
-                          {record.consentGiven ? "Given" : "Not Given"}
-                        </span>
+                        <Badge tone={record.consentGiven ? "success" : "danger"}>
+                          {record.consentGiven ? "Given" : "Not given"}
+                        </Badge>
                       )}
                     </td>
-                    <td style={styles.td}>
-                      <span style={styles.badgeOutline}>{record.consentMethod}</span>
+                    <td>
+                      <Badge tone="neutral">{record.consentMethod}</Badge>
                     </td>
-                    <td style={styles.td}>{record.recordedBy?.fullName || record.recordedBy?.email || "Client"}</td>
-                    <td style={styles.td}>{new Date(record.recordedAt).toLocaleString()}</td>
-                    <td style={styles.td}>
-                      <button onClick={() => setSelectedRecord(record)} style={styles.detailsButton}>Details</button>
+                    <td>{record.recordedBy?.fullName || record.recordedBy?.email || "Client"}</td>
+                    <td>{new Date(record.recordedAt).toLocaleString()}</td>
+                    <td>
+                      <Button variant="secondary" size="sm" onClick={() => setSelectedRecord(record)}>Details</Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
-          <div style={styles.pagination}>
-            <span>Total records: {totalCount}</span>
-            <div>
-              <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} style={styles.button}>Previous</button>
-              <span style={{ margin: "0 1rem" }}>Page {currentPage} of {totalPages || 1}</span>
-              <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage >= totalPages} style={styles.button}>Next</button>
-            </div>
-          </div>
-        </>
+        </Card>
       )}
 
       {selectedRecord && (
-        <Modal isOpen={!!selectedRecord} onClose={() => setSelectedRecord(null)} title="Consent Record Details">
-          <div style={styles.modalContent}>
-            <div style={styles.modalGrid}>
+        <Modal isOpen={!!selectedRecord} onClose={() => setSelectedRecord(null)} title="Consent record details">
+          <div className="app-form">
+            <div className="app-kv app-adm-kv">
               <InfoItem label="Client" value={`${selectedRecord.lead.customerProfile?.firstName} ${selectedRecord.lead.customerProfile?.lastName}`} />
-              <InfoItem label="Lead ID" value={<Link to={`/leads/${selectedRecord.lead.id}`}>{selectedRecord.lead.id}</Link>} />
-              <InfoItem label="Consent Title" value={selectedRecord.consentTemplate.title} />
-              <InfoItem label="Template Version" value={selectedRecord.version} />
-              <InfoItem label="Status" value={selectedRecord.withdrawnAt ? `Withdrawn at ${new Date(selectedRecord.withdrawnAt).toLocaleString()}` : selectedRecord.consentGiven ? "Given" : "Not Given"} />
+              <InfoItem label="Lead ID" value={<Link to={`/leads/${selectedRecord.lead.id}`} className="app-link">{selectedRecord.lead.id}</Link>} />
+              <InfoItem label="Consent title" value={selectedRecord.consentTemplate.title} />
+              <InfoItem label="Template version" value={selectedRecord.version} />
+              <InfoItem label="Status" value={selectedRecord.withdrawnAt ? `Withdrawn at ${new Date(selectedRecord.withdrawnAt).toLocaleString()}` : selectedRecord.consentGiven ? "Given" : "Not given"} />
               <InfoItem label="Method" value={selectedRecord.consentMethod} />
-              <InfoItem label="Recorded At" value={new Date(selectedRecord.recordedAt).toLocaleString()} />
-              <InfoItem label="Recorded By" value={selectedRecord.recordedBy?.fullName || selectedRecord.recordedBy?.email || "Client / Automated"} />
+              <InfoItem label="Recorded at" value={new Date(selectedRecord.recordedAt).toLocaleString()} />
+              <InfoItem label="Recorded by" value={selectedRecord.recordedBy?.fullName || selectedRecord.recordedBy?.email || "Client / Automated"} />
               <InfoItem label="Partner" value={selectedRecord.partner?.name || "N/A"} />
-              <InfoItem label="IP Address" value={selectedRecord.ipAddress || "N/A"} />
-              <InfoItem label="User Agent" value={selectedRecord.userAgent || "N/A"} />
+              <InfoItem label="IP address" value={selectedRecord.ipAddress || "N/A"} />
+              <InfoItem label="User agent" value={selectedRecord.userAgent || "N/A"} />
             </div>
-            <hr style={styles.hr} />
+            <hr className="app-adm-hr" />
             <div>
-              <h4 style={styles.modalSubheading}>Full Consent Text (Snapshot)</h4>
-              <pre style={styles.consentTextPre}>{selectedRecord.consentText}</pre>
+              <h4 className="app-section-title app-adm-subheading">Full consent text (snapshot)</h4>
+              <pre className="app-adm-pre">{selectedRecord.consentText}</pre>
             </div>
             {!selectedRecord.withdrawnAt && canWithdrawRecord(selectedRecord) && (
-              <div style={styles.modalActions}>
-                <button onClick={() => setIsWithdrawModalOpen(true)} style={styles.withdrawButton}>Withdraw Consent</button>
+              <div className="app-form-actions">
+                <Button variant="secondary" onClick={() => setIsWithdrawModalOpen(true)}>Withdraw consent</Button>
               </div>
             )}
           </div>
@@ -268,14 +305,14 @@ export const AdminConsentRecordsPage: React.FC = () => {
       )}
 
       {isWithdrawModalOpen && (
-        <Modal isOpen={isWithdrawModalOpen} onClose={() => setIsWithdrawModalOpen(false)} title="Confirm Withdrawal">
-          <div>
-            <p>Are you sure you want to withdraw this consent? This action cannot be undone.</p>
-            <div style={styles.modalActions}>
-              <button onClick={() => setIsWithdrawModalOpen(false)} style={styles.button}>Cancel</button>
-              <button onClick={handleWithdrawConfirm} disabled={isWithdrawing} style={styles.withdrawButton}>
-                {isWithdrawing ? "Withdrawing..." : "Confirm Withdraw"}
-              </button>
+        <Modal isOpen={isWithdrawModalOpen} onClose={() => setIsWithdrawModalOpen(false)} title="Confirm withdrawal">
+          <div className="app-form">
+            <p className="app-adm-text">Are you sure you want to withdraw this consent? This action cannot be undone.</p>
+            <div className="app-form-actions">
+              <Button variant="secondary" onClick={() => setIsWithdrawModalOpen(false)}>Cancel</Button>
+              <Button variant="danger" onClick={handleWithdrawConfirm} disabled={isWithdrawing}>
+                {isWithdrawing ? "Withdrawing..." : "Confirm withdraw"}
+              </Button>
             </div>
           </div>
         </Modal>
@@ -286,111 +323,7 @@ export const AdminConsentRecordsPage: React.FC = () => {
 
 const InfoItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div>
-    <strong style={styles.infoLabel}>{label}:</strong>
-    <span style={styles.infoValue}>{value}</span>
+    <div className="app-kv__label">{label}</div>
+    <div className="app-kv__value">{value}</div>
   </div>
 );
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "1rem",
-    flexWrap: "wrap",
-    padding: "1.25rem 1.5rem",
-    borderRadius: "1rem",
-    background: "#fff",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.08)",
-  },
-  exportButtons: { display: "flex", gap: "0.75rem", flexWrap: "wrap" },
-  filters: {
-    display: "flex",
-    gap: "0.75rem",
-    flexWrap: "wrap",
-    padding: "1rem 1.25rem",
-    borderRadius: "1rem",
-    background: "#fff",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
-  },
-  searchInput: { flexGrow: 1, minWidth: 240, padding: "0.55rem 0.75rem", borderRadius: 8, border: "1px solid #d1d5db" },
-  select: { padding: "0.55rem 0.75rem", borderRadius: 8, border: "1px solid #d1d5db" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { borderBottom: "2px solid #eee", padding: "0.75rem", textAlign: "left", cursor: "pointer" },
-  td: { borderBottom: "1px solid #eee", padding: "0.75rem" },
-  pagination: {
-    marginTop: "1rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "1rem",
-  },
-  button: {
-    padding: "0.5rem 1rem",
-    borderRadius: 8,
-    border: "1px solid #2563eb",
-    background: "transparent",
-    color: "#2563eb",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  detailsButton: {
-    padding: "0.4rem 0.95rem",
-    borderRadius: 8,
-    border: "1px solid #2563eb",
-    background: "transparent",
-    color: "#2563eb",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  badgeSuccess: { backgroundColor: "#dcfce7", color: "#166534", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
-  badgeDanger: { backgroundColor: "#fee2e2", color: "#991b1b", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
-  badgeWithdrawn: { backgroundColor: "#e5e7eb", color: "#4b5563", padding: "0.25rem 0.5rem", borderRadius: "999px", fontSize: "0.8rem" },
-  badgeOutline: {
-    border: "1px solid #cbd5e1",
-    color: "#334155",
-    background: "transparent",
-    padding: "0.25rem 0.5rem",
-    borderRadius: "999px",
-    fontSize: "0.8rem",
-    display: "inline-block",
-  },
-  modalContent: { display: "flex", flexDirection: "column", gap: "1rem" },
-  modalGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" },
-  infoLabel: { marginRight: "0.5rem", color: "#555" },
-  infoValue: {},
-  hr: { border: "none", borderTop: "1px solid #eee", margin: "0.5rem 0" },
-  modalSubheading: { margin: "0 0 0.5rem 0" },
-  consentTextPre: {
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-    background: "#f7f7f7",
-    padding: "0.75rem",
-    borderRadius: "4px",
-    maxHeight: "200px",
-    overflowY: "auto",
-  },
-  modalActions: { display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" },
-  withdrawButton: {
-    backgroundColor: "#fee2e2",
-    color: "#b91c1c",
-    border: "1px solid #f87171",
-    padding: "0.5rem 1rem",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  bannerError: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.75rem 1rem",
-    borderRadius: 10,
-  },
-  message: {
-    color: "#6b7280",
-    margin: 0,
-  },
-};

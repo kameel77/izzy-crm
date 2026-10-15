@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import {
   LeadDetail,
@@ -21,9 +21,11 @@ import { useToasts } from "../providers/ToastProvider";
 import { fetchUsers } from "../api/users";
 import { ApiError, API_BASE_URL } from "../api/client";
 import { Modal } from "./Modal";
+import { Badge, Button, Card, Select, StatusBadge, TextField } from "./ui";
 import { SendEmailModal } from "./SendEmailModal";
 import { LeadInsuranceOnboarding } from "./LeadInsuranceOnboarding";
 import { unlockApplicationForm as apiUnlockApplicationForm } from "../api/application-forms";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 type UnlockHistoryEntry = {
   unlockedBy?: string | null;
@@ -83,15 +85,18 @@ type ClientFormState = {
   postalCode: string;
 };
 
-const resolveDocumentUrl = (path: string) => {
+const resolveDocumentUrl = (path: string, authToken?: string | null) => {
   if (!path) return "#";
   if (/^https?:\/\//i.test(path)) {
     return path;
   }
-  if (path.startsWith("/")) {
-    return `${API_BASE_URL}${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const baseUrl = `${API_BASE_URL}${normalizedPath}`;
+  if (authToken && normalizedPath.startsWith("/uploads/")) {
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}token=${encodeURIComponent(authToken)}`;
   }
-  return `${API_BASE_URL}/${path}`;
+  return baseUrl;
 };
 
 type FormStatusTone = "neutral" | "info" | "success" | "warning" | "danger";
@@ -124,14 +129,6 @@ const FORM_STATUS_META: Record<string, { label: string; tone: FormStatusTone }> 
   unlocked: { label: "Odblokowany", tone: "warning" },
 };
 
-const FORM_STATUS_TONES: Record<FormStatusTone, { background: string; color: string }> = {
-  neutral: { background: "#e2e8f0", color: "#0f172a" },
-  info: { background: "#dbeafe", color: "#1d4ed8" },
-  success: { background: "#dcfce7", color: "#15803d" },
-  warning: { background: "#fef3c7", color: "#b45309" },
-  danger: { background: "#fee2e2", color: "#b91c1c" },
-};
-
 interface LeadDetailCardProps {
   lead: LeadDetail | null;
   onRefresh: () => void | Promise<void>;
@@ -147,6 +144,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   onSaveFinancing,
   onAddDocument,
 }) => {
+  const noteId = useId();
+  const desiredNotesId = useId();
   const { token, user } = useAuth();
   const { addToast } = useToasts();
   const isAdmin = user?.role === "ADMIN";
@@ -882,9 +881,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 
   if (!lead) {
     return (
-      <section style={styles.placeholder}>
+      <Card className="app-lead-placeholder">
         <p>Select a lead to view details.</p>
-      </section>
+      </Card>
     );
   }
 
@@ -973,7 +972,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     const notes = typeof preferences?.notes === "string" ? String(preferences.notes).trim() : "";
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      <div className="app-lead-vehicles">
         {vehiclesToDisplay.map((v, i) => {
           const baseParts = [v.make, v.model].filter(Boolean);
           const base = baseParts.length ? baseParts.join(" ").trim() : "Dowolny pojazd";
@@ -996,13 +995,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
           }
 
           const summary = meta.length ? `${base}, ${meta.join(", ")}` : base;
-          return <div key={i} style={styles.vehicleValue}>{summary}</div>;
+          return <div key={i}>{summary}</div>;
         })}
         {odszkodowanieStr && (
-          <div style={{ marginTop: "0.25rem", fontWeight: 500 }}>{odszkodowanieStr}</div>
+          <div className="app-lead-compensation">{odszkodowanieStr}</div>
         )}
         {notes && (
-          <div style={styles.additionalInfo}>Dodatkowe informacje: {notes}</div>
+          <div className="app-lead-extra">Dodatkowe informacje: {notes}</div>
         )}
       </div>
     );
@@ -1041,16 +1040,16 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
     if (html) {
       if (!expanded) {
         return (
-          <div style={{ whiteSpace: "pre-wrap" }}>
+          <div className="app-lead-prewrap">
             {truncateText(stripHtml(html))}
           </div>
         );
       }
-      return <div style={{ whiteSpace: "normal" }} dangerouslySetInnerHTML={{ __html: html }} />;
+      return <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
     }
     const content = note.content || "";
     return (
-      <div style={{ whiteSpace: "pre-wrap" }}>
+      <div className="app-lead-prewrap">
         {expanded ? content : truncateText(content)}
       </div>
     );
@@ -1069,7 +1068,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       ? baseSubject
       : `Re: ${baseSubject}`;
     const sourceHtml = note.metadata?.html || `<p>${note.content.replace(/\n/g, "<br>")}</p>`;
-    const quotedHtml = `<blockquote style="border-left:2px solid #e5e7eb;padding-left:12px;color:#4b5563;">${sourceHtml}</blockquote>`;
+    // Email HTML: CSS variables are not supported in mail clients, so rgb() equivalents of the original hex colors are used.
+    const quotedHtml = `<blockquote style="border-left:2px solid rgb(229, 231, 235);padding-left:12px;color:rgb(75, 85, 99);">${sourceHtml}</blockquote>`;
     const quotedText = note.content
       ? note.content
         .split("\n")
@@ -1111,157 +1111,136 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
   const formattedPhone = formatPhoneNumber(lead.customerProfile?.phone);
 
   return (
-    <section style={styles.container}>
-      <header style={styles.header}>
-        <div style={styles.titleArea}>
-          <div style={styles.titleRow}>
-            <h2 style={styles.title}>
-              {lead.customerProfile
-                ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
-                : "Lead Detail"}
-            </h2>
-            {lead.customerProfile?.email ? (
-              <button
-                type="button"
-                onClick={handleComposeEmail}
-                style={styles.secondaryButton}
-              >
-                ✉️ Wyślij wiadomość
-              </button>
-            ) : null}
-            <span style={styles.statusPill}>{LEAD_STATUS_LABELS[lead.status] || lead.status}</span>
+    <section className="app-lead">
+      <Card className="app-lead-head">
+        <div className="app-lead-head__top">
+          <div className="app-lead-head__titles">
+            <div className="app-lead-head__title-row">
+              <h2 className="app-page-title">
+                {lead.customerProfile
+                  ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
+                  : "Lead detail"}
+              </h2>
+              {lead.customerProfile?.email ? (
+                <Button variant="secondary" size="sm" icon="mail" onClick={handleComposeEmail}>
+                  Wyślij wiadomość
+                </Button>
+              ) : null}
+              <StatusBadge status={lead.status} />
+            </div>
+            <div className="app-lead-head__contacts">
+              {lead.customerProfile?.email ? (
+                <span className="app-muted">
+                  Email:{" "}
+                  <a href={`mailto:${lead.customerProfile.email}`} className="app-link">
+                    {lead.customerProfile.email}
+                  </a>
+                </span>
+              ) : null}
+              {formattedPhone ? (
+                <span className="app-muted">
+                  Telefon:{" "}
+                  <a href={`tel:${lead.customerProfile?.phone ?? ""}`} className="app-link">
+                    {formattedPhone}
+                  </a>
+                </span>
+              ) : null}
+            </div>
           </div>
-          <div style={styles.contactRow}>
-            {lead.customerProfile?.email ? (
-              <span style={styles.subtitle}>
-                Email:{" "}
-                <a href={`mailto:${lead.customerProfile.email}`} style={styles.contactLink}>
-                  {lead.customerProfile.email}
-                </a>
-              </span>
-            ) : null}
-            {formattedPhone ? (
-              <span style={styles.subtitle}>
-                Telefon:{" "}
-                <a href={`tel:${lead.customerProfile?.phone ?? ""}`} style={styles.contactLink}>
-                  {formattedPhone}
-                </a>
-              </span>
-            ) : null}
-          </div>
-        </div>
-        <div style={styles.headerActions}>
-          <button type="button" style={styles.refreshButton} onClick={onRefresh}>
+          <Button variant="secondary" size="sm" icon="refresh" onClick={onRefresh}>
             Odśwież
-          </button>
+          </Button>
         </div>
-      </header>
-
-      <div style={styles.section}>
-        <div style={styles.grid}>
-          <InfoItem
-            label="Status"
-            value={<span style={styles.badge}>{LEAD_STATUS_LABELS[lead.status]}</span>}
-          />
+        <dl className="app-kv app-lead-head__kv">
+          <InfoItem label="Status" value={<StatusBadge status={lead.status} />} />
           <InfoItem
             label="Przypisany do"
             value={
               isAdmin ? (
-                <div style={styles.assignmentControl}>
-                  <select
-                    value={assignedUserId}
-                    onChange={handleAssignmentChange}
-                    style={{
-                      ...styles.assignmentSelect,
-                      background: assignedUserId ? "#ffffff" : "#fef3c7",
-                    }}
-                    disabled={isLoadingOperators || isUpdatingAssignment}
-                  >
-                    <option value="">Do przypisania</option>
-                    {mergedOperatorOptions.map((operator) => (
-                      <option key={operator.id} value={operator.id}>
-                        {operator.email}
-                        {operator.fullName ? ` (${operator.fullName})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {assignmentError ? <div style={styles.assignError}>{assignmentError}</div> : null}
-                </div>
+                <Select
+                  aria-label="Przypisany do"
+                  className={assignedUserId ? "app-lead-assign" : "app-lead-assign app-lead-assign--empty"}
+                  value={assignedUserId}
+                  onChange={handleAssignmentChange}
+                  disabled={isLoadingOperators || isUpdatingAssignment}
+                  error={assignmentError ?? undefined}
+                  options={[
+                    { value: "", label: "Do przypisania" },
+                    ...mergedOperatorOptions.map((operator) => ({
+                      value: operator.id,
+                      label: `${operator.email}${operator.fullName ? ` (${operator.fullName})` : ""}`,
+                    })),
+                  ]}
+                />
               ) : (
                 assignedEmail
               )
             }
           />
-          <InfoItem
-            label="Last Contact"
-            value={lastContactValue}
-          />
-        </div>
-      </div>
+          <InfoItem label="Last contact" value={lastContactValue} />
+        </dl>
+      </Card>
 
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Informacje o kliencie</h3>
-          {canEditClient ? (
-            <button type="button" style={styles.secondaryButton} onClick={handleOpenClientModal}>
+      <Card
+        title="Informacje o kliencie"
+        actions={
+          canEditClient ? (
+            <Button variant="secondary" size="sm" onClick={handleOpenClientModal}>
               Edytuj
-            </button>
-          ) : null}
-        </div>
-        <div style={{ ...styles.grid, ...styles.clientInfoGrid }}>
+            </Button>
+          ) : undefined
+        }
+      >
+        <dl className="app-kv">
           <InfoItem label="Rodzaj klienta" value={customerAddress.customerType || "—"} />
           <InfoItem label="Miasto" value={customerAddress.city || "—"} />
           <InfoItem label="Województwo" value={customerAddress.voivodeship || "—"} />
-        </div>
-      </div>
-      <div style={styles.section}>
-        <LeadInsuranceOnboarding leadId={lead.id} />
-      </div>
+        </dl>
+      </Card>
 
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <h3 style={styles.sectionTitle}>Informacje o pojeździe</h3>
-          {canEditVehicles ? (
-            <button type="button" style={styles.secondaryButton} onClick={handleVehicleModalOpen}>
+      <LeadInsuranceOnboarding leadId={lead.id} />
+
+      <Card
+        title="Informacje o pojeździe"
+        actions={
+          canEditVehicles ? (
+            <Button variant="secondary" size="sm" onClick={handleVehicleModalOpen}>
               Edytuj
-            </button>
-          ) : null}
-        </div>
-        <InfoItem label="Aktualny pojazd" value={formatCurrentVehicle()} />
-        <InfoItem label="Żądany pojazd" value={formatDesiredVehicle()} />
-        <InfoItem label="Forma finansowania" value={formatFinancing()} />
-      </div>
+            </Button>
+          ) : undefined
+        }
+      >
+        <dl className="app-kv app-lead-kv--stack">
+          <InfoItem label="Aktualny pojazd" value={formatCurrentVehicle()} />
+          <InfoItem label="Żądany pojazd" value={formatDesiredVehicle()} />
+          <InfoItem label="Forma finansowania" value={formatFinancing()} />
+        </dl>
+      </Card>
 
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <div style={styles.formHeaderLeft}>
-            <h3 style={styles.sectionTitle}>Formularz klienta</h3>
-            {formStatusMeta ? (
-              <span
-                style={{
-                  ...styles.formStatusBadge,
-                  ...FORM_STATUS_TONES[formStatusMeta.tone],
-                }}
-              >
-                {formStatusMeta.label}
-              </span>
-            ) : null}
-          </div>
-          {canGenerateFormLink ? (
-            <button type="button" style={styles.primaryButton} onClick={handleOpenGenerateFormModal}>
+      <Card
+        title={
+          <span className="app-lead-title-group">
+            Formularz klienta
+            {formStatusMeta ? <Badge tone={formStatusMeta.tone}>{formStatusMeta.label}</Badge> : null}
+          </span>
+        }
+        actions={
+          canGenerateFormLink ? (
+            <Button variant="primary" size="sm" onClick={handleOpenGenerateFormModal}>
               Wyślij formularz
-            </button>
-          ) : null}
-        </div>
+            </Button>
+          ) : undefined
+        }
+      >
         {applicationForm ? (
-          <>
+          <div className="app-lead-stack">
             {applicationForm.isClientActive ? (
-              <div style={styles.banner} role="status">
+              <div className="app-alert app-alert--warning" role="status">
                 Klient jest obecnie aktywny w formularzu online. Edycja danych została zablokowana do czasu
                 zakończenia sesji.
               </div>
             ) : null}
-            <div style={styles.grid}>
+            <dl className="app-kv">
               <InfoItem
                 label="Status"
                 value={formStatusMeta ? formStatusMeta.label : "Nieznany"}
@@ -1286,195 +1265,172 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                     : "—"
                 }
               />
-            </div>
-            <div style={styles.formActionsRow}>
-              <span style={styles.subtleText}>
+            </dl>
+            <div className="app-lead-form-row">
+              <span className="app-muted">
                 {applicationForm.submittedAt
                   ? `Ostatni submit: ${new Date(applicationForm.submittedAt).toLocaleString()}`
                   : "Formularz nie został jeszcze przesłany"}
               </span>
               {canUnlock ? (
-                <button
-                  type="button"
-                  style={styles.primaryButton}
-                  onClick={() => setIsConfirmUnlockOpen(true)}
-                >
+                <Button variant="secondary" size="sm" onClick={() => setIsConfirmUnlockOpen(true)}>
                   Odblokuj wniosek
-                </button>
+                </Button>
               ) : null}
               {unlockHistory.length ? (
-                <button
-                  type="button"
-                  style={styles.secondaryButton}
-                  onClick={() => setIsUnlockModalOpen(true)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setIsUnlockModalOpen(true)}>
                   Historia odblokowań ({unlockHistory.length})
-                </button>
+                </Button>
               ) : null}
             </div>
-          </>
+          </div>
         ) : (
-          <p style={styles.subtleText}>Brak powiązanego formularza online.</p>
+          <p className="app-muted app-lead-text">Brak powiązanego formularza online.</p>
         )}
-      </div>
+      </Card>
 
       {lead.applicationForm?.formData ? (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Postęp formularza klienta</h3>
-          <pre style={styles.formDataPre}>
+        <Card title="Postęp formularza klienta">
+          <pre className="app-lead-pre">
             {JSON.stringify(lead.applicationForm.formData, null, 2)}
           </pre>
-        </div>
+        </Card>
       ) : null}
 
-
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <div style={styles.sectionTitleGroup}>
-            <h3 style={styles.sectionTitle}>Notatki</h3>
-            <span style={styles.noteCount}>({notes.length})</span>
-          </div>
-          <button type="button" style={styles.primaryButton} onClick={() => setIsNoteModalOpen(true)}>
+      <Card
+        title={
+          <span className="app-lead-title-group">
+            Notatki
+            <span className="app-muted">({notes.length})</span>
+          </span>
+        }
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setIsNoteModalOpen(true)}>
             Nowa notatka
-          </button>
-        </div>
-        <ul style={styles.noteList}>
-          {displayedNotes.length ? (
-            displayedNotes.map((note) => {
-              const emailNote = isEmailNote(note);
-              const direction = emailNote ? getEmailDirection(note) : null;
-              const isExpanded = Boolean(expandedEmailNoteIds[note.id]);
-              const allowToggle = emailNote ? shouldAllowEmailToggle(note) : false;
+          </Button>
+        }
+      >
+        <div className="app-lead-stack">
+          <ul className="app-lead-list">
+            {displayedNotes.length ? (
+              displayedNotes.map((note) => {
+                const emailNote = isEmailNote(note);
+                const direction = emailNote ? getEmailDirection(note) : null;
+                const isExpanded = Boolean(expandedEmailNoteIds[note.id]);
+                const allowToggle = emailNote ? shouldAllowEmailToggle(note) : false;
 
-              return (
-                <li key={note.id} style={styles.noteItem}>
-                  <div style={styles.noteMeta}>
-                    <div style={styles.noteMetaLeft}>
+                return (
+                  <li key={note.id} className="app-lead-item">
+                    <div className="app-lead-meta">
+                      <div className="app-lead-meta__left">
+                        {emailNote ? (
+                          <>
+                            <span
+                              className={`app-lead-email-icon app-lead-email-icon--${direction === "INCOMING" ? "in" : "out"}`}
+                              title={direction === "INCOMING" ? "Incoming email" : "Outgoing email"}
+                            >
+                              {direction === "INCOMING" ? "📥" : "📤"}
+                            </span>
+                            <Badge tone={direction === "INCOMING" ? "info" : "accent"}>
+                              {direction === "INCOMING" ? "Incoming" : "Outgoing"}
+                            </Badge>
+                            <span className="app-lead-email-addr">{getEmailParticipantLabel(note)}</span>
+                          </>
+                        ) : (
+                          <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+                        )}
+                      </div>
+                      <div className="app-lead-meta__right">
+                        <span>{new Date(note.createdAt).toLocaleString()}</span>
+                        {!emailNote && note.link ? (
+                          <a
+                            href={note.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="app-link"
+                          >
+                            Link
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="app-lead-note__content">
                       {emailNote ? (
                         <>
-                          <span
-                            style={{
-                              ...styles.emailIcon,
-                              backgroundColor: direction === "INCOMING" ? "#e0f2fe" : "#fee2e2",
-                            }}
-                            title={direction === "INCOMING" ? "Incoming email" : "Outgoing email"}
-                          >
-                            {direction === "INCOMING" ? "📥" : "📤"}
-                          </span>
-                          <span
-                            style={{
-                              ...styles.emailDirectionBadge,
-                              color: direction === "INCOMING" ? "#0369a1" : "#b91c1c",
-                              backgroundColor: direction === "INCOMING" ? "#e0f2fe" : "#fee2e2",
-                            }}
-                          >
-                            {direction === "INCOMING" ? "Incoming" : "Outgoing"}
-                          </span>
-                          <span style={styles.emailAddress}>{getEmailParticipantLabel(note)}</span>
+                          {note.metadata?.subject ? (
+                            <div className="app-lead-email-subject">{note.metadata.subject}</div>
+                          ) : null}
+                          {renderEmailBody(note, isExpanded)}
+                          {note.type === "EMAIL_SENT" &&
+                            note.metadata?.links &&
+                            Array.isArray(note.metadata.links) &&
+                            note.metadata.links.length > 0 ? (
+                            <div className="app-lead-email-links">
+                              <div className="app-lead-email-links__title">Linki:</div>
+                              <ul className="app-lead-email-links__list">
+                                {note.metadata.links.map((link, i) => {
+                                  let title = link;
+                                  try {
+                                    const url = new URL(link);
+                                    const match = url.pathname.match(/[/]samochod[/]([^/]+)[/]([^/]+)/);
+                                    if (match) {
+                                      const make = match[1];
+                                      const model = match[2].replace(/-/g, " ");
+                                      title = `${make} ${model}`;
+                                    }
+                                  } catch {
+                                    // ignore malformed URLs
+                                  }
+                                  return (
+                                    <li key={i}>
+                                      <a
+                                        href={link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="app-link"
+                                      >
+                                        {title}
+                                      </a>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          ) : null}
+                          <div className="app-lead-email-actions">
+                            <Button variant="ghost" size="sm" onClick={() => handleReplyToNote(note)}>
+                              Odpowiedz
+                            </Button>
+                            {allowToggle ? (
+                              <Button variant="ghost" size="sm" onClick={() => toggleEmailBody(note.id)}>
+                                {isExpanded ? "Zwiń" : "Rozwiń"}
+                              </Button>
+                            ) : null}
+                          </div>
                         </>
                       ) : (
-                        <span>{note.author?.fullName || note.author?.email || "Unknown"}</span>
+                        <div className="app-lead-prewrap">{note.content}</div>
                       )}
                     </div>
-                    <div style={styles.noteMetaRight}>
-                      <span>{new Date(note.createdAt).toLocaleString()}</span>
-                      {!emailNote && note.link ? (
-                        <a
-                          href={note.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.noteLink}
-                        >
-                          Link
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div style={styles.noteContent}>
-                    {emailNote ? (
-                      <>
-                        {note.metadata?.subject ? (
-                          <div style={styles.emailSubject}>{note.metadata.subject}</div>
-                        ) : null}
-                        {renderEmailBody(note, isExpanded)}
-                        {note.type === "EMAIL_SENT" &&
-                          note.metadata?.links &&
-                          Array.isArray(note.metadata.links) &&
-                          note.metadata.links.length > 0 ? (
-                          <div style={{ marginTop: "0.5rem" }}>
-                            <div style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.25rem" }}>
-                              Linki:
-                            </div>
-                            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                              {note.metadata.links.map((link, i) => {
-                                let title = link;
-                                try {
-                                  const url = new URL(link);
-                                  const match = url.pathname.match(/[/]samochod[/]([^/]+)[/]([^/]+)/);
-                                  if (match) {
-                                    const make = match[1];
-                                    const model = match[2].replace(/-/g, " ");
-                                    title = `${make} ${model}`;
-                                  }
-                                } catch {
-                                  // ignore malformed URLs
-                                }
-                                return (
-                                  <li key={i} style={{ marginBottom: "0.25rem" }}>
-                                    <a
-                                      href={link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ color: "#2563eb", textDecoration: "underline" }}
-                                    >
-                                      {title}
-                                    </a>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        ) : null}
-                        <div style={styles.emailActions}>
-                          <button
-                            type="button"
-                            style={styles.emailActionButton}
-                            onClick={() => handleReplyToNote(note)}
-                          >
-                            Odpowiedz
-                          </button>
-                          {allowToggle ? (
-                            <button
-                              type="button"
-                              style={styles.emailActionButton}
-                              onClick={() => toggleEmailBody(note.id)}
-                            >
-                              {isExpanded ? "Zwiń" : "Rozwiń"}
-                            </button>
-                          ) : null}
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ whiteSpace: "pre-wrap" }}>{note.content}</div>
-                    )}
-                  </div>
-                </li>
-              );
-            })
-          ) : (
-            <li style={styles.noteEmpty}>Żadnych notatek jeszcze nie dodano.</li>
-          )}
-        </ul>
-        {canToggleNotes ? (
-          <button
-            type="button"
-            style={{ ...styles.ghostButton, alignSelf: "flex-start" }}
-            onClick={() => setAreNotesExpanded((prev) => !prev)}
-          >
-            {areNotesExpanded ? "Pokaż mniej" : "Pokaż wszystkie notatki"}
-          </button>
-        ) : null}
-      </div>
+                  </li>
+                );
+              })
+            ) : (
+              <li className="app-muted app-lead-empty">Żadnych notatek jeszcze nie dodano.</li>
+            )}
+          </ul>
+          {canToggleNotes ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="app-lead-toggle"
+              onClick={() => setAreNotesExpanded((prev) => !prev)}
+            >
+              {areNotesExpanded ? "Pokaż mniej" : "Pokaż wszystkie notatki"}
+            </Button>
+          ) : null}
+        </div>
+      </Card>
 
       <StatusUpdateForm lead={lead} onSubmit={onStatusUpdate} />
 
@@ -1486,316 +1442,274 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         }}
       />
 
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Dokumenty</h3>
-        <ul style={styles.docList}>
-          {lead.documents.length ? (
-            lead.documents.map((doc) => (
-              <li key={doc.id} style={styles.docItem}>
-                <div>
-                  <strong>{doc.type}</strong>
-                  <div style={styles.subtleText}>
-                    <a
-                      href={resolveDocumentUrl(doc.filePath)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={doc.originalName || doc.filePath}
-                    >
-                      {truncateFileName(doc.originalName || doc.filePath)}
-                    </a>
+      <Card title="Dokumenty">
+        <div className="app-lead-stack">
+          <ul className="app-lead-list">
+            {lead.documents.length ? (
+              lead.documents.map((doc) => (
+                <li key={doc.id} className="app-lead-item app-lead-item--row">
+                  <div>
+                    <strong>{doc.type}</strong>
+                    <div className="app-muted">
+                      <a
+                        href={resolveDocumentUrl(doc.filePath, token)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="app-link"
+                        title={doc.originalName || doc.filePath}
+                      >
+                        {truncateFileName(doc.originalName || doc.filePath)}
+                      </a>
+                    </div>
+                    <div className="app-muted">
+                      {doc.mimeType ? `${doc.mimeType} · ` : ""}
+                      {doc.sizeBytes ? `${Math.round(doc.sizeBytes / 1024)} KB` : ""}
+                    </div>
+                    {doc.checksum ? (
+                      <div className="app-muted">Checksum: {doc.checksum}</div>
+                    ) : null}
                   </div>
-                  <div style={styles.subtleText}>
-                    {doc.mimeType ? `${doc.mimeType} · ` : ""}
-                    {doc.sizeBytes ? `${Math.round(doc.sizeBytes / 1024)} KB` : ""}
-                  </div>
-                  {doc.checksum ? (
-                    <div style={styles.subtleText}>Checksum: {doc.checksum}</div>
-                  ) : null}
-                </div>
-                <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
-              </li>
-            ))
-          ) : (
-            <li style={styles.subtleText}>Brak dokumentów.</li>
-          )}
-        </ul>
-        <DocumentForm
-          onSubmit={async (payload) => {
-            await onAddDocument(payload);
-            const refreshResult = onRefresh();
-            if (refreshResult instanceof Promise) {
-              await refreshResult;
-            }
-          }}
-        />
-      </div>
-
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <div style={styles.sectionTitleGroup}>
-            <h3 style={styles.sectionTitle}>Ostatnia aktywność</h3>
-            <span style={styles.noteCount}>({auditLogs.length})</span>
-          </div>
+                  <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
+                </li>
+              ))
+            ) : (
+              <li className="app-muted">Brak dokumentów.</li>
+            )}
+          </ul>
+          <DocumentForm
+            onSubmit={async (payload) => {
+              await onAddDocument(payload);
+              const refreshResult = onRefresh();
+              if (refreshResult instanceof Promise) {
+                await refreshResult;
+              }
+            }}
+          />
         </div>
-        <ul style={styles.auditList}>
-          {displayedAuditLogs.length ? (
-            displayedAuditLogs.map((log) => (
-              <li key={log.id} style={styles.auditItem}>
-                <div>
-                  <strong>{formatAuditAction(log.action, log.field)}</strong>
-                  <div style={styles.auditMeta}>
-                    {log.user?.fullName || "System"} · {new Date(log.createdAt).toLocaleString()}
-                  </div>
-                  {renderAuditDetails(log)}
-                </div>
-              </li>
-            ))
-          ) : (
-            <li style={styles.subtleText}>Brak aktywności.</li>
-          )}
-        </ul>
-        {canToggleAuditLogs ? (
-          <button
-            type="button"
-            style={{ ...styles.ghostButton, alignSelf: "flex-start" }}
-            onClick={() => setAreActivitiesExpanded((prev) => !prev)}
-          >
-            {areActivitiesExpanded ? "Pokaż mniej" : "Pokaż całą aktywność"}
-          </button>
-        ) : null}
-      </div>
+      </Card>
 
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Consent Timeline</h3>
-        <ul style={styles.consentList}>
+      <Card
+        title={
+          <span className="app-lead-title-group">
+            Ostatnia aktywność
+            <span className="app-muted">({auditLogs.length})</span>
+          </span>
+        }
+      >
+        <div className="app-lead-stack">
+          <ul className="app-lead-list">
+            {displayedAuditLogs.length ? (
+              displayedAuditLogs.map((log) => (
+                <li key={log.id} className="app-lead-item app-lead-item--subtle">
+                  <div>
+                    <strong>{formatAuditAction(log.action, log.field)}</strong>
+                    <div className="app-muted app-lead-audit-meta">
+                      {log.user?.fullName || "System"} · {new Date(log.createdAt).toLocaleString()}
+                    </div>
+                    {renderAuditDetails(log)}
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="app-muted">Brak aktywności.</li>
+            )}
+          </ul>
+          {canToggleAuditLogs ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="app-lead-toggle"
+              onClick={() => setAreActivitiesExpanded((prev) => !prev)}
+            >
+              {areActivitiesExpanded ? "Pokaż mniej" : "Pokaż całą aktywność"}
+            </Button>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card title="Consent timeline">
+        <ul className="app-lead-list">
           {lead.consentRecords.length ? (
             lead.consentRecords.map((record) => (
-              <li key={record.id} style={styles.consentItem}>
-                <div style={styles.consentMeta}>
+              <li key={record.id} className="app-lead-item">
+                <div className="app-lead-meta">
                   <span>{record.consentTemplate.title} (v{record.version})</span>
                   <span>· {new Date(record.recordedAt).toLocaleString()}</span>
                   {record.consentGiven ? (
-                    <span style={{ color: "#16a34a", fontWeight: 600 }}>Given</span>
+                    <Badge tone="success">Given</Badge>
                   ) : (
-                    <span style={{ color: "#dc2626", fontWeight: 600 }}>Not Given</span>
+                    <Badge tone="danger">Not given</Badge>
                   )}
                   {record.recordedBy ? (
-                    <span style={styles.subtleText}>
+                    <span className="app-muted">
                       by {record.recordedBy.fullName}
                       {record.recordedBy.fullName && record.recordedBy.email ? ` (${record.recordedBy.email})` : record.recordedBy.email ? ` ${record.recordedBy.email}` : ""}
                     </span>
                   ) : null}
                   {record.partner ? (
-                    <span style={styles.subtleText}>via {record.partner.name}</span>
+                    <span className="app-muted">via {record.partner.name}</span>
                   ) : null}
-                  <button
-                    type="button"
-                    style={styles.ghostButton}
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setSelectedConsentContent(record.consentTemplate.content);
                       setIsConsentContentModalOpen(true);
                     }}
                   >
-                    View Content
-                  </button>
+                    View content
+                  </Button>
                 </div>
                 <div
-                  style={styles.consentContent}
-                  dangerouslySetInnerHTML={{ __html: record.consentText }}
+                  className="app-lead-consent-text"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(record.consentText) }}
                 />
               </li>
             ))
           ) : (
-            <li style={styles.subtleText}>No consent records found.</li>
+            <li className="app-muted">No consent records found.</li>
           )}
         </ul>
-      </div>
+      </Card>
 
-      <div style={styles.metaRow}>
-        <div style={styles.metaItem}>
-          <span style={styles.metaLabel}>Partner</span>
-          <span style={styles.metaValue}>{lead.partner?.name || lead.partnerId || "—"}</span>
-        </div>
-        <div style={styles.metaItem}>
-          <span style={styles.metaLabel}>Utworzono</span>
-          <span style={styles.metaValue}>{new Date(lead.leadCreatedAt).toLocaleString()}</span>
-        </div>
-      </div>
+      <Card>
+        <dl className="app-kv">
+          <InfoItem label="Partner" value={lead.partner?.name || lead.partnerId || "—"} />
+          <InfoItem label="Utworzono" value={new Date(lead.leadCreatedAt).toLocaleString()} />
+        </dl>
+      </Card>
 
       {isAdmin && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Admin Actions</h3>
-          <div style={styles.adminActions}>
-            <button
-              type="button"
-              style={styles.dangerButton}
-              onClick={() => setIsAnonymizeModalOpen(true)}
-            >
+        <Card title="Admin actions">
+          <div className="app-form-actions app-form-actions--start">
+            <Button variant="danger" size="sm" onClick={() => setIsAnonymizeModalOpen(true)}>
               Anominizuj klienta
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       <Modal
         isOpen={isConsentContentModalOpen}
         onClose={() => setIsConsentContentModalOpen(false)}
-        title="Consent Content"
+        title="Consent content"
       >
-        <div style={styles.consentContentModal}>
+        <div className="app-panel app-lead-consent-modal">
           <div
-            style={styles.consentContentHtml}
-            dangerouslySetInnerHTML={{ __html: selectedConsentContent }}
+            className="app-lead-consent-html"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedConsentContent) }}
           />
         </div>
       </Modal>
 
       <Modal isOpen={isClientModalOpen} onClose={handleCloseClientModal} title="Informacje o kliencie">
-        <form onSubmit={handleSaveClient} style={styles.modalForm}>
-          <div style={styles.modalGrid}>
-            <label style={styles.modalLabel}>
-              Imię
-              <input
-                type="text"
-                value={clientForm.firstName}
-                onChange={(event) => handleClientFieldChange("firstName", event.target.value)}
-                style={styles.modalInput}
-                required
-              />
-              {clientErrors.firstName ? (
-                <span style={styles.errorText}>{clientErrors.firstName}</span>
-              ) : null}
-            </label>
-            <label style={styles.modalLabel}>
-              Nazwisko
-              <input
-                type="text"
-                value={clientForm.lastName}
-                onChange={(event) => handleClientFieldChange("lastName", event.target.value)}
-                style={styles.modalInput}
-                required
-              />
-              {clientErrors.lastName ? (
-                <span style={styles.errorText}>{clientErrors.lastName}</span>
-              ) : null}
-            </label>
-            <label style={styles.modalLabel}>
-              Email
-              <input
-                type="email"
-                value={clientForm.email}
-                onChange={(event) => handleClientFieldChange("email", event.target.value)}
-                style={styles.modalInput}
-              />
-              {clientErrors.email ? <span style={styles.errorText}>{clientErrors.email}</span> : null}
-            </label>
-            <label style={styles.modalLabel}>
-              Telefon
-              <input
-                type="text"
-                value={clientForm.phone}
-                onChange={(event) => handleClientFieldChange("phone", event.target.value)}
-                style={styles.modalInput}
-              />
-            </label>
-            <label style={styles.modalLabel}>
-              Rodzaj klienta
-              <select
-                value={clientForm.customerType}
-                onChange={(event) => handleClientFieldChange("customerType", event.target.value)}
-                style={styles.modalInput}
-              >
-                <option value="">Wybierz</option>
-                {CUSTOMER_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={styles.modalLabel}>
-              Miasto
-              <input
-                type="text"
-                value={clientForm.city}
-                onChange={(event) => handleClientFieldChange("city", event.target.value)}
-                style={styles.modalInput}
-              />
-            </label>
-            <label style={styles.modalLabel}>
-              Kod pocztowy
-              <input
-                type="text"
-                value={clientForm.postalCode}
-                onChange={(event) => handleClientFieldChange("postalCode", event.target.value)}
-                style={styles.modalInput}
-                placeholder="00-000"
-                maxLength={6}
-              />
-              {clientErrors.postalCode ? <span style={styles.errorText}>{clientErrors.postalCode}</span> : null}
-            </label>
-            <label style={styles.modalLabel}>
-              Województwo
-              <select
-                value={clientForm.voivodeship}
-                onChange={(event) => handleClientFieldChange("voivodeship", event.target.value)}
-                style={styles.modalInput}
-              >
-                <option value="">Wybierz</option>
-                {VOIVODESHIPS.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <form onSubmit={handleSaveClient} className="app-form">
+          <div className="app-form-grid">
+            <TextField
+              label="Imię"
+              type="text"
+              value={clientForm.firstName}
+              onChange={(event) => handleClientFieldChange("firstName", event.target.value)}
+              required
+              error={clientErrors.firstName}
+            />
+            <TextField
+              label="Nazwisko"
+              type="text"
+              value={clientForm.lastName}
+              onChange={(event) => handleClientFieldChange("lastName", event.target.value)}
+              required
+              error={clientErrors.lastName}
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={clientForm.email}
+              onChange={(event) => handleClientFieldChange("email", event.target.value)}
+              error={clientErrors.email}
+            />
+            <TextField
+              label="Telefon"
+              type="text"
+              value={clientForm.phone}
+              onChange={(event) => handleClientFieldChange("phone", event.target.value)}
+            />
+            <Select
+              label="Rodzaj klienta"
+              value={clientForm.customerType}
+              onChange={(event) => handleClientFieldChange("customerType", event.target.value)}
+              options={[{ value: "", label: "Wybierz" }, ...CUSTOMER_TYPES]}
+            />
+            <TextField
+              label="Miasto"
+              type="text"
+              value={clientForm.city}
+              onChange={(event) => handleClientFieldChange("city", event.target.value)}
+            />
+            <TextField
+              label="Kod pocztowy"
+              type="text"
+              value={clientForm.postalCode}
+              onChange={(event) => handleClientFieldChange("postalCode", event.target.value)}
+              placeholder="00-000"
+              maxLength={6}
+              error={clientErrors.postalCode}
+            />
+            <Select
+              label="Województwo"
+              value={clientForm.voivodeship}
+              onChange={(event) => handleClientFieldChange("voivodeship", event.target.value)}
+              options={[{ value: "", label: "Wybierz" }, ...VOIVODESHIPS]}
+            />
           </div>
-          <div style={styles.modalActions}>
-            <button type="button" onClick={handleCloseClientModal} style={styles.ghostButton}>
+          <div className="app-form-actions">
+            <Button variant="secondary" onClick={handleCloseClientModal}>
               Anuluj
-            </button>
-            <button type="submit" style={styles.primaryButton} disabled={isSavingClient}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSavingClient}>
               {isSavingClient ? "Zapisywanie..." : "Zapisz"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
 
       <Modal isOpen={isNoteModalOpen} onClose={handleCloseNoteModal} title="Add note">
-        <form onSubmit={handleSubmitNote} style={styles.modalForm}>
-          <label style={styles.modalLabel}>
-            Note
+        <form onSubmit={handleSubmitNote} className="app-form">
+          <div className={`iz-field${noteErrors.content ? " iz-field--error" : ""}`}>
+            <label className="iz-field__label" htmlFor={noteId}>
+              Note
+            </label>
             <textarea
+              id={noteId}
+              className={`app-textarea${noteErrors.content ? " app-lead-textarea--error" : ""}`}
               required
               value={noteContent}
               onChange={(event) => setNoteContent(event.target.value)}
-              style={styles.modalTextarea}
               maxLength={2000}
+              aria-invalid={noteErrors.content ? true : undefined}
+              aria-describedby={noteErrors.content ? `${noteId}-hint` : undefined}
             />
-            {noteErrors.content ? <span style={styles.errorText}>{noteErrors.content}</span> : null}
-          </label>
-          <label style={styles.modalLabel}>
-            Link (optional)
-            <input
-              type="url"
-              value={noteLink}
-              onChange={(event) => setNoteLink(event.target.value)}
-              style={styles.modalInput}
-              placeholder="https://example.com"
-            />
-            {noteErrors.link ? <span style={styles.errorText}>{noteErrors.link}</span> : null}
-          </label>
-          <div style={styles.modalActions}>
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={handleCloseNoteModal}
-            >
+            {noteErrors.content ? (
+              <div className="iz-field__hint" id={`${noteId}-hint`}>
+                {noteErrors.content}
+              </div>
+            ) : null}
+          </div>
+          <TextField
+            label="Link (optional)"
+            type="url"
+            value={noteLink}
+            onChange={(event) => setNoteLink(event.target.value)}
+            placeholder="https://example.com"
+            error={noteErrors.link}
+          />
+          <div className="app-form-actions">
+            <Button variant="secondary" onClick={handleCloseNoteModal}>
               Cancel
-            </button>
-            <button type="submit" style={styles.primaryButton} disabled={isSavingNote}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSavingNote}>
               {isSavingNote ? "Saving..." : "Save note"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -1805,281 +1719,220 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         onClose={handleCloseVehicleModal}
         title="Edit vehicle details"
       >
-        <form onSubmit={handleSaveVehicles} style={styles.modalForm}>
-          <div style={styles.vehicleFormSection}>
-            <h4 style={styles.modalSubheading}>Current vehicle</h4>
-            <div style={styles.fieldGrid}>
-              <label style={styles.modalLabel}>
-                Make
-                <input
-                  type="text"
-                  value={vehicleForm.current.make}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("current", "make", event.target.value)
-                  }
-                  style={styles.modalInput}
-                />
-              </label>
-              <label style={styles.modalLabel}>
-                Model
-                <input
-                  type="text"
-                  value={vehicleForm.current.model}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("current", "model", event.target.value)
-                  }
-                  style={styles.modalInput}
-                />
-              </label>
-              <label style={styles.modalLabel}>
-                Year
-                <input
-                  type="number"
-                  value={vehicleForm.current.year}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("current", "year", event.target.value)
-                  }
-                  style={styles.modalInput}
-                  min={1900}
-                  max={new Date().getFullYear() + 1}
-                />
-                {vehicleErrors["current.year"] ? (
-                  <span style={styles.errorText}>{vehicleErrors["current.year"]}</span>
-                ) : null}
-              </label>
-              <label style={styles.modalLabel}>
-                Mileage (km)
-                <input
-                  type="number"
-                  value={vehicleForm.current.mileage}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("current", "mileage", event.target.value)
-                  }
-                  style={styles.modalInput}
-                  min={0}
-                />
-                {vehicleErrors["current.mileage"] ? (
-                  <span style={styles.errorText}>{vehicleErrors["current.mileage"]}</span>
-                ) : null}
-              </label>
-              <label style={styles.modalLabel}>
-                Ownership status
-                <input
-                  type="text"
-                  value={vehicleForm.current.ownershipStatus}
-                  onChange={(event) =>
-                    handleVehicleFieldChange(
-                      "current",
-                      "ownershipStatus",
-                      event.target.value,
-                    )
-                  }
-                  style={styles.modalInput}
-                />
-              </label>
-              <label style={styles.modalLabel}>
-                Nr VIN pojazdu
-                <input
-                  type="text"
-                  value={vehicleForm.current.vin}
-                  onChange={(event) =>
-                    handleVehicleFieldChange("current", "vin", event.target.value)
-                  }
-                  style={styles.modalInput}
-                  placeholder="17 znaków alfanumerycznych"
-                  maxLength={17}
-                />
-                {vehicleErrors["current.vin"] ? (
-                  <span style={styles.errorText}>{vehicleErrors["current.vin"]}</span>
-                ) : null}
-              </label>
+        <form onSubmit={handleSaveVehicles} className="app-form">
+          <div className="app-form">
+            <h4 className="app-section-title">Current vehicle</h4>
+            <div className="app-form-grid app-form-grid--3">
+              <TextField
+                label="Make"
+                type="text"
+                value={vehicleForm.current.make}
+                onChange={(event) =>
+                  handleVehicleFieldChange("current", "make", event.target.value)
+                }
+              />
+              <TextField
+                label="Model"
+                type="text"
+                value={vehicleForm.current.model}
+                onChange={(event) =>
+                  handleVehicleFieldChange("current", "model", event.target.value)
+                }
+              />
+              <TextField
+                label="Year"
+                type="number"
+                value={vehicleForm.current.year}
+                onChange={(event) =>
+                  handleVehicleFieldChange("current", "year", event.target.value)
+                }
+                min={1900}
+                max={new Date().getFullYear() + 1}
+                error={vehicleErrors["current.year"]}
+              />
+              <TextField
+                label="Mileage (km)"
+                type="number"
+                value={vehicleForm.current.mileage}
+                onChange={(event) =>
+                  handleVehicleFieldChange("current", "mileage", event.target.value)
+                }
+                min={0}
+                error={vehicleErrors["current.mileage"]}
+              />
+              <TextField
+                label="Ownership status"
+                type="text"
+                value={vehicleForm.current.ownershipStatus}
+                onChange={(event) =>
+                  handleVehicleFieldChange(
+                    "current",
+                    "ownershipStatus",
+                    event.target.value,
+                  )
+                }
+              />
+              <TextField
+                label="Nr VIN pojazdu"
+                type="text"
+                value={vehicleForm.current.vin}
+                onChange={(event) =>
+                  handleVehicleFieldChange("current", "vin", event.target.value)
+                }
+                placeholder="17 znaków alfanumerycznych"
+                maxLength={17}
+                error={vehicleErrors["current.vin"]}
+              />
             </div>
           </div>
 
-          <div style={styles.vehicleFormSection}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h4 style={{ ...styles.modalSubheading, margin: 0 }}>Żądane pojazdy</h4>
-              <button
-                type="button"
-                onClick={addEditDesiredVehicle}
-                style={{ padding: "0.2rem 0.6rem", borderRadius: 4, background: "#f3f4f6", border: "1px solid #d1d5db", cursor: "pointer", fontSize: "0.8rem" }}
-              >
-                + Dodaj pojazd
-              </button>
+          <div className="app-form">
+            <div className="app-lead-form-row">
+              <h4 className="app-section-title">Żądane pojazdy</h4>
+              <Button variant="secondary" size="sm" icon="plus" onClick={addEditDesiredVehicle}>
+                Dodaj pojazd
+              </Button>
             </div>
 
             {vehicleForm.desired.vehicles.map((v, i) => (
-              <div key={i} style={{ ...styles.fieldGrid, padding: "1rem", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb", marginBottom: "1rem", position: "relative" }}>
+              <div key={i} className="app-panel app-form-grid app-form-grid--3">
                 {vehicleForm.desired.vehicles.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeEditDesiredVehicle(i)}
-                    style={{ position: "absolute", top: "0.5rem", right: "0.5rem", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 4, padding: "0.2rem 0.5rem", cursor: "pointer", fontSize: "0.8rem" }}
-                  >
-                    Usuń
-                  </button>
+                  <div className="app-form-grid__full app-lead-vehicle__bar">
+                    <Button variant="ghost" size="sm" onClick={() => removeEditDesiredVehicle(i)}>
+                      Usuń
+                    </Button>
+                  </div>
                 )}
-                <label style={styles.modalLabel}>
-                  Marka
-                  <input
-                    type="text"
-                    value={v.make}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "make", event.target.value)
-                    }
-                    style={styles.modalInput}
-                  />
-                </label>
-                <label style={styles.modalLabel}>
-                  Model
-                  <input
-                    type="text"
-                    value={v.model}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "model", event.target.value)
-                    }
-                    style={styles.modalInput}
-                  />
-                </label>
-                <label style={styles.modalLabel}>
-                  Rok od
-                  <input
-                    type="number"
-                    value={v.yearFrom}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "yearFrom", event.target.value)
-                    }
-                    style={styles.modalInput}
-                    min={1900}
-                    max={new Date().getFullYear() + 1}
-                  />
-                </label>
-                <label style={styles.modalLabel}>
-                  Rok do
-                  <input
-                    type="number"
-                    value={v.yearTo}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "yearTo", event.target.value)
-                    }
-                    style={styles.modalInput}
-                    min={1900}
-                    max={new Date().getFullYear() + 1}
-                  />
-                </label>
-                <label style={styles.modalLabel}>
-                  Budżet od (PLN)
-                  <input
-                    type="number"
-                    value={v.budgetFrom}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "budgetFrom", event.target.value)
-                    }
-                    style={styles.modalInput}
-                    min={0}
-                    step="0.01"
-                  />
-                </label>
-                <label style={styles.modalLabel}>
-                  Budżet do (PLN)
-                  <input
-                    type="number"
-                    value={v.budgetTo}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "budgetTo", event.target.value)
-                    }
-                    style={styles.modalInput}
-                    min={0}
-                    step="0.01"
-                  />
-                </label>
-                <label style={{ ...styles.modalLabel, gridColumn: "1 / -1" }}>
-                  Uwagi (pojazd)
-                  <input
-                    type="text"
-                    value={v.comment}
-                    onChange={(event) =>
-                      handleEditDesiredVehicleChange(i, "comment", event.target.value)
-                    }
-                    style={styles.modalInput}
-                  />
-                </label>
-              </div>
-            ))}
-
-            <div style={styles.fieldGrid}>
-              <label style={styles.modalLabel}>
-                Rodzaj finansowania
-                <select
-                  value={vehicleForm.desired.financingType}
+                <TextField
+                  label="Marka"
+                  type="text"
+                  value={v.make}
                   onChange={(event) =>
-                    handleVehicleFieldChange("desired", "financingType", event.target.value)
+                    handleEditDesiredVehicleChange(i, "make", event.target.value)
                   }
-                  style={styles.modalInput}
-                >
-                  <option value="">Wybierz...</option>
-                  <option value="Gotówka">Gotówka</option>
-                  <option value="Kredyt">Kredyt</option>
-                  <option value="Leasing">Leasing</option>
-                </select>
-              </label>
-              {(vehicleForm.desired.financingType === "Kredyt" || vehicleForm.desired.financingType === "Leasing") && (
-                <label style={styles.modalLabel}>
-                  Kwota finansowania (PLN)
-                  <input
-                    type="number"
-                    value={vehicleForm.desired.financingAmount}
-                    onChange={(event) =>
-                      handleVehicleFieldChange("desired", "financingAmount", event.target.value)
-                    }
-                    style={styles.modalInput}
-                    min={0}
-                    step="0.01"
-                  />
-                </label>
-              )}
-              <label style={styles.modalLabel}>
-                Wysokość odszkodowania (PLN)
-                <input
+                />
+                <TextField
+                  label="Model"
+                  type="text"
+                  value={v.model}
+                  onChange={(event) =>
+                    handleEditDesiredVehicleChange(i, "model", event.target.value)
+                  }
+                />
+                <TextField
+                  label="Rok od"
                   type="number"
-                  value={vehicleForm.desired.amountAvailable}
+                  value={v.yearFrom}
                   onChange={(event) =>
-                    handleVehicleFieldChange("desired", "amountAvailable", event.target.value)
+                    handleEditDesiredVehicleChange(i, "yearFrom", event.target.value)
                   }
-                  style={styles.modalInput}
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                />
+                <TextField
+                  label="Rok do"
+                  type="number"
+                  value={v.yearTo}
+                  onChange={(event) =>
+                    handleEditDesiredVehicleChange(i, "yearTo", event.target.value)
+                  }
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                />
+                <TextField
+                  label="Budżet od (PLN)"
+                  type="number"
+                  value={v.budgetFrom}
+                  onChange={(event) =>
+                    handleEditDesiredVehicleChange(i, "budgetFrom", event.target.value)
+                  }
                   min={0}
                   step="0.01"
                 />
-                {vehicleErrors["desired.amountAvailable"] ? (
-                  <span style={styles.errorText}>{vehicleErrors["desired.amountAvailable"]}</span>
-                ) : null}
-                <span style={styles.helperText}>Zastąp puste by usunąć kwotę.</span>
-              </label>
+                <TextField
+                  label="Budżet do (PLN)"
+                  type="number"
+                  value={v.budgetTo}
+                  onChange={(event) =>
+                    handleEditDesiredVehicleChange(i, "budgetTo", event.target.value)
+                  }
+                  min={0}
+                  step="0.01"
+                />
+                <TextField
+                  className="app-form-grid__full"
+                  label="Uwagi (pojazd)"
+                  type="text"
+                  value={v.comment}
+                  onChange={(event) =>
+                    handleEditDesiredVehicleChange(i, "comment", event.target.value)
+                  }
+                />
+              </div>
+            ))}
+
+            <div className="app-form-grid app-form-grid--3">
+              <Select
+                label="Rodzaj finansowania"
+                value={vehicleForm.desired.financingType}
+                onChange={(event) =>
+                  handleVehicleFieldChange("desired", "financingType", event.target.value)
+                }
+                options={[
+                  { value: "", label: "Wybierz..." },
+                  "Gotówka",
+                  "Kredyt",
+                  "Leasing",
+                ]}
+              />
+              {(vehicleForm.desired.financingType === "Kredyt" || vehicleForm.desired.financingType === "Leasing") && (
+                <TextField
+                  label="Kwota finansowania (PLN)"
+                  type="number"
+                  value={vehicleForm.desired.financingAmount}
+                  onChange={(event) =>
+                    handleVehicleFieldChange("desired", "financingAmount", event.target.value)
+                  }
+                  min={0}
+                  step="0.01"
+                />
+              )}
+              <TextField
+                label="Wysokość odszkodowania (PLN)"
+                type="number"
+                value={vehicleForm.desired.amountAvailable}
+                onChange={(event) =>
+                  handleVehicleFieldChange("desired", "amountAvailable", event.target.value)
+                }
+                min={0}
+                step="0.01"
+                hint="Zastąp puste by usunąć kwotę."
+                error={vehicleErrors["desired.amountAvailable"]}
+              />
             </div>
-            <label style={styles.modalLabel}>
-              Ogólne uwagi konwersacji
+            <div className="iz-field">
+              <label className="iz-field__label" htmlFor={desiredNotesId}>
+                Ogólne uwagi konwersacji
+              </label>
               <textarea
+                id={desiredNotesId}
+                className="app-textarea"
                 value={vehicleForm.desired.notes}
                 onChange={(event) =>
                   handleVehicleFieldChange("desired", "notes", event.target.value)
                 }
-                style={styles.modalTextarea}
                 maxLength={500}
               />
-            </label>
+            </div>
           </div>
 
-          <div style={styles.modalActions}>
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={handleCloseVehicleModal}
-            >
+          <div className="app-form-actions">
+            <Button variant="secondary" onClick={handleCloseVehicleModal}>
               Cancel
-            </button>
-            <button type="submit" style={styles.primaryButton} disabled={isSavingVehicles}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSavingVehicles}>
               {isSavingVehicles ? "Saving..." : "Save"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -2090,13 +1943,13 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         title="Historia odblokowań"
       >
         {unlockHistory.length ? (
-          <ul style={styles.unlockList}>
+          <ul className="app-lead-list">
             {unlockHistory.map((entry, index) => (
-              <li key={`${entry.unlockedAt}-${index}`} style={styles.unlockItem}>
+              <li key={`${entry.unlockedAt}-${index}`} className="app-lead-item app-lead-item--subtle">
                 {entry.type === "CLIENT_ATTEMPT" ? (
                   <>
-                    <div style={styles.infoLabel}>Aktywność klienta</div>
-                    <div style={styles.infoValue}>
+                    <div className="app-kv__label">Aktywność klienta</div>
+                    <div className="app-kv__value app-lead-unlock__value">
                       <strong>
                         {[
                           [entry.client?.firstName, entry.client?.lastName].filter(Boolean).join(" "),
@@ -2114,8 +1967,8 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                   </>
                 ) : (
                   <>
-                    <div style={styles.infoLabel}>Odblokowane</div>
-                    <div style={styles.infoValue}>
+                    <div className="app-kv__label">Odblokowane</div>
+                    <div className="app-kv__value app-lead-unlock__value">
                       <strong>
                         {entry.unlockedByUser?.fullName || entry.unlockedByUser?.email
                           ? [
@@ -2132,7 +1985,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
                           : "brak daty"}
                       </span>
                       {entry.reason ? (
-                        <span style={styles.subtleText}>Powód: {entry.reason}</span>
+                        <span className="app-muted">Powód: {entry.reason}</span>
                       ) : null}
                     </div>
                   </>
@@ -2141,7 +1994,7 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
             ))}
           </ul>
         ) : (
-          <p style={styles.subtleText}>Brak historii odblokowań.</p>
+          <p className="app-muted app-lead-text">Brak historii odblokowań.</p>
         )}
       </Modal>
 
@@ -2171,31 +2024,27 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
               setIsUnlocking(false);
             }
           }}
-          style={styles.modalForm}
+          className="app-form"
         >
-          <label style={styles.modalLabel}>
-            Powód (opcjonalnie)
-            <input
-              type="text"
-              value={unlockReason}
-              onChange={(e) => setUnlockReason(e.target.value)}
-              style={styles.modalInput}
-              maxLength={500}
-              placeholder="Np. korekta danych w sekcji zatrudnienie"
-            />
-          </label>
-          <div style={styles.modalActions}>
-            <button
-              type="button"
-              style={styles.secondaryButton}
+          <TextField
+            label="Powód (opcjonalnie)"
+            type="text"
+            value={unlockReason}
+            onChange={(e) => setUnlockReason(e.target.value)}
+            maxLength={500}
+            placeholder="Np. korekta danych w sekcji zatrudnienie"
+          />
+          <div className="app-form-actions">
+            <Button
+              variant="secondary"
               onClick={() => setIsConfirmUnlockOpen(false)}
               disabled={isUnlocking}
             >
               Anuluj
-            </button>
-            <button type="submit" style={styles.primaryButton} disabled={isUnlocking}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isUnlocking}>
               {isUnlocking ? "Odblokowuję…" : "Odblokuj i wyślij link"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -2206,62 +2055,56 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
         title="Wyślij formularz klientowi"
       >
         {generatedLinkResult ? (
-          <div style={styles.generatedLinkBox}>
+          <div className="app-form app-lead-generated">
             <p>Link do formularza:</p>
-            <div style={styles.linkField}>
+            <div className="app-panel app-lead-link">
               <span>{generatedLinkResult.link}</span>
-              <button type="button" style={styles.copyButton} onClick={handleCopyFormLink}>
+              <Button variant="secondary" size="sm" onClick={handleCopyFormLink}>
                 Kopiuj
-              </button>
+              </Button>
             </div>
             <p>
               Kod dostępu: <strong>{accessCodeInput}</strong>
             </p>
             <p>Ważny do: {new Date(generatedLinkResult.expiresAt).toLocaleString()}</p>
-            <div style={styles.modalActions}>
-              <button type="button" style={styles.primaryButton} onClick={() => setIsGenerateFormModalOpen(false)}>
+            <div className="app-form-actions">
+              <Button variant="primary" onClick={() => setIsGenerateFormModalOpen(false)}>
                 Zamknij
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleGenerateFormLink} style={styles.modalForm}>
-            <label style={styles.modalLabel}>
-              Kod dostępu (4 cyfry)
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={accessCodeInput}
-                onChange={(event) => setAccessCodeInput(event.target.value.replace(/[^0-9]/g, ""))}
-                style={styles.modalInput}
-                placeholder="np. 1234"
-              />
-              <span style={styles.helperText}>Podpowiedź: ostatnie 4 cyfry telefonu klienta.</span>
-            </label>
-            <label style={styles.modalLabel}>
-              Ważność linku (dni)
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={expiresInDays}
-                onChange={(event) => setExpiresInDays(Number(event.target.value))}
-                style={styles.modalInput}
-              />
-            </label>
-            {generateLinkError ? <span style={styles.errorText}>{generateLinkError}</span> : null}
-            <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.secondaryButton}
-                onClick={() => setIsGenerateFormModalOpen(false)}
-              >
+          <form onSubmit={handleGenerateFormLink} className="app-form">
+            <TextField
+              label="Kod dostępu (4 cyfry)"
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              value={accessCodeInput}
+              onChange={(event) => setAccessCodeInput(event.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="np. 1234"
+              hint="Podpowiedź: ostatnie 4 cyfry telefonu klienta."
+            />
+            <TextField
+              label="Ważność linku (dni)"
+              type="number"
+              min={1}
+              max={30}
+              value={expiresInDays}
+              onChange={(event) => setExpiresInDays(Number(event.target.value))}
+            />
+            {generateLinkError ? (
+              <div className="app-alert app-alert--danger" role="alert">
+                {generateLinkError}
+              </div>
+            ) : null}
+            <div className="app-form-actions">
+              <Button variant="secondary" onClick={() => setIsGenerateFormModalOpen(false)}>
                 Anuluj
-              </button>
-              <button type="submit" style={styles.primaryButton} disabled={isGeneratingFormLink}>
+              </Button>
+              <Button type="submit" variant="primary" disabled={isGeneratingFormLink}>
                 {isGeneratingFormLink ? "Wysyłam…" : "Wyślij link"}
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -2270,37 +2113,31 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
       <Modal
         isOpen={isAnonymizeModalOpen}
         onClose={() => setIsAnonymizeModalOpen(false)}
-        title="Anonymize Lead"
+        title="Anonymize lead"
       >
-        <div style={styles.modalForm}>
-          <p style={styles.warningText}>
-            <strong>Warning:</strong> This action is irreversible. All personal data will be permanently anonymized.
-          </p>
-          <label style={styles.modalLabel}>
-            Aby potwierdzić, wpisz &quot;ANONIMIZUJ&quot; poniżej:
-            <input
-              type="text"
-              value={anonymizeConfirmation}
-              onChange={(e) => setAnonymizeConfirmation(e.target.value)}
-              style={styles.modalInput}
-            />
-          </label>
-          <div style={styles.modalActions}>
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={() => setIsAnonymizeModalOpen(false)}
-            >
+        <div className="app-form">
+          <div className="app-alert app-alert--danger">
+            <span>
+              <strong>Warning:</strong> This action is irreversible. All personal data will be permanently anonymized.
+            </span>
+          </div>
+          <TextField
+            label={'Aby potwierdzić, wpisz "ANONIMIZUJ" poniżej:'}
+            type="text"
+            value={anonymizeConfirmation}
+            onChange={(e) => setAnonymizeConfirmation(e.target.value)}
+          />
+          <div className="app-form-actions">
+            <Button variant="secondary" onClick={() => setIsAnonymizeModalOpen(false)}>
               Cancel
-            </button>
-            <button
-              type="button"
-              style={styles.dangerButton}
+            </Button>
+            <Button
+              variant="danger"
               onClick={handleAnonymize}
               disabled={anonymizeConfirmation !== "ANONIMIZUJ" || isAnonymizing}
             >
               {isAnonymizing ? "Anonymizing..." : "Anonymize"}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -2323,9 +2160,9 @@ export const LeadDetailCard: React.FC<LeadDetailCardProps> = ({
 };
 
 const InfoItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div style={styles.infoItem}>
-    <span style={styles.infoLabel}>{label}</span>
-    <div style={styles.infoValue}>{value}</div>
+  <div>
+    <dt>{label}</dt>
+    <dd>{value}</dd>
   </div>
 );
 
@@ -2350,7 +2187,7 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
         : null;
 
     return (
-      <div style={styles.auditDetails}>
+      <div className="app-lead-audit-details">
         <div>Status: {LEAD_STATUS_LABELS[log.newValue as LeadStatus] || log.newValue}</div>
         {note ? <div>Notatka: {note}</div> : null}
       </div>
@@ -2360,12 +2197,12 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
   if (log.action === "document_added" && log.metadata) {
     const doc = log.metadata as { type?: string; filePath?: string };
     return (
-      <div style={styles.auditDetails}>
+      <div className="app-lead-audit-details">
         {doc.type ? <div>Type: {doc.type}</div> : null}
         {doc.filePath ? (
           <div>
             Path:{" "}
-            <a href={resolveDocumentUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
+            <a href={resolveDocumentUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" className="app-link">
               {doc.filePath}
             </a>
           </div>
@@ -2382,14 +2219,14 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
       size?: number;
     };
     return (
-      <div style={styles.auditDetails}>
+      <div className="app-lead-audit-details">
         {doc.originalName ? <div>Original name: {doc.originalName}</div> : null}
         {doc.mimeType ? <div>Type: {doc.mimeType}</div> : null}
         {doc.size ? <div>Size: {Math.round(doc.size / 1024)} KB</div> : null}
         {doc.filePath ? (
           <div>
             Link:{" "}
-            <a href={resolveDocumentUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
+            <a href={resolveDocumentUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" className="app-link">
               {doc.filePath}
             </a>
           </div>
@@ -2401,7 +2238,7 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
   if (log.action === "financing_update" && log.newValue) {
     const payload = log.newValue as Record<string, unknown>;
     return (
-      <div style={styles.auditDetails}>
+      <div className="app-lead-audit-details">
         {Object.entries(payload)
           .filter(([, value]) => value !== null && value !== undefined && value !== "")
           .slice(0, 4)
@@ -2416,558 +2253,11 @@ const renderAuditDetails = (log: LeadDetail["auditLogs"][number]) => {
 
   if (log.metadata) {
     return (
-      <div style={styles.auditDetails}>{JSON.stringify(log.metadata)}</div>
+      <div className="app-lead-audit-details">{JSON.stringify(log.metadata)}</div>
     );
   }
 
   return null;
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.25rem",
-  },
-  placeholder: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
-    padding: "2rem",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#6b7280",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "1rem",
-  },
-  titleArea: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.35rem",
-  },
-  titleRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-    flexWrap: "wrap",
-  },
-  contactRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "1rem",
-    flexWrap: "wrap",
-  },
-  title: {
-    margin: 0,
-    fontSize: "1.5rem",
-  },
-  subtitle: {
-    margin: "0.25rem 0 0",
-    color: "#6b7280",
-  },
-  contactLink: {
-    color: "#2563eb",
-    textDecoration: "none",
-  },
-  statusPill: {
-    background: "rgba(79, 70, 229, 0.12)",
-    color: "#4338ca",
-    borderRadius: 999,
-    padding: "0.35rem 0.8rem",
-    fontWeight: 700,
-    fontSize: "0.85rem",
-    letterSpacing: "0.01em",
-  },
-  refreshButton: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    background: "#f8fafc",
-    cursor: "pointer",
-  },
-  section: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  sectionHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "1rem",
-    flexWrap: "wrap",
-  },
-  formHeaderLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    flexWrap: "wrap",
-  },
-  banner: {
-    padding: "0.75rem 1rem",
-    borderRadius: 10,
-    background: "#fef3c7",
-    color: "#92400e",
-    border: "1px solid #fcd34d",
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: "1.1rem",
-  },
-  grid: {
-    display: "grid",
-    gap: "0.75rem",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  },
-  clientInfoGrid: {
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  },
-  infoItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.25rem",
-    fontSize: "0.95rem",
-  },
-  infoLabel: {
-    color: "#6b7280",
-    fontSize: "0.8rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  },
-  infoValue: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.25rem",
-  },
-  formStatusBadge: {
-    padding: "0.3rem 0.85rem",
-    borderRadius: 999,
-    fontWeight: 600,
-    fontSize: "0.85rem",
-  },
-  formActionsRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "0.5rem",
-  },
-  badge: {
-    alignSelf: "flex-start",
-    padding: "0.3rem 0.75rem",
-    borderRadius: 999,
-    background: "#f1f5f9",
-    color: "#1d4ed8",
-    fontSize: "0.85rem",
-    fontWeight: 600,
-  },
-  noteList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  docList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  noteItem: {
-    background: "#fff",
-    borderRadius: 10,
-    border: "1px solid #e2e8f0",
-    padding: "0.75rem 1rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
-  },
-  docItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    padding: "0.75rem 1rem",
-  },
-  auditList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  auditItem: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    padding: "0.75rem 1rem",
-    background: "#f8fafc",
-  },
-  auditMeta: {
-    fontSize: "0.8rem",
-    color: "#6b7280",
-    marginTop: "0.25rem",
-  },
-  unlockList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  unlockItem: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    padding: "0.75rem 1rem",
-    background: "#f8fafc",
-  },
-  generatedLinkBox: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  linkField: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    padding: "0.5rem 0.75rem",
-    border: "1px solid #e2e8f0",
-    borderRadius: 8,
-    background: "#f8fafc",
-    wordBreak: "break-all",
-  },
-  copyButton: {
-    border: "1px solid #1d4ed8",
-    background: "#1d4ed8",
-    color: "#fff",
-    borderRadius: 8,
-    padding: "0.3rem 0.75rem",
-    cursor: "pointer",
-  },
-  noteMeta: {
-    display: "flex",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "0.5rem",
-    color: "#475569",
-    fontSize: "0.85rem",
-  },
-  noteMetaLeft: {
-    display: "flex",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "0.35rem",
-    minWidth: 0,
-  },
-  noteMetaRight: {
-    marginLeft: "auto",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    color: "#475569",
-  },
-  noteContent: {
-    margin: 0,
-    color: "#0f172a",
-    lineHeight: 1.5,
-  },
-  noteLink: {
-    marginLeft: "auto",
-    color: "#2563eb",
-    textDecoration: "underline",
-  },
-  sectionTitleGroup: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: "0.35rem",
-  },
-  noteCount: {
-    color: "#94a3b8",
-    fontSize: "0.9rem",
-  },
-  noteEmpty: {
-    color: "#64748b",
-    fontStyle: "italic",
-  },
-  emailIcon: {
-    width: "1.75rem",
-    height: "1.75rem",
-    borderRadius: "999px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1rem",
-  },
-  emailDirectionBadge: {
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    borderRadius: "999px",
-    padding: "0.1rem 0.75rem",
-  },
-  emailAddress: {
-    fontWeight: 600,
-    color: "#0f172a",
-  },
-  emailSubject: {
-    fontWeight: 600,
-    marginBottom: "0.25rem",
-  },
-  emailActions: {
-    marginTop: "0.75rem",
-    display: "flex",
-    gap: "0.5rem",
-  },
-  emailActionButton: {
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    background: "#fff",
-    color: "#1f2937",
-    fontSize: "0.8rem",
-    padding: "0.25rem 0.75rem",
-    cursor: "pointer",
-  },
-  metaRow: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: "0.5rem 1rem",
-    marginTop: "0.5rem",
-  },
-  metaItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.15rem",
-  },
-  metaLabel: {
-    fontSize: "0.75rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    color: "#94a3b8",
-  },
-  metaValue: {
-    fontSize: "0.9rem",
-    color: "#1e293b",
-  },
-  assignmentControl: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.3rem",
-    maxWidth: "280px",
-  },
-  assignmentSelect: {
-    padding: "0.45rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    fontSize: "0.9rem",
-    pointerEvents: "auto",
-    cursor: "pointer",
-  },
-  assignError: {
-    fontSize: "0.8rem",
-    color: "#b91c1c",
-  },
-  primaryButton: {
-    background: "#2563eb",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    padding: "0.5rem 1rem",
-    cursor: "pointer",
-    fontWeight: 600,
-    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.2)",
-  },
-  secondaryButton: {
-    background: "#e2e8f0",
-    color: "#1e293b",
-    border: "none",
-    borderRadius: 8,
-    padding: "0.5rem 1rem",
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-  dangerButton: {
-    background: "#dc2626",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    padding: "0.5rem 1rem",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  ghostButton: {
-    background: "transparent",
-    color: "#2563eb",
-    border: "1px solid rgba(37, 99, 235, 0.3)",
-    borderRadius: 8,
-    padding: "0.45rem 0.9rem",
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-  auditDetails: {
-    marginTop: "0.5rem",
-    fontSize: "0.85rem",
-    color: "#4b5563",
-    lineHeight: 1.4,
-  },
-  errorText: {
-    color: "#b91c1c",
-    fontSize: "0.8rem",
-  },
-  modalForm: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  modalGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: "0.75rem 1rem",
-  },
-  modalLabel: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    fontWeight: 500,
-    color: "#0f172a",
-  },
-  modalTextarea: {
-    minHeight: "120px",
-    borderRadius: 8,
-    border: "1px solid #cbd5f5",
-    padding: "0.75rem",
-    fontFamily: "inherit",
-    resize: "vertical",
-  },
-  modalInput: {
-    borderRadius: 8,
-    border: "1px solid #cbd5f5",
-    padding: "0.5rem 0.75rem",
-  },
-  modalSubheading: {
-    margin: 0,
-    fontSize: "1rem",
-    fontWeight: 600,
-    color: "#0f172a",
-  },
-  vehicleFormSection: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  fieldGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "0.75rem",
-  },
-  modalActions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "0.75rem",
-  },
-  helperText: {
-    fontSize: "0.75rem",
-    color: "#64748b",
-  },
-  vehicleValue: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.3rem",
-  },
-  additionalInfo: {
-    fontSize: "0.85rem",
-    color: "#475569",
-  },
-  formDataPre: {
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: 8,
-    padding: "1rem",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-all",
-    fontSize: "0.875rem",
-    maxHeight: "400px",
-    overflowY: "auto",
-  },
-  consentList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.75rem",
-  },
-  consentItem: {
-    background: "#fff",
-    borderRadius: 10,
-    border: "1px solid #e2e8f0",
-    padding: "0.75rem 1rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
-  },
-  consentMeta: {
-    display: "flex",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "0.5rem",
-    color: "#475569",
-    fontSize: "0.85rem",
-  },
-  consentContent: {
-    margin: 0,
-    color: "#0f172a",
-    whiteSpace: "pre-wrap",
-    lineHeight: 1.5,
-    maxHeight: "100px",
-    overflowY: "hidden",
-    textOverflow: "ellipsis",
-  },
-  consentContentModal: {
-    maxHeight: "70vh",
-    overflowY: "auto",
-    padding: "1rem",
-    background: "#f8fafc",
-    borderRadius: 8,
-  },
-  consentContentPre: {
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-all",
-    fontSize: "0.9rem",
-    fontFamily: "monospace",
-    margin: 0,
-  },
-  consentContentHtml: {
-    fontSize: "0.9rem",
-    lineHeight: 1.6,
-    color: "#334155",
-  },
-  adminActions: {
-    display: "flex",
-    gap: "0.5rem",
-  },
-  warningText: {
-    color: "#b91c1c",
-    background: "#fee2e2",
-    padding: "0.75rem",
-    borderRadius: "4px",
-    border: "1px solid #fca5a5",
-  },
 };
 
 type EmailReplyContext = {

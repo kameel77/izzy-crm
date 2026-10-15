@@ -1,0 +1,169 @@
+/* admin screens. Tokens only — see global.css. */
+
+/* ---------- Shared ---------- */
+.app-adm-acts {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.app-adm-filter {
+  min-width: 160px;
+}
+.app-adm-page {
+  margin: 0 auto;
+}
+.app-adm-full {
+  width: 100%;
+}
+.app-adm-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-secondary);
+}
+.app-adm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ---------- Partner / user forms ---------- */
+.app-adm-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+.app-adm-legend {
+  padding: 0 var(--space-2);
+}
+.app-adm-subform {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Consent templates ---------- */
+.app-adm-textarea {
+  min-height: 140px;
+}
+.app-adm-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+/* ---------- Consent records ---------- */
+.app-adm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.app-adm-filters__search {
+  flex: 1 1 240px;
+  min-width: 240px;
+}
+.app-adm-th--sort {
+  cursor: pointer;
+}
+.app-adm-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  width: 100%;
+}
+.app-adm-pager__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.app-adm-kv {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 767px) {
+  .app-adm-kv {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.app-adm-hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.app-adm-subheading {
+  margin-bottom: var(--space-2);
+}
+.app-adm-pre {
+  margin: 0;
+  padding: var(--space-3);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* ---------- Login ---------- */
+.app-adm-auth-link {
+  display: block;
+  margin-top: var(--space-5);
+  text-align: center;
+}
+
+/* ---------- Client consents (public) ---------- */
+.app-adm-lock {
+  width: min(800px, 100%);
+}
+.app-adm-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+.app-adm-card__title {
+  margin-bottom: var(--space-6);
+}
+.app-adm-card__lead {
+  margin-bottom: var(--space-6);
+}
+.app-adm-card__banner {
+  margin-bottom: var(--space-4);
+}
+.app-adm-pin input {
+  text-align: center;
+  letter-spacing: 0.25rem;
+  font-size: 18px;
+}
+.app-adm-required {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+.app-adm-content {
+  margin: var(--space-3) 0 0 var(--space-6);
+  font-size: 14px;
+  line-height: 22px;
+  white-space: pre-wrap;
+  color: var(--ink-secondary);
+}
+.app-adm-help {
+  margin: var(--space-2) 0 0 var(--space-6);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-tertiary);
+}

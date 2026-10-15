@@ -5,8 +5,9 @@ import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { sendMail } from "./mail.service.js";
 import { sendSms } from "./sms.service.js";
-import { recordConsentBatch, type RecordConsentInput } from "./consent.service.js";
+import { type RecordConsentInput } from "./consent.service.js";
 import { createHttpError } from "../utils/httpError.js";
+import { escapeHtml } from "../utils/html.js";
 
 const ONBOARDING_FORM_TYPE = "onboarding_insurance";
 
@@ -358,7 +359,7 @@ export const saveContactSlot = async ({
         to: "link4@izzylease.pl, marcin.grodowski@izzylease.pl",
         subject: "Klient potwierdził termin onboardingu",
         text: `${clientName} potwierdził termin kontaktu: ${preferredSlot}, ${dateFmt}.`,
-        html: `<p><strong>${clientName}</strong> potwierdził termin kontaktu:</p><p><strong>${preferredSlot}</strong>, ${dateFmt}</p>`,
+        html: `<p><strong>${escapeHtml(clientName)}</strong> potwierdził termin kontaktu:</p><p><strong>${escapeHtml(preferredSlot)}</strong>, ${escapeHtml(dateFmt)}</p>`,
     }).catch((err) => console.error("[mail] Failed to send onboarding confirmed notification", err));
 
     return { scheduleId: schedule.id, preferredDate, preferredSlot };
@@ -474,8 +475,10 @@ const buildDefaultEmailBody = (firstName: string, link: string) =>
         "Zespół Carsalon",
     ].join("\n");
 
-const buildEmailHtml = (firstName: string, link: string, fallbackText: string) => {
-    const greeting = firstName ? `Cześć ${firstName},` : "Cześć,";
+const buildEmailHtml = (firstName: string, link: string, _fallbackText: string) => {
+    const safeFirstName = escapeHtml(firstName);
+    const safeLink = escapeHtml(link);
+    const greeting = safeFirstName ? `Cześć ${safeFirstName},` : "Cześć,";
     return `
 <!DOCTYPE html>
 <html lang="pl">
@@ -495,13 +498,13 @@ const buildEmailHtml = (firstName: string, link: string, fallbackText: string) =
           <p style="margin:0 0 32px;color:#475569;font-size:15px;line-height:1.6;">
             Kliknij w przycisk poniżej i wybierz termin, w którym możemy się z Tobą skontaktować.
           </p>
-          <a href="${link}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">
+          <a href="${safeLink}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">
             Wybierz termin kontaktu →
           </a>
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0;">
           <p style="margin:0;color:#94a3b8;font-size:13px;">
             Jeśli przycisk nie działa, skopiuj i wklej ten link do przeglądarki:<br>
-            <a href="${link}" style="color:#f97316;word-break:break-all;">${link}</a>
+            <a href="${safeLink}" style="color:#f97316;word-break:break-all;">${safeLink}</a>
           </p>
         </td></tr>
         <tr><td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;">

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import { FinancingApplication, FinancingPayload } from "../api/leads";
 import { ApiError } from "../api/client";
+import { Button, TextField } from "./ui";
 
 interface FinancingFormProps {
   application?: FinancingApplication | null;
@@ -65,130 +66,58 @@ export const FinancingForm: React.FC<FinancingFormProps> = ({ application, onSav
   };
 
   return (
-    <form onSubmit={handleSubmit} style={styles.form}>
-      <h3 style={styles.title}>Financing Application</h3>
-      <div style={styles.grid}>
-        <label style={styles.label}>
-          Bank
-          <input
-            style={styles.input}
-            value={bank}
-            onChange={(event) => setBank(event.target.value)}
-            required
-          />
-        </label>
-        <label style={styles.label}>
-          Loan amount
-          <input
-            style={styles.input}
-            value={loanAmount}
-            onChange={(event) => setLoanAmount(event.target.value)}
-            placeholder="120000"
-          />
-        </label>
-        <label style={styles.label}>
-          Down payment
-          <input
-            style={styles.input}
-            value={downPayment}
-            onChange={(event) => setDownPayment(event.target.value)}
-          />
-        </label>
-        <label style={styles.label}>
-          Term (months)
-          <input
-            style={styles.input}
-            value={termMonths}
-            onChange={(event) => setTermMonths(event.target.value)}
-            placeholder="48"
-          />
-        </label>
-        <label style={styles.label}>
-          Income
-          <input
-            style={styles.input}
-            value={income}
-            onChange={(event) => setIncome(event.target.value)}
-            placeholder="7500"
-          />
-        </label>
-        <label style={styles.label}>
-          Expenses
-          <input
-            style={styles.input}
-            value={expenses}
-            onChange={(event) => setExpenses(event.target.value)}
-            placeholder="3200"
-          />
-        </label>
-      </div>
-      <label style={styles.label}>
-        Decision
-        <input
-          style={styles.input}
-          value={decision}
-          onChange={(event) => setDecision(event.target.value)}
-          placeholder="approved / rejected / pending"
+    <form onSubmit={handleSubmit} className="app-form app-panel">
+      <h3 className="app-section-title">Financing application</h3>
+      <div className="app-lf-grid">
+        <TextField
+          label="Bank"
+          value={bank}
+          onChange={(event) => setBank(event.target.value)}
+          required
         />
-      </label>
-      {error ? <div style={styles.error}>{error}</div> : null}
-      {success ? <div style={styles.success}>{success}</div> : null}
-      <button type="submit" style={styles.submit} disabled={isSubmitting}>
-        {isSubmitting ? "Saving..." : "Save Financing"}
-      </button>
+        <TextField
+          label="Loan amount"
+          value={loanAmount}
+          onChange={(event) => setLoanAmount(event.target.value)}
+          placeholder="120000"
+        />
+        <TextField
+          label="Down payment"
+          value={downPayment}
+          onChange={(event) => setDownPayment(event.target.value)}
+        />
+        <TextField
+          label="Term (months)"
+          value={termMonths}
+          onChange={(event) => setTermMonths(event.target.value)}
+          placeholder="48"
+        />
+        <TextField
+          label="Income"
+          value={income}
+          onChange={(event) => setIncome(event.target.value)}
+          placeholder="7500"
+        />
+        <TextField
+          label="Expenses"
+          value={expenses}
+          onChange={(event) => setExpenses(event.target.value)}
+          placeholder="3200"
+        />
+      </div>
+      <TextField
+        label="Decision"
+        value={decision}
+        onChange={(event) => setDecision(event.target.value)}
+        placeholder="approved / rejected / pending"
+      />
+      {error ? <div className="app-alert app-alert--danger">{error}</div> : null}
+      {success ? <div className="app-alert app-alert--success">{success}</div> : null}
+      <div className="app-form-actions app-form-actions--start">
+        <Button type="submit" variant="secondary" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save financing"}
+        </Button>
+      </div>
     </form>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.85rem",
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    padding: "1rem",
-  },
-  title: {
-    margin: 0,
-    fontSize: "1rem",
-    fontWeight: 600,
-  },
-  grid: {
-    display: "grid",
-    gap: "0.75rem",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.35rem",
-    fontSize: "0.9rem",
-  },
-  input: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-  },
-  submit: {
-    alignSelf: "flex-start",
-    padding: "0.5rem 1rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    cursor: "pointer",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "0.5rem",
-    borderRadius: 8,
-  },
-  success: {
-    background: "#ecfdf5",
-    color: "#047857",
-    padding: "0.5rem",
-    borderRadius: 8,
-  },
 };

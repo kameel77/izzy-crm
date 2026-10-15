@@ -1,0 +1,618 @@
+/* Public client screens: multistep application form, thank-you page, insurance onboarding. Tokens only — see global.css. */
+
+/* ---------- Application form: page shell ---------- */
+.app-client {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--canvas);
+  padding: var(--space-8) var(--space-4);
+}
+.app-client__header {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto var(--space-6);
+  text-align: center;
+}
+.app-client__logo {
+  display: block;
+  height: 28px;
+  width: auto;
+  margin: 0 auto var(--space-6);
+}
+.app-client__title {
+  margin: 0 0 var(--space-2);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.app-client__title--compact {
+  font-size: 20px;
+  line-height: 28px;
+}
+.app-client__desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--ink-secondary);
+}
+@media (max-width: 768px) {
+  .app-client {
+    padding: var(--space-4) var(--space-3);
+  }
+  .app-client__title {
+    font-size: 22px;
+    line-height: 30px;
+  }
+  .app-client__title--compact {
+    font-size: 20px;
+    line-height: 28px;
+  }
+}
+
+/* ---------- Application form: card, grid, navigator ---------- */
+.form-main-card {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-8);
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+.form-navigator {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 768px) {
+  .form-main-card {
+    padding: var(--space-4);
+    padding-bottom: calc(var(--space-12) + var(--space-8)); /* Space for the floating navigator */
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .form-navigator {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    padding: var(--space-4);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    z-index: 50;
+    border-top: 1px solid var(--border);
+  }
+  .form-navigator .iz-btn {
+    flex: 1;
+  }
+}
+
+/* ---------- Application form: progress, autosave, steps ---------- */
+.app-client-progress {
+  margin-bottom: var(--space-6);
+}
+.app-client-progress__label {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-secondary);
+  text-align: center;
+}
+.app-client-progress__track {
+  height: 6px;
+  background: var(--surface-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.app-client-progress__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease-in-out;
+}
+.app-client-autosave {
+  min-height: 20px;
+  text-align: right;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-tertiary);
+}
+.app-client-autosave--error {
+  color: var(--danger);
+}
+.app-client-steps {
+  min-height: 300px;
+  padding: var(--space-4) 0;
+}
+
+/* ---------- Application form: step content ---------- */
+.app-client-step-title {
+  margin: 0 0 var(--space-6);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.app-client-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.app-client-fieldset:disabled .iz-field__control {
+  background: var(--surface-subtle);
+  border-color: var(--border-strong);
+}
+.app-client-fieldset:disabled .iz-field__control input,
+.app-client-fieldset:disabled .iz-field__control select {
+  color: var(--ink-tertiary);
+  cursor: not-allowed;
+}
+.app-client-fieldset:disabled .iz-check {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.app-client-section {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-6);
+  min-width: 0;
+}
+.app-client-section__title {
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.app-client-row {
+  margin-bottom: var(--space-4);
+}
+.app-client-budget {
+  margin-top: var(--space-6);
+  font-size: 14px;
+  line-height: 20px;
+}
+.app-client-budget p {
+  margin: 0 0 var(--space-1);
+}
+.app-client-budget p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Application form: date picker (react-datepicker inside .iz-field__control) ---------- */
+.date-picker-wrapper {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+.date-picker-wrapper .react-datepicker__input-container {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.iz-field__control .date-picker-input,
+.iz-field__control .date-picker-input-readonly {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.iz-field__control .date-picker-input::placeholder,
+.iz-field__control .date-picker-input-readonly::placeholder {
+  color: var(--ink-tertiary);
+}
+.iz-field__control .date-picker-input-readonly {
+  color: var(--ink-tertiary);
+  cursor: not-allowed;
+}
+/* Native selects inside the calendar popper must not pick up the .iz-field__control select reset. */
+.iz-field__control .react-datepicker select {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  flex: none;
+  height: auto;
+  padding: revert;
+  border: revert;
+  background: revert;
+  outline: revert;
+  cursor: pointer;
+}
+
+/* ---------- Application form: summary and consents (step 6) ---------- */
+.app-client-note {
+  margin: 0 0 var(--space-4);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-secondary);
+}
+.app-client-summary__title {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.app-client-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.app-client-summary__label {
+  font-size: 13px;
+  color: var(--ink-tertiary);
+}
+.app-client-summary__value {
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.app-client-consent {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.app-client-consent--error {
+  border-color: var(--danger);
+}
+.app-client-consent__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.app-client-consent__check--error .iz-check__text {
+  color: var(--danger);
+  font-weight: 600;
+}
+.app-client-consent__help {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 12px;
+  color: var(--ink-tertiary);
+}
+.app-client-consent__content {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink-secondary);
+}
+
+/* ---------- Thank-you page ---------- */
+.app-client-done {
+  max-width: 480px;
+  text-align: center;
+}
+.app-client-done__icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--success-soft);
+  color: var(--success);
+}
+.app-client-done__text {
+  margin: var(--space-2) 0 var(--space-6);
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink-secondary);
+}
+
+/* ---------- Insurance onboarding ---------- */
+.app-io {
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-4);
+  background: var(--canvas);
+}
+.app-io__card {
+  width: min(680px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.app-io__header {
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-8) var(--space-8) var(--space-6);
+}
+.app-io__logo {
+  display: block;
+  height: 28px;
+  margin-bottom: var(--space-5);
+  object-fit: contain;
+}
+.app-io__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.app-io__body {
+  padding: var(--space-6) var(--space-8) var(--space-8);
+}
+@media (max-width: 600px) {
+  .app-io__header {
+    padding: var(--space-6) var(--space-4);
+  }
+  .app-io__body {
+    padding: var(--space-5) var(--space-4) var(--space-6);
+  }
+}
+.app-io__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) 0;
+}
+.app-io__spinner {
+  color: var(--accent);
+  animation: iz-spin 0.8s linear infinite;
+}
+.app-io__status {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+.app-io__status--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.app-io__status--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.app-io__error {
+  margin: 0;
+  color: var(--danger);
+  text-align: center;
+}
+.app-io__intro {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink-secondary);
+}
+.app-io__intro--center,
+.app-io__text-center {
+  text-align: center;
+}
+.app-io__subtitle {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.app-io__subtitle--success {
+  text-align: center;
+  color: var(--success);
+}
+.app-io__lead {
+  margin: 0 0 var(--space-5);
+}
+.app-io__alert {
+  margin: var(--space-4) 0 0;
+}
+.app-io__cta {
+  width: 100%;
+  margin-top: var(--space-6);
+}
+
+/* Step indicator */
+.app-io-steps {
+  display: flex;
+  position: relative;
+  margin: var(--space-8) 0 var(--space-6);
+}
+.app-io-steps__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.app-io-steps__dot {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface-muted);
+  color: var(--ink-tertiary);
+  position: relative;
+  z-index: 1;
+}
+.app-io-steps__dot--active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.app-io-steps__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-tertiary);
+}
+.app-io-steps__label--active {
+  color: var(--accent-ink);
+}
+.app-io-steps__line {
+  position: absolute;
+  top: 14px;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background: var(--border-strong);
+  z-index: 0;
+}
+
+/* Day and slot pickers */
+.app-io-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+.app-io-day,
+.app-io-slot {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  cursor: pointer;
+}
+.app-io-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  min-width: 80px;
+}
+.app-io-slot {
+  padding: var(--space-2) var(--space-3);
+  font-size: 14px;
+  font-weight: 500;
+}
+.app-io-day:hover,
+.app-io-slot:hover {
+  border-color: var(--ink-tertiary);
+}
+.app-io-day--active,
+.app-io-slot--active,
+.app-io-day--active:hover,
+.app-io-slot--active:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.app-io-day:focus-visible,
+.app-io-slot:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+.app-io-day__name {
+  font-size: 12px;
+  color: var(--ink-tertiary);
+  text-transform: capitalize;
+}
+.app-io-day__num {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Consents */
+.app-io-consents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.app-io-consent {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.app-io-consent__body {
+  flex: 1;
+  min-width: 0;
+}
+.app-io-consent__toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.app-io-consent__toggle:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+  border-radius: var(--radius-xs);
+}
+.app-io-consent__title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.app-io-consent__required {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+}
+.app-io-consent__chevron {
+  flex-shrink: 0;
+  color: var(--ink-tertiary);
+  transition: transform 0.12s ease-out;
+}
+.app-io-consent__chevron--open {
+  transform: rotate(180deg);
+}
+.app-io-consent__content {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink-secondary);
+}
+.app-io-consent__help {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  color: var(--ink-tertiary);
+}

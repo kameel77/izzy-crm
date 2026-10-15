@@ -5,6 +5,8 @@ import { generateOfferLink, sendLeadEmail } from "../api/leads";
 import { useAuth } from "../hooks/useAuth";
 import { useToasts } from "../providers/ToastProvider";
 import { Modal } from "./Modal";
+import { Button, TextField } from "./ui";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 interface ReplyContext {
   noteId?: string;
@@ -46,6 +48,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
   const [offerInitialPayment, setOfferInitialPayment] = useState("");
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const messageId = React.useId();
 
 
   useEffect(() => {
@@ -284,124 +287,111 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title="Wyślij wiadomość do klienta">
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} className="app-form">
           {replyContext?.noteId ? (
-            <div style={styles.replyBanner}>
+            <div className="app-alert app-alert--info">
               Odpowiadasz na poprzednią wiadomość – historia rozmowy zostanie dołączona automatycznie.
             </div>
           ) : null}
 
-          <label style={styles.label}>
-            Temat
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              style={styles.input}
-              required
-            />
-          </label>
+          <TextField
+            label="Temat"
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            required
+          />
 
-          <label style={styles.label}>
-            Wiadomość
+          <div className="iz-field">
+            <label className="iz-field__label" htmlFor={messageId}>
+              Wiadomość
+            </label>
             <textarea
+              id={messageId}
+              className="app-textarea"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              style={styles.textarea}
               required
               rows={6}
               placeholder="Wpisz swoją wiadomość tutaj..."
             />
-          </label>
-
-          <div style={styles.inlineConfigRow}>
-            <label style={styles.inlineLabel}>
-              Wartość rabatu (PLN)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={offerDiscount}
-                onChange={(event) => setOfferDiscount(event.target.value)}
-                style={styles.inlineInput}
-              />
-            </label>
-            <label style={styles.inlineLabel}>
-              Wpłata początkowa (PLN)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={offerInitialPayment}
-                onChange={(event) => setOfferInitialPayment(event.target.value)}
-                style={styles.inlineInput}
-                placeholder="Opcjonalna"
-              />
-            </label>
           </div>
 
-          <div style={styles.generationButtonsRow}>
-            <button
-              type="button"
-              style={styles.offerButton}
-              onClick={() => setIsOfferModalOpen(true)}
-            >
+          <div className="app-lf-inline-row">
+            <TextField
+              label="Wartość rabatu (PLN)"
+              type="number"
+              min={0}
+              step={1}
+              value={offerDiscount}
+              onChange={(event) => setOfferDiscount(event.target.value)}
+            />
+            <TextField
+              label="Wpłata początkowa (PLN)"
+              type="number"
+              min={0}
+              step={1}
+              value={offerInitialPayment}
+              onChange={(event) => setOfferInitialPayment(event.target.value)}
+              placeholder="Opcjonalna"
+            />
+          </div>
+
+          <div className="app-form-actions app-form-actions--start">
+            <Button type="button" variant="secondary" onClick={() => setIsOfferModalOpen(true)}>
               Generuj ofertę specjalną
-            </button>
-            <button
-              type="button"
-              style={styles.shortlistButton}
-              onClick={handleGenerateShortlist}
-            >
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleGenerateShortlist}>
               Generuj shortlistę
-            </button>
+            </Button>
           </div>
 
-          <div style={styles.linksSection}>
-            <label style={styles.label}>Linki do ofert</label>
+          <div className="app-lf-links">
+            <span className="iz-field__label">Linki do ofert</span>
             {links.map((link, index) => (
-              <div key={index} style={styles.linkRow}>
-                <input
+              <div key={index} className="app-lf-link-row">
+                <TextField
                   type="url"
+                  className="app-lf-link-row__field"
+                  aria-label="Link do oferty"
                   value={link}
                   onChange={(e) => handleLinkChange(index, e.target.value)}
-                  style={styles.input}
                   placeholder="https://..."
                 />
                 {links.length > 1 && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon="x"
                     onClick={() => removeLinkField(index)}
-                    style={styles.removeButton}
                     aria-label="Remove link"
-                  >
-                    ×
-                  </button>
+                  />
                 )}
               </div>
             ))}
-            <button type="button" onClick={addLinkField} style={styles.addButton}>
-              + Dodaj kolejny link
-            </button>
+            <Button type="button" variant="ghost" size="sm" icon="plus" onClick={addLinkField} className="app-lf-links__add">
+              Dodaj kolejny link
+            </Button>
           </div>
 
           {replyContext?.quotedHtml ? (
-            <div style={styles.previewContainer}>
-              <div style={styles.previewLabel}>Podgląd cytowanej historii</div>
+            <div className="app-lf-preview">
+              <div className="app-lf-preview__label">Podgląd cytowanej historii</div>
               <div
-                style={styles.previewContent}
-                dangerouslySetInnerHTML={{ __html: replyContext.quotedHtml }}
+                className="app-lf-preview__content"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(replyContext.quotedHtml) }}
               />
             </div>
           ) : null}
 
-          <div style={styles.actions}>
-            <button type="button" onClick={onClose} style={styles.secondaryButton}>
+          <div className="app-form-actions">
+            <Button type="button" variant="secondary" onClick={onClose}>
               Anuluj
-            </button>
-            <button type="submit" disabled={isSending} style={styles.primaryButton}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSending}>
               {isSending ? "Wysyłanie..." : "Wyślij wiadomość"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -412,220 +402,39 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         title="Potwierdź wartość budżetu"
         width="min(540px, 92%)"
       >
-        <form onSubmit={handleGenerateOffer} style={styles.modalForm}>
-          <label style={styles.label}>
-            Adres oferty
-            <input
-              type="url"
-              value={offerBaseUrl}
-              onChange={(event) => setOfferBaseUrl(event.target.value)}
-              style={styles.input}
-              placeholder="https://twoja-domena.pl/listing/12345"
-              required
-            />
-          </label>
+        <form onSubmit={handleGenerateOffer} className="app-form">
+          <TextField
+            label="Adres oferty"
+            type="url"
+            value={offerBaseUrl}
+            onChange={(event) => setOfferBaseUrl(event.target.value)}
+            placeholder="https://twoja-domena.pl/listing/12345"
+            required
+          />
 
-          <div style={styles.inlineConfigRow}>
-            <label style={styles.label}>
-              Wartość budżetu (PLN)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={offerDiscount}
-                onChange={(event) => setOfferDiscount(event.target.value)}
-                style={styles.input}
-                readOnly={!canEditOfferDiscount}
-              />
-              {!canEditOfferDiscount ? (
-                <span style={styles.helperText}>Tę wartość może zmienić tylko Operator lub Admin.</span>
-              ) : null}
-            </label>
-          </div>
+          <TextField
+            label="Wartość budżetu (PLN)"
+            type="number"
+            min={0}
+            step={1}
+            value={offerDiscount}
+            onChange={(event) => setOfferDiscount(event.target.value)}
+            readOnly={!canEditOfferDiscount}
+            hint={!canEditOfferDiscount ? "Tę wartość może zmienić tylko Operator lub Admin." : undefined}
+          />
 
-          {offerError ? <span style={styles.errorText}>{offerError}</span> : null}
+          {offerError ? <div className="app-alert app-alert--danger">{offerError}</div> : null}
 
-          <div style={styles.actions}>
-            <button
-              type="button"
-              onClick={() => setIsOfferModalOpen(false)}
-              style={styles.secondaryButton}
-            >
+          <div className="app-form-actions">
+            <Button type="button" variant="secondary" onClick={() => setIsOfferModalOpen(false)}>
               Anuluj
-            </button>
-            <button type="submit" disabled={isGeneratingOffer} style={styles.primaryButton}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isGeneratingOffer}>
               {isGeneratingOffer ? "Generuję..." : "Dodaj link do wiadomości"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
     </>
   );
-};
-
-const styles = {
-  form: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "1.5rem",
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "0.5rem",
-    fontWeight: 500,
-    fontSize: "0.875rem",
-    color: "#374151",
-  },
-  textarea: {
-    padding: "0.75rem",
-    borderRadius: "0.375rem",
-    border: "1px solid #d1d5db",
-    fontSize: "0.875rem",
-    fontFamily: "inherit",
-    resize: "vertical" as const,
-  },
-  input: {
-    flex: 1,
-    padding: "0.75rem",
-    borderRadius: "0.375rem",
-    border: "1px solid #d1d5db",
-    fontSize: "0.875rem",
-  },
-  linksSection: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "0.75rem",
-  },
-  linkRow: {
-    display: "flex",
-    gap: "0.5rem",
-    alignItems: "center",
-  },
-  removeButton: {
-    background: "none",
-    border: "none",
-    color: "#ef4444",
-    fontSize: "1.25rem",
-    cursor: "pointer",
-    padding: "0 0.5rem",
-  },
-  addButton: {
-    alignSelf: "flex-start",
-    background: "none",
-    border: "none",
-    color: "#2563eb",
-    fontSize: "0.875rem",
-    cursor: "pointer",
-    padding: 0,
-    fontWeight: 500,
-  },
-  offerButton: {
-    alignSelf: "flex-start",
-    padding: "0.5rem 0.75rem",
-    borderRadius: "0.5rem",
-    border: "1px solid #c7d2fe",
-    backgroundColor: "#eef2ff",
-    color: "#4338ca",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  shortlistButton: {
-    alignSelf: "flex-start",
-    padding: "0.5rem 0.75rem",
-    borderRadius: "0.5rem",
-    border: "2px solid #ef4444",
-    backgroundColor: "transparent",
-    color: "#ef4444",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  generationButtonsRow: {
-    display: "flex",
-    gap: "0.75rem",
-    alignItems: "center",
-  },
-  inlineConfigRow: {
-    display: "flex",
-    gap: "1rem",
-  },
-  inlineLabel: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "0.25rem",
-    fontWeight: 500,
-    fontSize: "0.875rem",
-    color: "#374151",
-    flex: 1,
-  },
-  inlineInput: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: "0.375rem",
-    border: "1px solid #d1d5db",
-    fontSize: "0.875rem",
-  },
-  actions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "0.75rem",
-    marginTop: "1rem",
-  },
-  primaryButton: {
-    padding: "0.5rem 1rem",
-    backgroundColor: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: "0.375rem",
-    fontWeight: 500,
-    cursor: "pointer",
-  },
-  secondaryButton: {
-    padding: "0.5rem 1rem",
-    backgroundColor: "white",
-    color: "#374151",
-    border: "1px solid #d1d5db",
-    borderRadius: "0.375rem",
-    fontWeight: 500,
-    cursor: "pointer",
-  },
-  replyBanner: {
-    backgroundColor: "#eff6ff",
-    border: "1px solid #bfdbfe",
-    color: "#1d4ed8",
-    borderRadius: "0.5rem",
-    padding: "0.75rem",
-    fontSize: "0.85rem",
-  },
-  previewContainer: {
-    border: "1px solid #e5e7eb",
-    borderRadius: "0.5rem",
-    padding: "0.75rem",
-    background: "#fafafa",
-  },
-  previewLabel: {
-    fontSize: "0.75rem",
-    color: "#6b7280",
-    marginBottom: "0.5rem",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-  },
-  previewContent: {
-    maxHeight: "200px",
-    overflowY: "auto" as const,
-    fontSize: "0.85rem",
-    color: "#374151",
-  },
-  modalForm: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "1rem",
-  },
-  helperText: {
-    fontSize: "0.75rem",
-    color: "#6b7280",
-  },
-  errorText: {
-    color: "#dc2626",
-    fontSize: "0.85rem",
-  },
 };

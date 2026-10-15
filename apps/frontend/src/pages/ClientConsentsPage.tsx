@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ApiError } from "../api/client";
+import { verifyApplicationFormAccess } from "../api/application-forms";
 import {
   ConsentTemplateDto,
   fetchConsentTemplates,
@@ -9,6 +10,7 @@ import {
   submitConsents,
 } from "../api/consents";
 import { Modal } from "../components/Modal";
+import { Button, Checkbox, TextField } from "../components/ui";
 import { useTelemetry } from "../hooks/useTelemetry";
 import { clientFormStore } from "../store/clientFormStore";
 
@@ -56,26 +58,19 @@ export const ClientConsentsPage: React.FC = () => {
   const applicationFormId = searchParams.get("applicationFormId") ?? "";
   const leadId = searchParams.get("leadId") ?? "";
   const isClientActive = searchParams.get("clientActive") === "true";
-  const queryHash = searchParams.get("hash") ?? null;
 
   const persistedSnapshot = React.useMemo(() => {
     if (!applicationFormId || !leadId) return null;
     return clientFormStore.load(applicationFormId, leadId);
   }, [applicationFormId, leadId]);
 
-  const storedAccessCodeHash = persistedSnapshot?.accessCodeHash ?? null;
-  const expectedHash = queryHash ?? storedAccessCodeHash ?? null;
-
-  const [resolvedAccessCodeHash, setResolvedAccessCodeHash] = React.useState<string | null>(() => {
-    if (expectedHash && persistedSnapshot?.accessCodeHash === expectedHash) {
-      return expectedHash;
-    }
-    return null;
-  });
+  const [resolvedAccessCodeHash, setResolvedAccessCodeHash] = React.useState<string | null>(
+    () => persistedSnapshot?.accessCodeHash ?? null,
+  );
 
   const [pinInput, setPinInput] = React.useState("");
   const [pinError, setPinError] = React.useState<string | null>(null);
-  const requiresAccessCode = Boolean(expectedHash) && resolvedAccessCodeHash !== expectedHash;
+  const requiresAccessCode = Boolean(applicationFormId && leadId) && !resolvedAccessCodeHash;
 
   const handlePinSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -85,18 +80,19 @@ export const ClientConsentsPage: React.FC = () => {
       return;
     }
     try {
-      const hash = await hashAccessCode(sanitized);
-      if (!expectedHash || hash !== expectedHash) {
-        setPinError("Nieprawidłowy kod dostępu");
-        logUnlockAttempt(applicationFormId, false);
-        return;
-      }
+      const response = await verifyApplicationFormAccess({
+        applicationFormId,
+        leadId,
+        code: sanitized,
+      });
+      const verifiedHash = response.accessCodeHash ?? (await hashAccessCode(sanitized));
       logUnlockAttempt(applicationFormId, true);
-      setResolvedAccessCodeHash(hash);
+      setResolvedAccessCodeHash(verifiedHash);
       setPinInput("");
       setPinError(null);
-    } catch (error) {
-      setPinError("Nie udało się przetworzyć kodu. Spróbuj ponownie");
+    } catch {
+      setPinError("Nieprawidłowy kod dostępu");
+      logUnlockAttempt(applicationFormId, false);
     }
   };
 
@@ -318,75 +314,70 @@ export const ClientConsentsPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.shell}>
-      <div style={styles.lockWrapper}>
+    <div className="app-auth">
+      <div className="app-adm-lock">
         {requiresAccessCode ? (
-          <div style={styles.card}>
-            <h1 style={styles.title}>Podaj kod dostępu</h1>
-            <p style={{ marginBottom: "2rem", color: "hsl(215, 25%, 25%)", lineHeight: 1.5 }}>
+          <div className="app-adm-card">
+            <h1 className="app-auth__title app-adm-card__title">Podaj kod dostępu</h1>
+            <p className="app-adm-text app-adm-card__lead">
               Formularz został zabezpieczony kodem dostępu. Wprowadź kod z wiadomości, aby kontynuować.
             </p>
-            <form onSubmit={handlePinSubmit} style={styles.modalForm}>
-              <label style={styles.modalLabel}>
-                Kod (4 cyfry)
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={pinInput}
-                  onChange={(event) => setPinInput(event.target.value.replace(/[^0-9]/g, ""))}
-                  style={styles.modalInput}
-                />
-                {pinError ? <span style={styles.errorText}>{pinError}</span> : null}
-              </label>
-              <button type="submit" style={styles.button}>
+            <form onSubmit={handlePinSubmit} className="app-form">
+              <TextField
+                label="Kod (4 cyfry)"
+                className="app-adm-pin"
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={pinInput}
+                onChange={(event) => setPinInput(event.target.value.replace(/[^0-9]/g, ""))}
+                error={pinError ?? undefined}
+              />
+              <Button type="submit" variant="primary" size="lg" className="app-adm-full">
                 Odblokuj
-              </button>
+              </Button>
             </form>
           </div>
         ) : (
-          <div style={styles.card}>
-            <h1 style={styles.title}>Zgody RODO</h1>
+          <div className="app-adm-card">
+            <h1 className="app-auth__title app-adm-card__title">Zgody RODO</h1>
             {isClientActive ? (
-              <div style={styles.banner} role="status">
+              <div className="app-alert app-alert--warning app-adm-card__banner" role="status">
                 Klient jest aktualnie zalogowany w formularzu. Edycja zgód została tymczasowo zablokowana.
               </div>
             ) : null}
             {loading ? (
-              <p>Ładuję zgody…</p>
+              <p className="app-muted">Ładuję zgody…</p>
             ) : (
-              <form onSubmit={handleSubmit} style={styles.form}>
+              <form onSubmit={handleSubmit} className="app-form">
                 {templates.map((tpl) => (
-                  <div key={tpl.id} style={styles.template}>
-                    <label style={styles.label}>
-                      <input
-                        type="checkbox"
-                        checked={consentState[tpl.id]?.accepted ?? false}
-                        onChange={(event) => toggleConsent(tpl, event.target.checked)}
-                        required={tpl.isRequired}
-                        disabled={isClientActive || requiresAccessCode}
-                      />
-                      <span>
-                        <strong>{tpl.title}</strong>
-                        {tpl.isRequired ? <span style={styles.required}> (wymagana)</span> : null}
-                      </span>
-                    </label>
-                    <p style={styles.content}>{tpl.content}</p>
-                    {tpl.helpText ? <p style={styles.help}>{tpl.helpText}</p> : null}
+                  <div key={tpl.id} className="app-panel">
+                    <Checkbox
+                      checked={consentState[tpl.id]?.accepted ?? false}
+                      onChange={(event) => toggleConsent(tpl, event.target.checked)}
+                      required={tpl.isRequired}
+                      disabled={isClientActive || requiresAccessCode}
+                      label={
+                        <>
+                          <strong>{tpl.title}</strong>
+                          {tpl.isRequired ? <span className="app-adm-required"> (wymagana)</span> : null}
+                        </>
+                      }
+                    />
+                    <p className="app-adm-content">{tpl.content}</p>
+                    {tpl.helpText ? <p className="app-adm-help">{tpl.helpText}</p> : null}
                   </div>
                 ))}
-                {success ? <p style={styles.success}>{success}</p> : null}
-                <button
+                {success ? <p className="app-alert app-alert--success">{success}</p> : null}
+                <Button
                   type="submit"
-                  style={{
-                    ...styles.button,
-                    opacity: isClientActive || requiresAccessCode ? 0.5 : 1,
-                    cursor: isClientActive || requiresAccessCode ? "not-allowed" : styles.button.cursor,
-                  }}
+                  variant="primary"
+                  size="lg"
+                  className="app-adm-full"
                   disabled={submitting || !allRequiredAccepted || isClientActive || requiresAccessCode}
                 >
                   {submitting ? "Zapisuję…" : "Zapisz zgody"}
-                </button>
+                </Button>
               </form>
             )}
           </div>
@@ -400,146 +391,8 @@ export const ClientConsentsPage: React.FC = () => {
         }}
         title={errorModal?.title}
       >
-        <p>{errorModal?.message}</p>
+        <p className="app-adm-text">{errorModal?.message}</p>
       </Modal>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  shell: {
-    minHeight: "100vh",
-    width: "100%",
-    padding: "2rem",
-    background: "#f4f6fb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: '"Outfit", "Inter", sans-serif',
-    color: "hsl(215, 25%, 15%)",
-  },
-  lockWrapper: {
-    position: "relative",
-    width: "min(800px, 100%)",
-  },
-  card: {
-    width: "100%",
-    background: "hsl(0, 0%, 100%)",
-    borderRadius: "1rem",
-    padding: "2.5rem",
-    boxShadow: "0 20px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.15)",
-  },
-  lockOverlay: {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "rgba(255, 255, 255, 0.85)",
-    backdropFilter: "blur(6px)",
-    color: "hsl(215, 25%, 15%)",
-    borderRadius: "1rem",
-    padding: "2rem",
-    textAlign: "center",
-    gap: "1.5rem",
-  },
-  title: {
-    marginTop: 0,
-    marginBottom: "2rem",
-    fontSize: "2rem",
-    fontWeight: 700,
-    color: "hsl(213, 45%, 22%)",
-    letterSpacing: "-0.025em",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-  },
-  template: {
-    border: "1px solid hsl(214, 20%, 88%)",
-    borderRadius: "0.75rem",
-    padding: "1.25rem",
-    background: "hsl(210, 20%, 98%)",
-    transition: "all 0.2s ease-in-out",
-  },
-  label: {
-    display: "flex",
-    gap: "1rem",
-    alignItems: "flex-start",
-    cursor: "pointer",
-  },
-  content: {
-    marginTop: "0.75rem",
-    marginLeft: "2rem",
-    lineHeight: 1.6,
-    whiteSpace: "pre-wrap",
-    color: "hsl(215, 25%, 25%)",
-    fontSize: "0.95rem",
-  },
-  help: {
-    marginTop: "0.5rem",
-    marginLeft: "2rem",
-    color: "hsl(215, 15%, 45%)",
-    fontSize: "0.85rem",
-  },
-  required: {
-    color: "hsl(0, 84%, 60%)",
-    fontSize: "0.85rem",
-    fontWeight: 600,
-  },
-  button: {
-    marginTop: "1.5rem",
-    padding: "1rem 1.5rem",
-    borderRadius: "0.625rem",
-    border: "none",
-    background: "linear-gradient(135deg, hsl(24, 95%, 53%) 0%, hsl(28, 95%, 48%) 100%)",
-    color: "#fff",
-    fontSize: "1.05rem",
-    fontWeight: 600,
-    boxShadow: "0 4px 6px -1px rgba(249, 115, 22, 0.2)",
-    transition: "transform 0.1s, box-shadow 0.1s",
-    cursor: "pointer",
-    width: "100%",
-  },
-  success: {
-    color: "hsl(142, 70%, 40%)",
-    fontWeight: 600,
-    textAlign: "center",
-    padding: "1rem",
-    background: "rgba(22, 163, 74, 0.1)",
-    borderRadius: "0.5rem",
-  },
-  modalForm: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-  },
-  modalLabel: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    fontWeight: 500,
-    color: "hsl(215, 25%, 15%)",
-  },
-  modalInput: {
-    padding: "0.75rem",
-    borderRadius: "0.5rem",
-    border: "1px solid hsl(214, 20%, 88%)",
-    fontSize: "1.25rem",
-    letterSpacing: "0.25rem",
-    textAlign: "center",
-    fontFamily: '"Inter", sans-serif',
-    outline: "none",
-  },
-  errorText: {
-    color: "hsl(0, 84%, 60%)",
-    fontSize: "0.85rem",
-  },
-  modalActions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "1rem",
-  }
 };

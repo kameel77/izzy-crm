@@ -2,6 +2,7 @@ import React, { useEffect, useImperativeHandle, forwardRef, useRef } from "react
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TextField } from "../../ui";
 
 const schema = z.object({
   mainIncome: z.coerce.number().min(1, "Główne dochody są wymagane"),
@@ -68,56 +69,29 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 
   return (
     <form>
-      <fieldset disabled={isReadOnly} style={styles.readOnlyFieldset}>
-      <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>Krok 5: Budżet</h2>
-      
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Dochody (PLN)</legend>
+      <fieldset disabled={isReadOnly} className="app-client-fieldset">
+      <h2 className="app-client-step-title">Krok 5: Budżet</h2>
+
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Dochody (PLN)</legend>
         <div className="form-grid">
-          <div style={styles.field}>
-            <label htmlFor="mainIncome">Główne dochody (netto)</label>
-            <input id="mainIncome" type="number" {...register("mainIncome")} />
-            {errors.mainIncome && <span style={styles.error}>{errors.mainIncome.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="otherIncome">Inne dochody (opcjonalnie)</label>
-            <input id="otherIncome" type="number" {...register("otherIncome")} />
-          </div>
+          <TextField id="mainIncome" label="Główne dochody (netto)" type="number" {...register("mainIncome")} error={errors.mainIncome?.message} />
+          <TextField id="otherIncome" label="Inne dochody (opcjonalnie)" type="number" {...register("otherIncome")} />
         </div>
       </fieldset>
 
-      <fieldset style={styles.fieldset}>
-        <legend style={styles.legend}>Wydatki (PLN)</legend>
+      <fieldset className="app-client-section">
+        <legend className="app-client-section__title">Wydatki (PLN)</legend>
         <div className="form-grid">
-          <div style={styles.field}>
-            <label htmlFor="housingFees">Opłaty za mieszkanie</label>
-            <input id="housingFees" type="number" {...register("housingFees")} />
-            {errors.housingFees && <span style={styles.error}>{errors.housingFees.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="otherLivingCosts">Pozostałe koszty życia</label>
-            <input id="otherLivingCosts" type="number" {...register("otherLivingCosts")} />
-            {errors.otherLivingCosts && <span style={styles.error}>{errors.otherLivingCosts.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="loanInstallments">Kwota rat kredytów</label>
-            <input id="loanInstallments" type="number" {...register("loanInstallments")} />
-            {errors.loanInstallments && <span style={styles.error}>{errors.loanInstallments.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="cardLimits">Kwota limitów kart/kredytów</label>
-            <input id="cardLimits" type="number" {...register("cardLimits")} />
-            {errors.cardLimits && <span style={styles.error}>{errors.cardLimits.message}</span>}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="otherFinancialLiabilities">Inne obciążenia finansowe</label>
-            <input id="otherFinancialLiabilities" type="number" {...register("otherFinancialLiabilities")} />
-            {errors.otherFinancialLiabilities && <span style={styles.error}>{errors.otherFinancialLiabilities.message}</span>}
-          </div>
+          <TextField id="housingFees" label="Opłaty za mieszkanie" type="number" {...register("housingFees")} error={errors.housingFees?.message} />
+          <TextField id="otherLivingCosts" label="Pozostałe koszty życia" type="number" {...register("otherLivingCosts")} error={errors.otherLivingCosts?.message} />
+          <TextField id="loanInstallments" label="Kwota rat kredytów" type="number" {...register("loanInstallments")} error={errors.loanInstallments?.message} />
+          <TextField id="cardLimits" label="Kwota limitów kart/kredytów" type="number" {...register("cardLimits")} error={errors.cardLimits?.message} />
+          <TextField id="otherFinancialLiabilities" label="Inne obciążenia finansowe" type="number" {...register("otherFinancialLiabilities")} error={errors.otherFinancialLiabilities?.message} />
         </div>
       </fieldset>
 
-      <div style={styles.summary}>
+      <div className="app-panel app-client-budget">
         <p><strong>Dochód netto:</strong> {totalIncome.toFixed(2)} PLN</p>
         <p><strong>Suma wydatków:</strong> {totalExpenses.toFixed(2)} PLN</p>
         <p><strong>Zdolność kredytowa (informacyjnie):</strong> {creditAbility.toFixed(2)} PLN</p>
@@ -128,40 +102,3 @@ export const Step5_Budget = forwardRef<Step5Ref, Step5Props>(({ onFormChange, fo
 });
 
 Step5_Budget.displayName = "Step5_Budget";
-
-const styles: Record<string, React.CSSProperties> = {
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  fieldset: {
-    border: "none",
-    padding: 0,
-    margin: "0 0 2rem 0",
-  },
-  legend: {
-    fontWeight: 600,
-    fontSize: "1.1rem",
-    marginBottom: "1rem",
-    padding: 0,
-    width: '100%',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  summary: {
-    marginTop: "2rem",
-    padding: "1rem",
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: "0.5rem",
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "0.875rem",
-  },
-  readOnlyFieldset: {
-    border: "none",
-    padding: 0,
-    margin: 0,
-  },
-};

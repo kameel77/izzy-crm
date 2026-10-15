@@ -2,13 +2,14 @@ import React from "react";
 
 import { LeadSummary } from "../api/leads";
 import { LeadStatus, LEAD_STATUS_LABELS } from "../constants/leadStatus";
+import { Avatar, Button, Card, DataTable, Select, StatusBadge, TextField } from "./ui";
+import type { DataTableColumn } from "./ui";
 
 interface LeadListProps {
   leads: LeadSummary[];
   isLoading: boolean;
   selectedLeadId?: string | null;
   onRefresh: () => void;
-  onCreateLeadClick: () => void;
   onMore: (leadId: string) => void;
   onStatusFilterChange: (status: LeadStatus | "") => void;
   statusFilter: LeadStatus | "";
@@ -23,12 +24,16 @@ interface LeadListProps {
   onPageChange: (page: number) => void;
 }
 
+const STATUS_OPTIONS = [
+  { value: "", label: "All statuses" },
+  ...Object.entries(LEAD_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+];
+
 export const LeadList: React.FC<LeadListProps> = ({
   leads,
   isLoading,
   selectedLeadId,
   onRefresh,
-  onCreateLeadClick,
   onMore,
   statusFilter,
   onStatusFilterChange,
@@ -40,330 +45,146 @@ export const LeadList: React.FC<LeadListProps> = ({
   const page = meta?.page ?? 1;
   const totalPages = meta?.totalPages ?? 1;
 
+  const columns: DataTableColumn<LeadSummary>[] = [
+    {
+      key: "customer",
+      header: "Klient",
+      render: (lead) => {
+        const fullName = lead.customerProfile
+          ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
+          : "";
+        return (
+          <div className="iz-table__person">
+            <Avatar name={fullName || "?"} />
+            <div>
+              <b>{fullName || "—"}</b>
+              <span>{lead.customerProfile?.email}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (lead) => <StatusBadge status={lead.status} />,
+    },
+    {
+      key: "assignedUser",
+      header: "Przypisany",
+      render: (lead) =>
+        lead.assignedUser?.fullName ? (
+          <div className="iz-table__person">
+            <Avatar size="sm" name={lead.assignedUser.fullName} />
+            {lead.assignedUser.fullName}
+          </div>
+        ) : (
+          <span className="iz-table__muted">Nieprzypisany</span>
+        ),
+    },
+    {
+      key: "partner",
+      header: "Partner",
+      render: (lead) => lead.partner?.name || lead.partnerId,
+    },
+    {
+      key: "leadCreatedAt",
+      header: "Dodany",
+      align: "right",
+      render: (lead) => (
+        <span className="iz-table__muted">
+          {new Date(lead.leadCreatedAt).toLocaleString("pl-PL", {
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      width: 52,
+      render: (lead) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="more"
+          aria-label="Otwórz / Więcej"
+          onClick={(event) => {
+            event.stopPropagation();
+            onMore(lead.id);
+          }}
+        />
+      ),
+    },
+  ];
+
   return (
-    <section style={styles.container}>
-      <header style={styles.header}>
-        <div style={styles.filters}>
-          <input
+    <Card
+      className="app-leads"
+      title="Leads"
+      icon="users"
+      subtitle={meta ? `${meta.total} results` : `${leads.length} results`}
+      flush
+      actions={
+        <>
+          <TextField
+            icon="search"
             placeholder="Wyszukaj klienta..."
+            aria-label="Wyszukaj klienta"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            style={styles.searchInput}
+            className="app-leads__search"
           />
-          <select
+          <Select
+            aria-label="Status"
             value={statusFilter}
             onChange={(event) => onStatusFilterChange(event.target.value as LeadStatus | "")}
-            style={styles.select}
-          >
-            <option value="">All statuses</option>
-            {Object.entries(LEAD_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <button type="button" style={styles.refreshButton} onClick={onRefresh}>
+            options={STATUS_OPTIONS}
+            className="app-leads__status"
+          />
+          <Button variant="secondary" size="sm" icon="refresh" onClick={onRefresh}>
             Odśwież
-          </button>
-          <button type="button" style={styles.createButton} onClick={onCreateLeadClick}>
-            Dodaj nowy lead
-          </button>
-        </div>
-        <span style={styles.count}>
-          {meta ? `${meta.total} results` : `${leads.length} results`}
-        </span>
-      </header>
-
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.tableHeadCell}>Klient</th>
-              <th style={styles.tableHeadCell}>Status</th>
-              <th style={styles.tableHeadCell}>Przypisany</th>
-              <th style={styles.tableHeadCell}>Partner</th>
-              <th style={styles.tableHeadCell}>Dodany</th>
-              <th aria-label="Lead actions" style={{ ...styles.tableHeadCell, textAlign: "right" }} />
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} style={{ ...styles.tableCell, ...styles.loadingCell }}>
-                  Loading leads...
-                </td>
-              </tr>
-            ) : leads.length ? (
-              leads.map((lead) => (
-                <tr
-                  key={lead.id}
-                  style={
-                    lead.id === selectedLeadId ? styles.selectedRow : styles.clickableRow
-                  }
-                  onClick={() => onMore(lead.id)}
-                >
-                  <td style={styles.tableCell}>
-                    <strong>
-                      {lead.customerProfile
-                        ? `${lead.customerProfile.firstName} ${lead.customerProfile.lastName}`
-                        : "—"}
-                    </strong>
-                    <div style={styles.subtleText}>{lead.customerProfile?.email}</div>
-                  </td>
-                  <td style={styles.tableCell}>
-                    <span style={lead.status === "ONBOARDING_CONFIRMED" ? styles.onboardingConfirmedBadge : styles.badge}>
-                      {LEAD_STATUS_LABELS[lead.status]}
-                    </span>
-                  </td>
-                  <td style={styles.tableCell}>
-                    {lead.assignedUser?.fullName || <span style={styles.subtleText}>Nieprzypisany</span>}
-                  </td>
-                  <td style={styles.tableCell}>{lead.partner?.name || lead.partnerId}</td>
-                  <td style={styles.tableCell}>{new Date(lead.leadCreatedAt).toLocaleString()}</td>
-                  <td style={{ ...styles.tableCell, ...styles.actionsCell }} onClick={(e) => e.stopPropagation()}>
-                    <div className="dropdown" style={{ display: "inline-block", position: "relative" }}>
-                      <button
-                        type="button"
-                        style={styles.moreButton}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          // For simplicity in a pure inline-style setup without a ton of state,
-                          // we can either toggle a state variable via a wrapper component or just trigger the onMore action directly.
-                          // Let's implement a simple click to open the dropdown menu.
-                          const dropdownMenu = event.currentTarget.nextElementSibling as HTMLElement;
-                          if (dropdownMenu) {
-                            const isHidden = dropdownMenu.style.display === "none";
-                            document.querySelectorAll('.action-menu-dropdown').forEach((el) => {
-                              (el as HTMLElement).style.display = "none";
-                            });
-                            dropdownMenu.style.display = isHidden ? "block" : "none";
-                          }
-                        }}
-                      >
-                        •••
-                      </button>
-                      <div className="action-menu-dropdown" style={styles.dropdownMenu}>
-                        <button style={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onMore(lead.id); }}>
-                          Otwórz / Więcej
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} style={{ ...styles.tableCell, ...styles.loadingCell }}>
-                  No leads found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div style={styles.pagination}>
-        <button
-          type="button"
-          style={styles.paginationButton}
-          onClick={() => onPageChange(page - 1)}
-          disabled={page <= 1 || isLoading}
-        >
-          Poprzednia
-        </button>
-        <span style={styles.paginationInfo}>
-          Strona {page} z {totalPages}
-        </span>
-        <button
-          type="button"
-          style={styles.paginationButton}
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages || isLoading}
-        >
-          Następna
-        </button>
-      </div>
-    </section>
+          </Button>
+        </>
+      }
+      footer={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="chevron-left"
+            disabled={page <= 1 || isLoading}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Poprzednia
+          </Button>
+          <span className="iz-tnum app-leads__page">
+            Strona {page} z {totalPages}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconRight="chevron-right"
+            disabled={page >= totalPages || isLoading}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Następna
+          </Button>
+        </>
+      }
+    >
+      <DataTable
+        rows={isLoading ? [] : leads}
+        rowKey="id"
+        selectedKey={selectedLeadId ?? undefined}
+        onRowClick={(lead) => onMore(lead.id)}
+        empty={isLoading ? "Loading leads..." : "No leads found."}
+        columns={columns}
+      />
+    </Card>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: "var(--app-surface-elevated)",
-    borderRadius: 16,
-    border: "1px solid var(--app-border)",
-    boxShadow: "0 16px 32px rgba(15, 23, 42, 0.08)",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-    fontFamily: "var(--font-family-sans)",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "1rem",
-    flexWrap: "wrap",
-  },
-  filters: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-    flexWrap: "wrap",
-  },
-  searchInput: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-    minWidth: 200,
-  },
-  select: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid #d1d5db",
-  },
-  refreshButton: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 8,
-    border: "1px solid rgba(37, 99, 235, 0.25)",
-    background: "rgba(37, 99, 235, 0.12)",
-    color: "#1d4ed8",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  createButton: {
-    padding: "0.5rem 0.85rem",
-    borderRadius: 8,
-    border: "1px solid rgba(4, 120, 87, 0.35)",
-    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-    color: "#f8fafc",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  tableWrapper: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: "0.92rem",
-  },
-  tableHeadCell: {
-    textAlign: "left",
-    padding: "0.75rem",
-    fontSize: "0.75rem",
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--app-text-muted)",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  tableCell: {
-    padding: "1rem 0.75rem",
-    borderBottom: "1px solid #f1f5f9",
-    verticalAlign: "middle",
-  },
-  clickableRow: {
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
-  },
-  selectedRow: {
-    cursor: "pointer",
-    background: "rgba(37, 99, 235, 0.12)",
-  },
-  loadingCell: {
-    textAlign: "center",
-    padding: "1.5rem",
-    color: "var(--app-text-muted)",
-  },
-  badge: {
-    display: "inline-block",
-    padding: "0.25rem 0.5rem",
-    borderRadius: 999,
-    background: "rgba(79, 70, 229, 0.12)",
-    color: "#4338ca",
-    fontSize: "0.85rem",
-    fontWeight: 600,
-  },
-  onboardingConfirmedBadge: {
-    display: "inline-block",
-    marginLeft: "0.4rem",
-    padding: "0.25rem 0.6rem",
-    borderRadius: 999,
-    background: "hsl(24,95%,55%)",
-    color: "#fff",
-    fontSize: "0.78rem",
-    fontWeight: 700,
-  },
-  count: {
-    fontSize: "0.9rem",
-    color: "var(--app-text-muted)",
-  },
-  pagination: {
-    marginTop: "0.5rem",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "1rem",
-  },
-  paginationButton: {
-    padding: "0.5rem 0.9rem",
-    borderRadius: 8,
-    border: "1px solid #e2e8f0",
-    background: "#fff",
-    cursor: "pointer",
-    minWidth: 100,
-  },
-  paginationInfo: {
-    fontSize: "0.9rem",
-    color: "#4b5563",
-  },
-  subtleText: {
-    color: "var(--app-text-muted)",
-    fontSize: "0.85rem",
-  },
-  actionsCell: {
-    textAlign: "right",
-    whiteSpace: "nowrap",
-  },
-  moreButton: {
-    padding: "0.25rem 0.6rem",
-    borderRadius: 8,
-    border: "1px solid #e2e8f0",
-    background: "#fff",
-    color: "#64748b",
-    cursor: "pointer",
-    fontSize: "1rem",
-    letterSpacing: "1px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-  },
-  dropdownMenu: {
-    display: "none",
-    position: "absolute",
-    right: 0,
-    top: "100%",
-    marginTop: "0.25rem",
-    background: "#fff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 8,
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    zIndex: 10,
-    minWidth: 150,
-    overflow: "hidden",
-  },
-  dropdownItem: {
-    display: "block",
-    width: "100%",
-    textAlign: "left",
-    padding: "0.5rem 1rem",
-    background: "transparent",
-    border: "none",
-    fontSize: "0.85rem",
-    color: "#1e293b",
-    cursor: "pointer",
-    transition: "background-color 0.15s ease",
-  },
 };
