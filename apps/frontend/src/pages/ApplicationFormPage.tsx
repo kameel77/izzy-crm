@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { MultiStepForm } from "../components/multistep-form/MultiStepForm";
+import { useBrandTheme } from "../hooks/useBrandTheme";
 
 export const ApplicationFormPage: React.FC = () => {
+  useBrandTheme("carsalon");
   const [currentStep, setCurrentStep] = useState(1);
 
   return (
@@ -9,13 +11,17 @@ export const ApplicationFormPage: React.FC = () => {
       <header className="app-client__header">
         {currentStep === 1 ? (
           <>
+            <img src="/brands/carsalon/logo.png" alt="CarSalon" className="app-client__logo" />
             <h1 className="app-client__title">Wniosek o finansowanie</h1>
             <p className="app-client__desc">
               Wypełnij poniższy formularz, aby złożyć wniosek. Możesz zapisać postęp i wrócić w dowolnym momencie.
             </p>
           </>
         ) : (
-          <h1 className="app-client__title app-client__title--compact">Wniosek o finansowanie</h1>
+          <>
+            <img src="/brands/carsalon/logo.png" alt="CarSalon" className="app-client__logo" />
+            <h1 className="app-client__title app-client__title--compact">Wniosek o finansowanie</h1>
+          </>
         )}
       </header>
       <main className="form-main-card">

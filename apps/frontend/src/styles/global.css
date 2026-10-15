@@ -109,6 +109,25 @@
   --focus-ring: 0 0 0 2px #15171b, 0 0 0 4px #9d80f7;
 }
 
+/* CarSalon brand — client booking calendar and financing application only (useBrandTheme("carsalon")). Source: car-scout src/brands/carsalon/config.ts (accent hsl(24 95% 53%), primary hsl(213 45% 22%)). */
+body.theme-carsalon {
+  --accent: #f97015;
+  --accent-hover: #ef7306;
+  --accent-soft: #fff1e6;
+  --accent-ink: #b8480b;
+  --on-accent: #14161b;
+  --chart-1: var(--accent);
+  --chart-2: #fb9a5a;
+  --chart-3: #fed7b8;
+  --brand-primary: #1f3651;
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #1f3651;
+}
+:root[data-theme="dark"] body.theme-carsalon {
+  --accent-soft: #3a1f0c;
+  --accent-ink: #fb9a5a;
+  --focus-ring: 0 0 0 2px #15171b, 0 0 0 4px #fb9a5a;
+}
+
 * {
   box-sizing: border-box;
 }
